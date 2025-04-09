@@ -14,7 +14,7 @@ type GlobalObject = {
    * Script tag version
    */
   v: number;
-}
+};
 
 init();
 
@@ -29,13 +29,13 @@ function init(): void {
     return;
   }
 
-  if (!globalObject.q) {
+  if (!globalObject["q"]) {
     warn("Dash0 Web SDK command queue not defined. Did you add the script tag multiple times to your website?");
     return;
   }
 
-  if (typeof globalObject['v'] === 'number') {
-    vars.scriptTagVersion = String(Math.round(globalObject['v']));
+  if (typeof globalObject["v"] === "number") {
+    vars.scriptTagVersion = String(Math.round(globalObject["v"]));
   }
 
   processQueuedApiCalls(globalObject.q);
@@ -62,7 +62,7 @@ function processQueuedApiCall(apiCall: Array<any>) {
   const apiFn = apis[apiName] as Function;
 
   if (!apiFn) {
-    warn('Unsupported Dash0 Web SDK api: ', apiCall[0]);
+    warn("Unsupported Dash0 Web SDK api: ", apiCall[0]);
     return;
   }
 

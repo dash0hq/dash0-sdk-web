@@ -35,6 +35,6 @@ export const vars: {
   userName?: string | null | undefined;
   userEmail?: string | null | undefined;
 } = {
-  nameOfLongGlobal: 'Dash0WebSdk',
-  sdkVersion: '{{SDK_VERSION}}',
+  nameOfLongGlobal: "Dash0WebSdk",
+  sdkVersion: "{{SDK_VERSION}}",
 };

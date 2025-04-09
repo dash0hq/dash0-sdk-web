@@ -11,11 +11,14 @@
   },
   "types": "./dist/types/entrypoint/npm-package.d.ts",
   "scripts": {
-    "build": "pnpm run build:clean && pnpm run build:typescript && pnpm run build:rollup",
+    "build": "pnpm run build:clean && pnpm run build:typescript && pnpm run build:rollup && pnpm run build:minify && pnpm run build:stats",
     "build:clean": "rm -rf dist",
     "build:typescript": "tsc",
     "build:rollup": "rollup -c -m",
-    "fileStats": "echo \"\nFile Stats:\" && ls dist/script/*.js | xargs -I '%' bash -c 'echo \"%: $(./node_modules/.bin/gzip-size % --include-original) (gzip)\"'"
+    "build:minify": "google-closure-compiler --compilation_level=ADVANCED --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT_2020 --js_output_file=dist/script/dash0.min.js --jscomp_off checkVars --jscomp_off checkTypes --create_source_map='%outname%.map' --formatting=SINGLE_QUOTES dist/script/dash0.js && echo \"//# sourceMappingURL=dash0.min.js.map\" >> dist/script/dash0.min.js && sed -i.bak 's#\"dist/script/#\"#' dist/script/dash0.min.js.map && rm dist/script/dash0.min.js.map.bak",
+    "build:stats": "echo \"\nFile Stats:\" && ls dist/script/*.js | xargs -I '%' bash -c 'echo \"%: $(./node_modules/.bin/gzip-size % --include-original) (gzip)\"'",
+    "prettier:all": "prettier . --write --cache --list-different",
+    "prettier:check": "prettier . --check"
   },
   "keywords": [],
   "files": [
@@ -30,6 +33,7 @@
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-replace": "^6.0.2",
+    "google-closure-compiler": "^20240317.0.0",
     "gzip-size-cli": "^5.1.0",
     "prettier": "^3.5.3",
     "rollup": "^4.39.0",

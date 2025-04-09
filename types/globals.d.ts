@@ -1,5 +1,5 @@
 // Ensure this is treated as a module.
-export { };
+export {};
 
 declare global {
   interface Window {
