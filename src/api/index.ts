@@ -1,5 +1,5 @@
-import { identify } from "@/api/identify";
-import { debug } from "@/api/debug";
+import { identify } from "./identify";
+import { debug } from "../debug";
 
 export const apis = {
   'debug': debug,

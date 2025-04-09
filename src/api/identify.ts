@@ -1,4 +1,4 @@
-import { vars } from "@/vars";
+import { vars } from "../vars";
 
 type IdentifyOpts = {
   fullName?: string;

@@ -2,11 +2,11 @@ import {noop} from './util';
 
 type Logger = (...args: any[]) => void;
 
-export const log: Logger = DEBUG ? createLogger('log') : noop;
-export const info: Logger = DEBUG ? createLogger('info') : noop;
-export const warn: Logger = DEBUG ? createLogger('warn') : noop;
-export const error: Logger = DEBUG ? createLogger('error') : noop;
-export const debug: Logger = DEBUG ? createLogger('debug') : noop;
+export const log: Logger = createLogger('log');
+export const info: Logger = createLogger('info');
+export const warn: Logger = createLogger('warn');
+export const error: Logger = createLogger('error');
+export const debug: Logger = createLogger('debug');
 
 function createLogger(method: Extract<keyof Console, 'log' | 'info' | 'warn' | 'error' | 'debug'>): Logger {
   if (typeof console === 'undefined' || typeof console.log !== 'function' || typeof console.log.apply !== 'function') {

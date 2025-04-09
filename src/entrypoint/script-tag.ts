@@ -1,7 +1,7 @@
-import { debug, warn } from "@/debug";
-import { win } from "@/browser";
-import { vars } from "@/vars";
-import { apis } from "@/api";
+import { debug, warn } from "../debug";
+import { win } from "../browser";
+import { vars } from "../vars";
+import { apis } from "../api";
 
 type GlobalObject = {
   /**

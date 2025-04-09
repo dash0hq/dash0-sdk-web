@@ -2,17 +2,37 @@
   "name": "dash0-sdk-web",
   "version": "1.0.0",
   "description": "Dash0's Web SDK to collect telemetry from end-users' web browsers",
-  "main": "index.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/types/entrypoint/npm-package.d.ts",
+      "default": "./dist/esm/entrypoint/npm-package.js"
+    }
+  },
+  "types": "./dist/types/entrypoint/npm-package.d.ts",
   "scripts": {
-    "build": "pnpm run build:clean && tsc",
+    "build": "pnpm run build:clean && pnpm run build:typescript && pnpm run build:rollup",
     "build:clean": "rm -rf dist",
-    "build:rollup": "rollup -c -m"
+    "build:typescript": "tsc",
+    "build:rollup": "rollup -c -m",
+    "fileStats": "echo \"\nFile Stats:\" && ls dist/script/*.js | xargs -I '%' bash -c 'echo \"%: $(./node_modules/.bin/gzip-size % --include-original) (gzip)\"'"
   },
   "keywords": [],
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "author": "Dash0 Inc.",
   "license": "Apache-2.0",
   "devDependencies": {
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-replace": "^6.0.2",
+    "gzip-size-cli": "^5.1.0",
+    "prettier": "^3.5.3",
+    "rollup": "^4.39.0",
     "typescript": "^5.8.3"
-  },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  }
 }

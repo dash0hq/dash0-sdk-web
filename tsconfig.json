@@ -1,58 +1,22 @@
 {
   "compilerOptions": {
+    "allowJs": true,
     "incremental": true,
-    "target": "es2016",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    },
-    "resolveJsonModule": false,
-    "allowJs": false,
-    "declaration": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": false,
-    "sourceMap": true,
-    "noEmit": false,
-    "importHelpers": false,
-    "outDir": "./dist",
-    "declarationDir": "./dist/types",
-    "isolatedModules": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
+    "lib": ["esnext", "dom"],
+    "module": "ESNext",
+    "moduleResolution": "Node",
     "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "useUnknownInCatchVariables": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "exactOptionalPropertyTypes": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "allowUnusedLabels": true,
-    "allowUnreachableCode": false,
-    "noErrorTruncation": true,
-    "pretty": true,
-    "skipLibCheck": true
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "outDir": "./dist/esm",
+    "declaration": true,
+    "declarationDir": "./dist/types",
+    "target": "ES2021"
   },
-  "include": [
-    "src/**/*",
-    "types/**/*",
-    "test/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "node_modules/**/*",
-    "test/experiments/errors/errorTypes"
-  ]
+  "exclude": ["node_modules", "dist", "rollup.config.mjs"]
 }
