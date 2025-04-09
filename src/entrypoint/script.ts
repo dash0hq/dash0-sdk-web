@@ -2,6 +2,7 @@ import { debug, warn } from "../debug";
 import { win } from "../browser";
 import { vars } from "../vars";
 import { apis } from "../api";
+import {init as sharedInit} from "../init";
 
 type GlobalObject = {
   /**
@@ -9,11 +10,6 @@ type GlobalObject = {
    * afterward to signal completion
    */
   q?: Array<Array<any>>;
-
-  /**
-   * Script tag version
-   */
-  v: number;
 };
 
 init();
@@ -34,20 +30,10 @@ function init(): void {
     return;
   }
 
-  if (typeof globalObject["v"] === "number") {
-    vars.scriptTagVersion = String(Math.round(globalObject["v"]));
-  }
-
   processQueuedApiCalls(globalObject.q);
   addApiCallAfterInitializationSupport();
 
-  // TODO
-  // if (!vars.reportingUrl && vars.reportingBackends.length === 0) {
-  //   if (DEBUG) {
-  //     error('No reporting URL configured. Aborting EUM initialization.');
-  //   }
-  //   return;
-  // }
+  sharedInit();
 }
 
 function processQueuedApiCalls(apiCalls: Array<any>) {

@@ -1,5 +1,7 @@
 // aliasing the global function for improved minification and
 // protection against hasOwnProperty overrides.
+import { KeyValue } from "../types/otlp";
+
 const globalHasOwnProperty = Object.prototype.hasOwnProperty;
 export function hasOwnProperty(obj: Record<string, unknown>, key: string) {
   return globalHasOwnProperty.call(obj, key);
@@ -26,5 +28,21 @@ export function removeEventListener(target: EventTarget, eventType: string, call
     target.removeEventListener(eventType, callback, false);
   } else if ((target as any).detachEvent) {
     (target as any).detachEvent("on" + eventType, callback);
+  }
+}
+
+export function addAttribute(attributes: KeyValue[], key: string, value: string) {
+  attributes.push({
+    "key": key,
+    "value": {
+      "stringValue": value
+    }
+  })
+}
+
+export function removeAttribute(attributes: KeyValue[], key: string) {
+  const index = attributes.findIndex(attr => attr['key'] === key);
+  if (index !== -1) {
+    attributes.splice(index, 1);
   }
 }

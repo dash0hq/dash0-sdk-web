@@ -31,6 +31,7 @@
   "author": "Dash0 Inc.",
   "license": "Apache-2.0",
   "devDependencies": {
+    "@opentelemetry/otlp-transformer": "^0.200.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-replace": "^6.0.2",
     "google-closure-compiler": "^20240317.0.0",

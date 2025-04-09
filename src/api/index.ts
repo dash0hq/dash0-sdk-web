@@ -1,7 +1,9 @@
 import { identify } from "./identify";
-import { debug } from "../debug";
+import { debug } from "./debug";
+import { init } from "./init";
 
 export const apis = {
-  debug: debug,
-  identify: identify,
+  "init": init,
+  "debug": debug,
+  "identify": identify,
 } as const;

@@ -10,7 +10,7 @@ const extensions = [".js"];
 // const isDebugBuild = process.env.NODE_ENV !== 'production';
 
 export default {
-  input: "dist/esm/entrypoint/script-tag.js",
+  input: "dist/esm/entrypoint/script.js",
   output: {
     file: `dist/script/dash0.js`,
     sourcemap: true,
