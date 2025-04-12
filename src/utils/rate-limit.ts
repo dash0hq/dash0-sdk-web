@@ -1,9 +1,9 @@
-import {setInterval} from './timers';
+import { setInterval } from "./timers";
 
 export function createRateLimiter(opts: {
-  maxCalls?: number,
-  maxCallsPerTenMinutes: number,
-  maxCallsPerTenSeconds: number
+  maxCalls?: number;
+  maxCallsPerTenMinutes: number;
+  maxCallsPerTenSeconds: number;
 }) {
   const maxCalls = opts.maxCalls || 4096;
   const maxCallsPerTenMinutes = opts.maxCallsPerTenMinutes || 128;
@@ -13,11 +13,14 @@ export function createRateLimiter(opts: {
   let totalCallsInLastTenMinutes = 0;
   let totalCallsInLastTenSeconds = 0;
 
-  setInterval(function() {
-    totalCallsInLastTenMinutes = 0;
-  }, 1000 * 60 * 10);
+  setInterval(
+    function () {
+      totalCallsInLastTenMinutes = 0;
+    },
+    1000 * 60 * 10
+  );
 
-  setInterval(function() {
+  setInterval(function () {
     totalCallsInLastTenSeconds = 0;
   }, 1000 * 10);
 

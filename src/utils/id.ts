@@ -12,8 +12,5 @@ export function generateUniqueId(byteCount: number): string {
       SHARED_CHAR_CODES_ARRAY[i] += 39;
     }
   }
-  return String.fromCharCode.apply(
-    null,
-    SHARED_CHAR_CODES_ARRAY.slice(0, byteCount * 2)
-  );
+  return String.fromCharCode.apply(null, SHARED_CHAR_CODES_ARRAY.slice(0, byteCount * 2));
 }

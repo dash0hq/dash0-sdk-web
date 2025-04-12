@@ -1,5 +1,5 @@
-import { addEventListener } from './listeners';
-import { doc, win } from './globals';
+import { addEventListener } from "./listeners";
+import { doc, win } from "./globals";
 
 let isUnloading = false;
 
@@ -12,13 +12,13 @@ export function onLastChance(fn: () => void) {
     fn();
   }
 
-  addEventListener(doc, 'visibilitychange', function() {
-    if (doc.visibilityState !== 'visible') {
+  addEventListener(doc, "visibilitychange", function () {
+    if (doc.visibilityState !== "visible") {
       fn();
     }
   });
 
-  addEventListener(win, 'pagehide', function() {
+  addEventListener(win, "pagehide", function () {
     isUnloading = true;
     fn();
   });
@@ -27,7 +27,7 @@ export function onLastChance(fn: () => void) {
   // beforeunload, but the reality is different (as of 2019-04-17). Chrome will
   // close tabs without firing visibilitychange. beforeunload on the other hand
   // is fired.
-  addEventListener(win, 'beforeunload', function() {
+  addEventListener(win, "beforeunload", function () {
     isUnloading = true;
     fn();
   });

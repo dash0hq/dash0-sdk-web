@@ -3,6 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Build Commands
+
 - Build all: `pnpm run build`
 - Format code: `pnpm run prettier:all`
 - Check formatting: `pnpm run prettier:check`
@@ -12,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Test with coverage: `pnpm run test:coverage`
 
 ## Code Style
+
 - TypeScript with strict typing and ES modules
 - Import style: Group imports from same module, use relative paths for local imports
 - Naming: camelCase for variables/functions, PascalCase for types/interfaces, UPPER_SNAKE_CASE for constants
@@ -21,6 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Formatting: Code is formatted with Prettier
 
 ## Project Structure
+
 - `/src/api`: Public API endpoints
 - `/src/utils`: Utility functions and helpers
 - `/src/entrypoint`: Entry points for different integration methods

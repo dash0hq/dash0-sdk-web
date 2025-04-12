@@ -1,16 +1,23 @@
 <script>
-  (function(d,a,s,h,z,e,r,o){
-    d[a]||(z=d[a]=function(){h.push(arguments)},z._t=new Date,z._v=1,h=z._q=[])
-  })(window,'dash0');
-  dash0('init', {
-    serviceName: 'dash0.com',
-    serviceVersion: '1.2.3',
-    environment: 'production',
+  (function (d, a, s, h, z, e, r, o) {
+    d[a] ||
+      ((z = d[a] =
+        function () {
+          h.push(arguments);
+        }),
+      (z._t = new Date()),
+      (z._v = 1),
+      (h = z._q = []));
+  })(window, "dash0");
+  dash0("init", {
+    serviceName: "dash0.com",
+    serviceVersion: "1.2.3",
+    environment: "production",
     endpoint: {
-      url: 'https://ingress.eu-west-1.aws.dash0-dev.com',
-      authToken: 'auth_abc123',
-      dataset: 'production'
-    }
+      url: "https://ingress.eu-west-1.aws.dash0-dev.com",
+      authToken: "auth_abc123",
+      dataset: "production",
+    },
   });
 </script>
 <script defer crossorigin="anonymous" src="dash0.min.js"></script>

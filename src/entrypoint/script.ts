@@ -11,10 +11,10 @@ import { terminateSession, trackSessions } from "../api/session";
  * All the APIs exposed through the script tag via `dash0('{{api name}}')`
  */
 const scriptApis = {
-  "init": initApi,
-  "debug": debugApi,
-  "identify": identify,
-  "terminateSession": terminateSession,
+  init: initApi,
+  debug: debugApi,
+  identify: identify,
+  terminateSession: terminateSession,
 } as const;
 
 type GlobalObject = {
@@ -22,7 +22,7 @@ type GlobalObject = {
    * Queued API calls. We will work through this queue during the initialization and then set it to `undefined`
    * afterward to signal completion
    */
-  q?: Array<Array<any>>;
+  _q?: Array<IArguments>;
 };
 
 init();
@@ -30,20 +30,19 @@ init();
 function init(): void {
   debug("Initializing Dash0 Web SDK (via Script)");
 
-  const globalObjectName = (win as any)[vars.nameOfLongGlobal];
-  const globalObject: GlobalObject = win[globalObjectName] as any;
+  const globalObject: GlobalObject = (win as any)["dash0"] as GlobalObject;
 
   if (!globalObject) {
-    warn("global " + vars.nameOfLongGlobal + " not found. Did you use the correct Dash0 Web SDK initializer?");
+    warn("global 'dash0' not found. Did you use the correct Dash0 Web SDK initializer?");
     return;
   }
 
-  if (!globalObject["q"]) {
+  if (!globalObject["_q"]) {
     warn("Dash0 Web SDK command queue not defined. Did you add the script tag multiple times to your website?");
     return;
   }
 
-  processQueuedApiCalls(globalObject.q);
+  processQueuedApiCalls(globalObject["_q"]);
   addApiCallAfterInitializationSupport();
 }
 
@@ -53,7 +52,7 @@ function processQueuedApiCalls(apiCalls: Array<any>) {
   }
 }
 
-function processQueuedApiCall(apiCall: Array<any>) {
+function processQueuedApiCall(apiCall: IArguments) {
   const apiName = apiCall[0];
   // @ts-ignore
   const apiFn = scriptApis[apiName] as Function;
@@ -63,11 +62,16 @@ function processQueuedApiCall(apiCall: Array<any>) {
     return;
   }
 
-  apiFn.apply(null, apiCall.slice(1));
+  const args: any[] = [];
+  for (let i = 1; i < apiCall.length; i++) {
+    args.push(apiCall[i]);
+  }
+
+  apiFn.apply(null, args);
 }
 
 function addApiCallAfterInitializationSupport() {
-  const globalObjectName = (win as any)[vars.nameOfLongGlobal];
+  const globalObjectName = (win as any)["dash0"];
   (win as any)[globalObjectName] = function () {
     /* eslint-disable prefer-rest-params */
     return processQueuedApiCall(arguments as any);

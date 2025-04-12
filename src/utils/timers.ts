@@ -1,5 +1,5 @@
 import { warn, info, debug } from "./debug";
-import {win} from './globals';
+import { win } from "./globals";
 
 // This module contains wrappers around the standard timer API. These wrappers can be used to
 // ensure that execution of timers happens outside of any Angular specific zones. This in turn
@@ -13,39 +13,39 @@ import {win} from './globals';
 // This ensures that when we register a timeout/interval on one global, that we will be able to
 // de-register it again in all cases.
 const globals = {
-  'setTimeout': win.setTimeout,
-  'clearTimeout': win.clearTimeout,
-  'setInterval': win.setInterval,
-  'clearInterval': win.clearInterval
+  setTimeout: win.setTimeout,
+  clearTimeout: win.clearTimeout,
+  setInterval: win.setInterval,
+  clearInterval: win.clearInterval,
 };
 
 // If the globals don't exist at execution time of this file, then we know that the globals stored
 // above are not wrapped by Zone.js. This in turn can mean better performance for Angular users.
 export const isRunningZoneJs =
-  win['Zone'] != null && win['Zone']['root'] != null && typeof win['Zone']['root']['run'] === 'function';
+  win["Zone"] != null && win["Zone"]["root"] != null && typeof win["Zone"]["root"]["run"] === "function";
 
 if (isRunningZoneJs) {
-  debug('Discovered Zone.js globals. Will attempt to register all timers inside the root Zone.');
+  debug("Discovered Zone.js globals. Will attempt to register all timers inside the root Zone.");
 }
 
 export function setTimeout(..._args: Parameters<typeof win.setTimeout>): ReturnType<typeof win.setTimeout> {
   // eslint-disable-next-line prefer-rest-params
-  return executeGlobally.apply('setTimeout', arguments as any);
+  return executeGlobally.apply("setTimeout", arguments as any);
 }
 
 export function clearTimeout(..._args: Parameters<typeof win.clearTimeout>): ReturnType<typeof win.clearTimeout> {
   // eslint-disable-next-line prefer-rest-params
-  return executeGlobally.apply('clearTimeout', arguments as any);
+  return executeGlobally.apply("clearTimeout", arguments as any);
 }
 
 export function setInterval(..._args: Parameters<typeof win.setInterval>): ReturnType<typeof win.setInterval> {
   // eslint-disable-next-line prefer-rest-params
-  return executeGlobally.apply('setInterval', arguments as any);
+  return executeGlobally.apply("setInterval", arguments as any);
 }
 
 export function clearInterval(..._args: Parameters<typeof win.clearInterval>): ReturnType<typeof win.clearInterval> {
   // eslint-disable-next-line prefer-rest-params
-  return executeGlobally.apply('clearInterval', arguments as any);
+  return executeGlobally.apply("clearInterval", arguments as any);
 }
 
 function executeGlobally(this: keyof typeof globals) {
@@ -63,11 +63,11 @@ function executeGlobally(this: keyof typeof globals) {
       // zone.
       // eslint-disable-next-line prefer-rest-params
       const args = Array.prototype.slice.apply(arguments);
-      return win['Zone']['root']['run'](globals[globalFunctionName], win, args);
+      return win["Zone"]["root"]["run"](globals[globalFunctionName], win, args);
     } catch (e) {
       warn(
-        'Failed to execute %s inside of zone (via Zone.js). Falling back to execution inside currently ' +
-          'active zone.',
+        "Failed to execute %s inside of zone (via Zone.js). Falling back to execution inside currently " +
+          "active zone.",
         globalFunctionName,
         e
       );

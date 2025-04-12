@@ -10,10 +10,9 @@ const extensions = [".js"];
 // const isDebugBuild = process.env.NODE_ENV !== 'production';
 
 export default {
-  input: "dist/esm/entrypoint/script.js",
+  input: "dist/esm/src/entrypoint/script.js",
   output: {
     file: `dist/script/dash0.js`,
-    sourcemap: true,
     format: "iife",
   },
   // @ts-ignore

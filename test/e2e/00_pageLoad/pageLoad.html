@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>pageLoad test</title>
+
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: {
+          url: "http://127.0.0.1:3010?cors=true",
+          authToken: "auth_abc123",
+          dataset: "production",
+        },
+      });
+    </script>
+    <script defer crossorigin="anonymous" src="/script/dash0.min.js"></script>
+  </head>
+  <body>
+    Hello World!
+  </body>
+</html>

@@ -11,7 +11,7 @@
   },
   "types": "./dist/types/entrypoint/npm-package.d.ts",
   "scripts": {
-    "build": "pnpm run build:clean && pnpm run build:typescript && pnpm run build:rollup && pnpm run build:minify && pnpm run build:stats",
+    "build": "pnpm run build:clean && pnpm run build:typescript && pnpm run build:rollup && rm dist/script/dash0.js.map && pnpm run build:minify && pnpm run build:stats",
     "build:clean": "rm -rf dist",
     "build:typescript": "tsc",
     "build:rollup": "rollup -c -m",
@@ -24,6 +24,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "dev-server": "SERVER_PORTS='3009,3010,3011' node test/server/index.mjs",
     "ci": "pnpm run lint && pnpm run prettier:check && pnpm run test && pnpm run build",
     "prepare": "husky"
   },
@@ -40,16 +41,25 @@
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-replace": "^6.0.2",
+    "@types/body-parser": "^1.19.5",
+    "@types/express": "^5.0.1",
+    "@types/multiparty": "^4.2.1",
+    "@types/serve-index": "^1.9.4",
     "@typescript-eslint/eslint-plugin": "^8.29.1",
     "@typescript-eslint/parser": "^8.29.1",
+    "body-parser": "^2.2.0",
     "eslint": "^9.24.0",
+    "express": "^5.1.0",
     "google-closure-compiler": "^20240317.0.0",
     "gzip-size-cli": "^5.1.0",
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
+    "multiparty": "^4.2.3",
     "prettier": "^3.5.3",
     "rollup": "^4.39.0",
+    "serve-index": "^1.9.1",
     "typescript": "^5.8.3",
+    "uuid": "^11.1.0",
     "vitest": "^3.1.1"
   },
   "packageManager": "pnpm@9.15.1"

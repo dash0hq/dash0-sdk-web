@@ -8,10 +8,11 @@ export async function send(path: string, body: unknown): Promise<void> {
   let requestBody: ArrayBuffer | string = jsonString;
   let byteLength = jsonString.length;
   let isCompressed = false;
+
   // Try to compress if supported
   if (typeof CompressionStream !== "undefined") {
     requestBody = await compressWithGzip(jsonString);
-    byteLength = requestBody.byteLength
+    byteLength = requestBody.byteLength;
     isCompressed = true;
   }
 
@@ -19,15 +20,16 @@ export async function send(path: string, body: unknown): Promise<void> {
   await Promise.all(
     vars.endpoints.map(async (endpoint) => {
       try {
-        const url = `${endpoint.url}${path}`;
+        const url = new URL(endpoint["url"]);
+        url.pathname = url.pathname + (url.pathname.endsWith("/") ? path.substring(1) : path);
 
         const headers: HeadersInit = {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${endpoint.authToken}`
+          Authorization: `Bearer ${endpoint["authToken"]}`,
         };
 
         if (endpoint.dataset) {
-          headers["Dash0-Dataset"] = endpoint.dataset;
+          headers["Dash0-Dataset"] = endpoint["dataset"];
         }
 
         // Try to compress if supported

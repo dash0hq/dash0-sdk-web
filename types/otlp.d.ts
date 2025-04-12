@@ -26,27 +26,27 @@ export type KeyValueList = {
 
 export type Resource = {
   ["attributes"]: KeyValue[];
-}
+};
 
 export type InstrumentationScope = {
   ["name"]?: string;
   ["version"]?: string;
   ["attributes"]: KeyValue[];
-}
+};
 
 export type ExportLogsServiceRequest = {
-  "resourceLogs": ResourceLogs[];
-}
+  resourceLogs: ResourceLogs[];
+};
 
 export type ResourceLogs = {
-  "resource": Resource;
-  "scopeLogs": ScopeLogs[];
+  resource: Resource;
+  scopeLogs: ScopeLogs[];
 };
 
 export type ScopeLogs = {
-  "scope"?: InstrumentationScope;
-  "logRecords": LogRecord[];
-  "schemaUrl"?: string;
+  scope?: InstrumentationScope;
+  logRecords: LogRecord[];
+  schemaUrl?: string;
 };
 
 export type LogRecord = {
@@ -63,46 +63,46 @@ export type LogRecord = {
 };
 
 export type ExportTraceServiceRequest = {
-  "resourceSpans": ResourceSpans[];
-}
+  resourceSpans: ResourceSpans[];
+};
 
 export type ResourceSpans = {
-  "resource": Resource;
-  "scopeSpans": ScopeSpans[];
+  resource: Resource;
+  scopeSpans: ScopeSpans[];
 };
 
 export type ScopeSpans = {
-  "scope"?: InstrumentationScope;
-  "spans": Span[];
+  scope?: InstrumentationScope;
+  spans: Span[];
 };
 
 export type SpanStatus = {
-  "message"?: string;
-  "code": number;
-}
+  message?: string;
+  code: number;
+};
 
 export type SpanEvent = {
-  "timeUnixNano": string;
-  "name": string;
-  "attributes": KeyValue[];
-}
+  timeUnixNano: string;
+  name: string;
+  attributes: KeyValue[];
+};
 
 export type Span = {
   /** Format: byte */
-  "traceId": string;
+  traceId: string;
   /** Format: byte */
-  "spanId": string;
-  "traceState"?: string;
+  spanId: string;
+  traceState?: string;
   /** Format: byte */
-  "parentSpanId"?: string;
-  "name": string;
-  "kind": number;
-  "startTimeUnixNano": string;
-  "endTimeUnixNano": string;
-  "attributes": KeyValue[];
-  "events": SpanEvent[];
+  parentSpanId?: string;
+  name: string;
+  kind: number;
+  startTimeUnixNano: string;
+  endTimeUnixNano: string;
+  attributes: KeyValue[];
+  events: SpanEvent[];
   /** Format: int64 */
-  "droppedEventsCount"?: number;
-  "links": SpanLink[];
-  "status": SpanStatus;
+  droppedEventsCount?: number;
+  links: SpanLink[];
+  status: SpanStatus;
 };

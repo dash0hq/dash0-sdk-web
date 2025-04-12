@@ -3,12 +3,12 @@ import { debug, generateUniqueId, now } from "../utils";
 import { info, warn } from "../utils";
 
 interface Session {
-  id: string,
-  startTime: number,
-  lastActivityTime: number
+  id: string;
+  startTime: number;
+  lastActivityTime: number;
 }
 
-const SESSION_STORAGE_KEY = 'd0_session';
+const SESSION_STORAGE_KEY = "d0_session";
 const STORAGE_SEPARATOR_KEY = "#";
 const DEFAULT_SESSION_INACTIVITY_TIMEOUT_MILLIS = 1000 * 60 * 60 * 3;
 const DEFAULT_SESSION_TERMINATION_TIMEOUT_MILLIS = 1000 * 60 * 60 * 6;
@@ -16,8 +16,7 @@ const MAX_ALLOWED_SESSION_TIMEOUT_MILLIS = 1000 * 60 * 60 * 24;
 
 export let sessionId: string | null = null;
 
-export function trackSessions(sessionInactivityTimeoutMillis?: number,
-                              sessionTerminationTimeoutMillis?: number): void {
+export function trackSessions(sessionInactivityTimeoutMillis?: number, sessionTerminationTimeoutMillis?: number): void {
   if (!isSupported) {
     debug("Storage API is not available and session tracking is therefore not supported.");
     return;
@@ -99,10 +98,11 @@ function serializeSession(session: Session): string {
   return session.id + STORAGE_SEPARATOR_KEY + session.startTime + STORAGE_SEPARATOR_KEY + session.lastActivityTime;
 }
 
-function isSessionValid(session: Session,
-                        sessionInactivityTimeoutMillis: number,
-                        sessionTerminationTimeoutMillis: number): boolean {
-
+function isSessionValid(
+  session: Session,
+  sessionInactivityTimeoutMillis: number,
+  sessionTerminationTimeoutMillis: number
+): boolean {
   const minAllowedLastActivityTime = now() - sessionInactivityTimeoutMillis;
   if (session.lastActivityTime < minAllowedLastActivityTime) {
     return false;

@@ -1,9 +1,9 @@
 // localStorage API re-exposed to allow testing.
 
-import { localStorage } from './globals';
+import { localStorage } from "./globals";
 
 export const isSupported =
-  localStorage != null && typeof localStorage.getItem === 'function' && typeof localStorage.setItem === 'function';
+  localStorage != null && typeof localStorage.getItem === "function" && typeof localStorage.setItem === "function";
 
 export function getItem(k: string): string | null | undefined {
   if (isSupported && localStorage) {

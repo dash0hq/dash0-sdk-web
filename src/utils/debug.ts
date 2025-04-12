@@ -1,4 +1,4 @@
-import { noop } from "./obj";
+import { noop } from "./fn";
 
 type Logger = (...args: any[]) => void;
 

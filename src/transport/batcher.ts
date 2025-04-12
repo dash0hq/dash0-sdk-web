@@ -1,12 +1,13 @@
 import { onLastChance } from "../utils/on-last-chance";
 import { doc } from "../utils";
+import { setTimeout } from "../utils/timers";
 
 const SCHEDULE_DELAY_MILLIS = 1000;
 const MAX_QUEUE_SIZE = 15;
 
 export type Batcher<T> = {
-  send(item: T): void
-}
+  send(item: T): void;
+};
 
 export function newBatcher<T>(sendInternal: (items: T[]) => void): Batcher<T> {
   const queuedItems: T[] = [];
@@ -27,7 +28,7 @@ export function newBatcher<T>(sendInternal: (items: T[]) => void): Batcher<T> {
         // We cannot guarantee that we will ever get time to transmit data in a batched
         // format when the window is hidden, as this might occur while the document is
         // being unloaded. Immediately force a transmission in these cases.
-        sendInternal([item])
+        sendInternal([item]);
         return;
       }
 
@@ -38,7 +39,7 @@ export function newBatcher<T>(sendInternal: (items: T[]) => void): Batcher<T> {
         pendingFlushTimeout = setTimeout(flush, SCHEDULE_DELAY_MILLIS);
       }
     },
-  }
+  };
 
   function flush() {
     if (pendingFlushTimeout != null) {
@@ -47,12 +48,12 @@ export function newBatcher<T>(sendInternal: (items: T[]) => void): Batcher<T> {
     }
 
     if (queuedItems.length > 0) {
-      sendInternal(queuedItems.slice())
+      sendInternal(queuedItems.slice());
       queuedItems.length = 0;
     }
   }
 }
 
 function isWindowHidden() {
-  return doc.visibilityState !== 'visible';
+  return doc.visibilityState !== "visible";
 }

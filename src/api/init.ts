@@ -1,11 +1,14 @@
 import { Endpoint, vars } from "../vars";
 import {
-  DEPLOYMENT_ENVIRONMENT_NAME, PAGE_LOAD_ID,
+  DEPLOYMENT_ENVIRONMENT_NAME,
+  PAGE_LOAD_ID,
   SERVICE_NAME,
-  SERVICE_VERSION, USER_AGENT,
+  SERVICE_VERSION,
+  USER_AGENT,
 } from "../semantic-conventions";
 import { addAttribute, generateUniqueId, PAGE_LOAD_ID_BYTES, warn } from "../utils";
 import { trackSessions } from "./session";
+import { startPageLoadInstrumentation } from "../instrumentations/page-load";
 
 export type InitOptions = {
   ["serviceName"]: string;
@@ -22,20 +25,20 @@ export type InitOptions = {
    * allowed time to pass between two page loads before the session is considered
    * to be expired. Also think of cache time-to-idle configuration options.
    */
-  "sessionInactivityTimeoutMillis"?: number,
+  sessionInactivityTimeoutMillis?: number;
 
   /**
    * The default session termination timeout. Session termination is the maximum
    * allowed time to pass since session start before the session is considered
    * to be expired. Also think of cache time-to-live configuration options.
    */
-  "sessionTerminationTimeoutMillis"?: number
-}
+  sessionTerminationTimeoutMillis?: number;
+};
 
 export function init(opts: InitOptions) {
   vars.endpoints = [opts["endpoint"]];
 
-  if (vars.endpoints.length===0) {
+  if (vars.endpoints.length === 0) {
     warn("No telemetry endpoint configured. Aborting Dash0 Web SDK initialization process.");
     return;
   }
@@ -43,6 +46,7 @@ export function init(opts: InitOptions) {
   initializeResourceAttributes(opts);
   initializeSignalAttributes();
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
+  startPageLoadInstrumentation();
 }
 
 function initializeResourceAttributes(opts: InitOptions) {
