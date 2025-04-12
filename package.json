@@ -24,7 +24,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "ci": "pnpm run lint && pnpm run prettier:check && pnpm run test && pnpm run build"
+    "ci": "pnpm run lint && pnpm run prettier:check && pnpm run test && pnpm run build",
+    "prepare": "husky"
   },
   "keywords": [],
   "files": [
@@ -37,7 +38,6 @@
   "author": "Dash0 Inc.",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@opentelemetry/otlp-transformer": "^0.200.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-replace": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^8.29.1",
@@ -45,6 +45,7 @@
     "eslint": "^9.24.0",
     "google-closure-compiler": "^20240317.0.0",
     "gzip-size-cli": "^5.1.0",
+    "husky": "^9.1.7",
     "jsdom": "^26.0.0",
     "prettier": "^3.5.3",
     "rollup": "^4.39.0",
