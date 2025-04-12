@@ -1,8 +1,21 @@
-import { debug, warn } from "../debug";
-import { win } from "../browser";
+import { debug, warn } from "../utils";
+import { win } from "../utils/globals";
 import { vars } from "../vars";
-import { apis } from "../api";
-import {init as sharedInit} from "../init";
+
+import { identify } from "../api/identify";
+import { debug as debugApi } from "../api/debug";
+import { init as initApi } from "../api/init";
+import { terminateSession, trackSessions } from "../api/session";
+
+/**
+ * All the APIs exposed through the script tag via `dash0('{{api name}}')`
+ */
+const scriptApis = {
+  "init": initApi,
+  "debug": debugApi,
+  "identify": identify,
+  "terminateSession": terminateSession,
+} as const;
 
 type GlobalObject = {
   /**
@@ -32,8 +45,6 @@ function init(): void {
 
   processQueuedApiCalls(globalObject.q);
   addApiCallAfterInitializationSupport();
-
-  sharedInit();
 }
 
 function processQueuedApiCalls(apiCalls: Array<any>) {
@@ -45,7 +56,7 @@ function processQueuedApiCalls(apiCalls: Array<any>) {
 function processQueuedApiCall(apiCall: Array<any>) {
   const apiName = apiCall[0];
   // @ts-ignore
-  const apiFn = apis[apiName] as Function;
+  const apiFn = scriptApis[apiName] as Function;
 
   if (!apiFn) {
     warn("Unsupported Dash0 Web SDK api: ", apiCall[0]);
