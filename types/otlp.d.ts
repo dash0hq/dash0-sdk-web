@@ -34,7 +34,7 @@ export type InstrumentationScope = {
   ["attributes"]: KeyValue[];
 }
 
-export type ExportLogRecordRequest = {
+export type ExportLogsServiceRequest = {
   "resourceLogs": ResourceLogs[];
 }
 
@@ -60,4 +60,49 @@ export type LogRecord = {
   traceId?: string;
   /** Format: byte */
   spanId?: string;
+};
+
+export type ExportTraceServiceRequest = {
+  "resourceSpans": ResourceSpans[];
+}
+
+export type ResourceSpans = {
+  "resource": Resource;
+  "scopeSpans": ScopeSpans[];
+};
+
+export type ScopeSpans = {
+  "scope"?: InstrumentationScope;
+  "spans": Span[];
+};
+
+export type SpanStatus = {
+  "message"?: string;
+  "code": number;
+}
+
+export type SpanEvent = {
+  "timeUnixNano": string;
+  "name": string;
+  "attributes": KeyValue[];
+}
+
+export type Span = {
+  /** Format: byte */
+  "traceId": string;
+  /** Format: byte */
+  "spanId": string;
+  "traceState"?: string;
+  /** Format: byte */
+  "parentSpanId"?: string;
+  "name": string;
+  "kind": number;
+  "startTimeUnixNano": string;
+  "endTimeUnixNano": string;
+  "attributes": KeyValue[];
+  "events": SpanEvent[];
+  /** Format: int64 */
+  "droppedEventsCount"?: number;
+  "links": SpanLink[];
+  "status": SpanStatus;
 };

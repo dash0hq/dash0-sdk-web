@@ -59,9 +59,4 @@ function initializeResourceAttributes(opts: InitOptions) {
 function initializeSignalAttributes() {
   addAttribute(vars.signalAttributes, PAGE_LOAD_ID, generateUniqueId(PAGE_LOAD_ID_BYTES));
   addAttribute(vars.signalAttributes, USER_AGENT, window.navigator.userAgent);
-
-  // TODO connection type
-  // TODO window hidden
-  // TODO window width
-  // TODO window height
 }

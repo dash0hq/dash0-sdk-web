@@ -1,8 +1,6 @@
 import { isSupported, getItem, setItem, removeItem, SESSION_ID_BYTES } from "../utils";
-import { addAttribute, debug, generateUniqueId, now, removeAttribute } from "../utils";
+import { debug, generateUniqueId, now } from "../utils";
 import { info, warn } from "../utils";
-import { vars } from "../vars";
-import { SESSION_ID } from "../semantic-conventions";
 
 interface Session {
   id: string,
@@ -16,10 +14,10 @@ const DEFAULT_SESSION_INACTIVITY_TIMEOUT_MILLIS = 1000 * 60 * 60 * 3;
 const DEFAULT_SESSION_TERMINATION_TIMEOUT_MILLIS = 1000 * 60 * 60 * 6;
 const MAX_ALLOWED_SESSION_TIMEOUT_MILLIS = 1000 * 60 * 60 * 24;
 
+export let sessionId: string | null = null;
+
 export function trackSessions(sessionInactivityTimeoutMillis?: number,
                               sessionTerminationTimeoutMillis?: number): void {
-  removeAttribute(vars.signalAttributes, SESSION_ID)
-
   if (!isSupported) {
     debug("Storage API is not available and session tracking is therefore not supported.");
     return;
@@ -53,14 +51,14 @@ export function trackSessions(sessionInactivityTimeoutMillis?: number,
     }
 
     setItem(SESSION_STORAGE_KEY, serializeSession(session));
-    addAttribute(vars.signalAttributes, SESSION_ID, session.id)
+    sessionId = session.id;
   } catch (e) {
     warn("Failed to record session information", e);
   }
 }
 
 export function terminateSession() {
-  removeAttribute(vars.signalAttributes, SESSION_ID)
+  sessionId = null;
 
   if (!isSupported) {
     return;
