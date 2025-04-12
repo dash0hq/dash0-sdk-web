@@ -18,3 +18,4 @@ export const NETWORK_CONNECTION_TYPE = "network.connect.subtype";
 
 // Event Names
 export const PAGE_VIEW = "browser.page_view";
+export const WEB_VITAL = "browser.web_vital";

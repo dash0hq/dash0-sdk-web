@@ -9,6 +9,7 @@ import {
 import { addAttribute, generateUniqueId, PAGE_LOAD_ID_BYTES, warn } from "../utils";
 import { trackSessions } from "./session";
 import { startPageLoadInstrumentation } from "../instrumentations/page-load";
+import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 
 export type InitOptions = {
   ["serviceName"]: string;
@@ -47,6 +48,7 @@ export function init(opts: InitOptions) {
   initializeSignalAttributes();
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
   startPageLoadInstrumentation();
+  startWebVitalsInstrumentation();
 }
 
 function initializeResourceAttributes(opts: InitOptions) {

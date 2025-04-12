@@ -2,7 +2,7 @@
   "compilerOptions": {
     "allowJs": true,
     "incremental": true,
-    "lib": ["esnext", "dom"],
+    "lib": ["es2017", "DOM"],
     "module": "ESNext",
     "moduleResolution": "Node",
     "strict": true,
@@ -14,10 +14,12 @@
     "resolveJsonModule": true,
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
-    "outDir": "./dist/esm",
+    "rootDir": "./src",
+    "outDir": "./dist/modules",
     "declaration": true,
     "declarationDir": "./dist/types",
-    "target": "ES2021"
+    "target": "esnext"
   },
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "rollup.config.mjs"]
 }

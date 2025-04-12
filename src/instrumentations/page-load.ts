@@ -3,6 +3,12 @@ import { AnyValue, KeyValue, LogRecord } from "../../types/otlp";
 import { EVENT_NAME, PAGE_VIEW } from "../semantic-conventions";
 import { sendLog } from "../transport";
 
+/**
+ * Tracks page loads as per this OTel spec:
+ * https://github.com/open-telemetry/semantic-conventions/pull/1910/files
+ *
+ * Notable difference: The full URL is transmitted as a signal attribute.
+ */
 export function startPageLoadInstrumentation() {
   if (document.readyState === "complete") {
     return onReady();
@@ -16,7 +22,6 @@ export function startPageLoadInstrumentation() {
 
 function onReady() {
   const attributes: KeyValue[] = [];
-
   addAttribute(attributes, EVENT_NAME, PAGE_VIEW);
 
   const bodyAttributes: KeyValue[] = [];
@@ -25,6 +30,9 @@ function onReady() {
   if (document.referrer) {
     addAttribute(bodyAttributes, "referrer", document.referrer);
   }
+
+  // TODO page load timings - separate event?
+  // https://github.com/open-telemetry/semantic-conventions/pull/1919/files
 
   const log: LogRecord = {
     timeUnixNano: nowNanos(),

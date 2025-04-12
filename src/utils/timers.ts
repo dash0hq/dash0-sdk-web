@@ -22,6 +22,7 @@ const globals = {
 // If the globals don't exist at execution time of this file, then we know that the globals stored
 // above are not wrapped by Zone.js. This in turn can mean better performance for Angular users.
 export const isRunningZoneJs =
+  // @ts-ignore
   win["Zone"] != null && win["Zone"]["root"] != null && typeof win["Zone"]["root"]["run"] === "function";
 
 if (isRunningZoneJs) {
@@ -63,6 +64,7 @@ function executeGlobally(this: keyof typeof globals) {
       // zone.
       // eslint-disable-next-line prefer-rest-params
       const args = Array.prototype.slice.apply(arguments);
+      // @ts-ignore
       return win["Zone"]["root"]["run"](globals[globalFunctionName], win, args);
     } catch (e) {
       warn(

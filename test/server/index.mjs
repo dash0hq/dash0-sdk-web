@@ -31,7 +31,7 @@ app.use((req, res, next) => {
 });
 
 [
-  path.join(import.meta.dirname, "..", "..", "dist", "script"),
+  path.join(import.meta.dirname, "..", "..", "dist"),
   path.join(import.meta.dirname, "..", "e2e"),
   path.join(import.meta.dirname, "..", "experiments"),
 ].forEach((p) =>
@@ -122,7 +122,7 @@ app.get("/ajax-requests", (_, res) => {
 getServerPorts().forEach((port) =>
   app.listen(port, () => {
     if (process.env["IS_TEST"] !== "true") {
-      log("Test server available via http://127.0.0.1:%s (check /e2e, /experiments or /script)", port);
+      log("Test server available via http://127.0.0.1:%s (check /e2e, /experiments or /dist)", port);
     }
   })
 );
