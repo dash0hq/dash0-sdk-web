@@ -22,6 +22,7 @@ const configurePlugins = ({ module }) => {
     }),
     replace({
       SDK_VERSION: "TODO",
+      preventAssignment: true,
     }),
     nodeResolve({
       browser: true,

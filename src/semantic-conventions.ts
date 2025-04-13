@@ -15,8 +15,16 @@ export const URL_FULL = "url.full";
 export const WINDOW_WIDTH = "browser.window.width";
 export const WINDOW_HEIGHT = "browser.window.height";
 export const NETWORK_CONNECTION_TYPE = "network.connect.subtype";
+export const EXCEPTION_MESSAGE = "exception.message";
+export const EXCEPTION_TYPE = "exception.type";
+export const EXCEPTION_STACKTRACE = "exception.stacktrace";
+export const EXCEPTION_COMPONENT_STACK = "exception.component_stack";
 
 // Event Names
 export const PAGE_VIEW = "browser.page_view";
 export const NAVIGATION_TIMING = "browser.navigation_timing";
 export const WEB_VITAL = "browser.web_vital";
+
+// Log Severities
+export const LOG_SEVERITY_INFO = 9;
+export const LOG_SEVERITY_ERROR = 17;

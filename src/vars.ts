@@ -42,6 +42,37 @@ type Vars = {
    * at the time they are **added** to the transport layer.
    */
   signalAttributes: KeyValue[];
+
+  /**
+   * An array of URL regular expression for which no data should be
+   * collected. These regular expressions are evaluated against
+   * the document, XMLHttpRequest, fetch and resource URLs.
+   */
+  ignoreUrls: RegExp[];
+
+  /**
+   * An array of error message regular expressions for which no data
+   * should be collected.
+   */
+  ignoreErrorMessages: RegExp[];
+
+  /**
+   * Whether we should automatically wrap DOM event handlers
+   * added via addEventlistener for improved uncaught error tracking.
+   * This results in improved uncaught error tracking for cross-origin
+   * errors, but may have adverse effects on website performance and
+   * stability.
+   */
+  wrapEventHandlers: boolean;
+
+  /**
+   * Whether we should automatically wrap timers
+   * added via setTimeout / setInterval for improved uncaught error tracking.
+   * This results in improved uncaught error tracking for cross-origin
+   * errors, but may have adverse effects on website performance and
+   * stability.
+   */
+  wrapTimers: boolean;
 };
 
 export const vars: Vars = {
@@ -55,4 +86,8 @@ export const vars: Vars = {
     attributes: [],
   },
   signalAttributes: [],
+  ignoreUrls: [],
+  ignoreErrorMessages: [],
+  wrapEventHandlers: true,
+  wrapTimers: true,
 };

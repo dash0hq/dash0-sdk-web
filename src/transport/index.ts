@@ -1,6 +1,5 @@
 import { ExportLogsServiceRequest, ExportTraceServiceRequest, LogRecord, Span } from "../../types/otlp";
 import { newBatcher } from "./batcher";
-import { addCommonSignalAttributes } from "../add-common-signal-attributes";
 import { send } from "./fetch";
 import { vars } from "../vars";
 import { createRateLimiter } from "../utils/rate-limit";
@@ -21,7 +20,6 @@ export function sendLog(log: LogRecord): void {
     return;
   }
 
-  addCommonSignalAttributes(log.attributes);
   logBatcher.send(log);
 }
 
@@ -49,7 +47,6 @@ export function sendSpan(span: Span): void {
     return;
   }
 
-  addCommonSignalAttributes(span.attributes);
   spanBatcher.send(span);
 }
 

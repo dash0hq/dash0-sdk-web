@@ -1,8 +1,9 @@
 import { onLCP, onINP, onCLS, Metric } from "web-vitals";
 import { KeyValue, LogRecord } from "../../types/otlp";
-import { EVENT_NAME, WEB_VITAL } from "../semantic-conventions";
+import { EVENT_NAME, LOG_SEVERITY_INFO, WEB_VITAL } from "../semantic-conventions";
 import { addAttribute, nowNanos } from "../utils";
 import { sendLog } from "../transport";
+import { addCommonSignalAttributes } from "../add-common-signal-attributes";
 
 export function startWebVitalsInstrumentation() {
   onLCP(onWebVital);
@@ -22,11 +23,13 @@ function onWebVital(metric: Metric) {
   const log: LogRecord = {
     timeUnixNano: nowNanos(),
     attributes: attributes,
+    severityNumber: LOG_SEVERITY_INFO,
     body: {
       kvlistValue: {
         values: bodyAttributes,
       },
     },
   };
+  addCommonSignalAttributes(log.attributes);
   sendLog(log);
 }

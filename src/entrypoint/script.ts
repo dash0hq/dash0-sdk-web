@@ -1,6 +1,6 @@
-import { debug, warn } from "../utils";
-import { win } from "../utils/globals";
+import { win, debug, warn } from "../utils";
 
+import { reportError } from "../api/report-error";
 import { identify } from "../api/identify";
 import { debug as debugApi } from "../api/debug";
 import { init as initApi } from "../api/init";
@@ -12,8 +12,9 @@ import { terminateSession } from "../api/session";
 const scriptApis = {
   init: initApi,
   debug: debugApi,
-  identify: identify,
-  terminateSession: terminateSession,
+  identify,
+  terminateSession,
+  reportError,
 } as const;
 
 type GlobalObject = {

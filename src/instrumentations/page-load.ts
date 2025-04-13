@@ -1,8 +1,9 @@
 import { addAttribute, addEventListener, debug, nowNanos, win } from "../utils";
 import { KeyValue, LogRecord } from "../../types/otlp";
-import { EVENT_NAME, NAVIGATION_TIMING, PAGE_VIEW } from "../semantic-conventions";
+import { EVENT_NAME, LOG_SEVERITY_INFO, NAVIGATION_TIMING, PAGE_VIEW } from "../semantic-conventions";
 import { sendLog } from "../transport";
 import { getTraceContextForPageLoad } from "../utils/trace-context";
+import { addCommonSignalAttributes } from "../add-common-signal-attributes";
 
 /**
  * Tracks page loads as per this OTel spec:
@@ -40,12 +41,14 @@ function onInit() {
   const log: LogRecord = {
     timeUnixNano: nowNanos(),
     attributes: attributes,
+    severityNumber: LOG_SEVERITY_INFO,
     body: {
       kvlistValue: {
         values: bodyAttributes,
       },
     },
   };
+  addCommonSignalAttributes(log.attributes);
 
   const traceContext = getTraceContextForPageLoad();
   if (traceContext) {
@@ -88,12 +91,14 @@ function onLoaded() {
   const log: LogRecord = {
     timeUnixNano: nowNanos(),
     attributes: attributes,
+    severityNumber: LOG_SEVERITY_INFO,
     body: {
       kvlistValue: {
         values: bodyAttributes,
       },
     },
   };
+  addCommonSignalAttributes(log.attributes);
 
   const traceContext = getTraceContextForPageLoad();
   if (traceContext) {
