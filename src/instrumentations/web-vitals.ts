@@ -16,7 +16,6 @@ function onWebVital(metric: Metric) {
 
   const bodyAttributes: KeyValue[] = [];
   addAttribute(bodyAttributes, "name", metric.name);
-  addAttribute(bodyAttributes, "id", metric.id);
   addAttribute(bodyAttributes, "value", metric.value);
   addAttribute(bodyAttributes, "delta", metric.delta);
 

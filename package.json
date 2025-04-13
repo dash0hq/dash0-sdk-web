@@ -24,11 +24,14 @@
     "prettier:check": "prettier . --check",
     "lint": "eslint 'src/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.ts' --fix",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "run-s test:unit test:e2e",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": " playwright test",
+    "test:e2e:ui": " playwright test --ui",
     "test:coverage": "vitest run --coverage",
     "dev-server": "SERVER_PORTS='3009,3010,3011' node test/server/index.mjs",
-    "ci": "run-s lint prettier:check test build",
+    "ci": "run-s lint prettier:check test:unit build",
     "prepare": "husky"
   },
   "keywords": [
@@ -69,11 +72,13 @@
     "web-vitals": "^4.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.51.1",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-replace": "^6.0.2",
     "@types/body-parser": "^1.19.5",
     "@types/express": "^5.0.1",
     "@types/multiparty": "^4.2.1",
+    "@types/node": "^22.14.1",
     "@types/serve-index": "^1.9.4",
     "@typescript-eslint/eslint-plugin": "^8.29.1",
     "@typescript-eslint/parser": "^8.29.1",

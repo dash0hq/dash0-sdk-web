@@ -62,6 +62,7 @@ app.get("/", (_, res) => {
 const otlpRequests = [];
 app.post("/v1/:signal", (req, res) => {
   otlpRequests.push({
+    path: req.path,
     headers: req.headers,
     body: req.body,
   });
@@ -129,6 +130,11 @@ app.post("/form", (req, res) => {
 
 app.get("/ajax-requests", (_, res) => {
   res.json(ajaxRequests);
+});
+
+app.delete("/ajax-requests", (_, res) => {
+  ajaxRequests.length = 0;
+  res.send("OK");
 });
 
 getServerPorts().forEach((port) =>

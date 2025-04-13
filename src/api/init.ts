@@ -6,7 +6,7 @@ import {
   SERVICE_VERSION,
   USER_AGENT,
 } from "../semantic-conventions";
-import { addAttribute, generateUniqueId, PAGE_LOAD_ID_BYTES, warn } from "../utils";
+import { addAttribute, fetch, generateUniqueId, PAGE_LOAD_ID_BYTES, warn, debug, perf } from "../utils";
 import { trackSessions } from "./session";
 import { startPageLoadInstrumentation } from "../instrumentations/page-load";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
@@ -37,6 +37,11 @@ export type InitOptions = {
 };
 
 export function init(opts: InitOptions) {
+  if (!isSupported()) {
+    debug("Stopping Dash0 Web SDK initialization. This browser does not support the necessary APIs");
+    return;
+  }
+
   vars.endpoints = [opts["endpoint"]];
 
   if (vars.endpoints.length === 0) {
@@ -65,4 +70,8 @@ function initializeResourceAttributes(opts: InitOptions) {
 function initializeSignalAttributes() {
   addAttribute(vars.signalAttributes, PAGE_LOAD_ID, generateUniqueId(PAGE_LOAD_ID_BYTES));
   addAttribute(vars.signalAttributes, USER_AGENT, window.navigator.userAgent);
+}
+
+function isSupported() {
+  return typeof fetch === "function" && perf && perf.getEntriesByType;
 }

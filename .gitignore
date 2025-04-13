@@ -254,3 +254,8 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

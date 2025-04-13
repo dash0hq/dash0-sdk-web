@@ -1,5 +1,5 @@
 import { doc } from "./globals";
-import { isResourceTimingAvailable, perf } from "./performance";
+import { perf } from "./performance";
 
 const TRACE_PARENT_HEADER = "traceparent";
 
@@ -36,10 +36,6 @@ function getTraceparentFromMetaElement(): string {
 }
 
 function getTraceparentFromNavigationTiming(): string {
-  if (!isResourceTimingAvailable) {
-    return "";
-  }
-
   const nt = perf.getEntriesByType("navigation")[0];
   if (!nt) {
     return "";

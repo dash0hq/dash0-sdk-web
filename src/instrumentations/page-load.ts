@@ -1,4 +1,4 @@
-import { addAttribute, addEventListener, debug, isResourceTimingAvailable, nowNanos, win } from "../utils";
+import { addAttribute, addEventListener, debug, nowNanos, win } from "../utils";
 import { KeyValue, LogRecord } from "../../types/otlp";
 import { EVENT_NAME, NAVIGATION_TIMING, PAGE_VIEW } from "../semantic-conventions";
 import { sendLog } from "../transport";
@@ -13,16 +13,14 @@ import { getTraceContextForPageLoad } from "../utils/trace-context";
 export function startPageLoadInstrumentation() {
   onInit();
 
-  if (isResourceTimingAvailable) {
-    if (document.readyState === "complete") {
-      return onLoaded();
-    }
-    addEventListener(win, "load", function () {
-      // we want to get timing data for loadEventEnd,
-      // so asynchronously process this
-      setTimeout(onLoaded, 0);
-    });
+  if (document.readyState === "complete") {
+    return onLoaded();
   }
+  addEventListener(win, "load", function () {
+    // we want to get timing data for loadEventEnd,
+    // so asynchronously process this
+    setTimeout(onLoaded, 0);
+  });
 }
 
 /**
