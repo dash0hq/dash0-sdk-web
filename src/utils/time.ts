@@ -7,7 +7,7 @@ export function now(): number {
 export function nowNanos(): string {
   const timeOrigin = getTimeOrigin();
   if (timeOrigin) {
-    return String(win.performance.now() + timeOrigin);
+    return String((win.performance.now() + timeOrigin) * 1000000);
   }
 
   // We don't multiply, because we want to keep number precision

@@ -1,7 +1,8 @@
-import { addAttribute, addEventListener, nowNanos, toKeyValue, win } from "../utils";
-import { AnyValue, KeyValue, LogRecord } from "../../types/otlp";
-import { EVENT_NAME, PAGE_VIEW } from "../semantic-conventions";
+import { addAttribute, addEventListener, debug, isResourceTimingAvailable, nowNanos, win } from "../utils";
+import { KeyValue, LogRecord } from "../../types/otlp";
+import { EVENT_NAME, NAVIGATION_TIMING, PAGE_VIEW } from "../semantic-conventions";
 import { sendLog } from "../transport";
+import { getTraceContextForPageLoad } from "../utils/trace-context";
 
 /**
  * Tracks page loads as per this OTel spec:
@@ -10,17 +11,24 @@ import { sendLog } from "../transport";
  * Notable difference: The full URL is transmitted as a signal attribute.
  */
 export function startPageLoadInstrumentation() {
-  if (document.readyState === "complete") {
-    return onReady();
+  onInit();
+
+  if (isResourceTimingAvailable) {
+    if (document.readyState === "complete") {
+      return onLoaded();
+    }
+    addEventListener(win, "load", function () {
+      // we want to get timing data for loadEventEnd,
+      // so asynchronously process this
+      setTimeout(onLoaded, 0);
+    });
   }
-  addEventListener(win, "load", function () {
-    // we want to get timing data for loadEventEnd,
-    // so asynchronously process this
-    setTimeout(onReady, 0);
-  });
 }
 
-function onReady() {
+/**
+ * See https://github.com/open-telemetry/semantic-conventions/pull/1910
+ */
+function onInit() {
   const attributes: KeyValue[] = [];
   addAttribute(attributes, EVENT_NAME, PAGE_VIEW);
 
@@ -31,8 +39,53 @@ function onReady() {
     addAttribute(bodyAttributes, "referrer", document.referrer);
   }
 
-  // TODO page load timings - separate event?
-  // https://github.com/open-telemetry/semantic-conventions/pull/1919/files
+  const log: LogRecord = {
+    timeUnixNano: nowNanos(),
+    attributes: attributes,
+    body: {
+      kvlistValue: {
+        values: bodyAttributes,
+      },
+    },
+  };
+
+  const traceContext = getTraceContextForPageLoad();
+  if (traceContext) {
+    log.traceId = traceContext.traceId;
+    log.spanId = traceContext.spanId;
+  }
+
+  sendLog(log);
+}
+
+/**
+ * See https://github.com/open-telemetry/semantic-conventions/pull/1919
+ */
+function onLoaded() {
+  const nt = win.performance.getEntriesByType("navigation")[0];
+  if (!nt) {
+    debug("Navigation timings not available. Cannot emit navigation timing log");
+    return;
+  }
+
+  const attributes: KeyValue[] = [];
+  addAttribute(attributes, EVENT_NAME, NAVIGATION_TIMING);
+
+  const bodyAttributes: KeyValue[] = [];
+  addAttribute(bodyAttributes, "name", nt.name);
+  addNavigationTiming(bodyAttributes, nt, "responseStatus");
+
+  addNavigationTiming(bodyAttributes, nt, "fetchStart");
+  addNavigationTiming(bodyAttributes, nt, "requestStart");
+  addNavigationTiming(bodyAttributes, nt, "responseStart");
+  addNavigationTiming(bodyAttributes, nt, "domInteractive");
+  addNavigationTiming(bodyAttributes, nt, "domContentLoadedEventEnd");
+  addNavigationTiming(bodyAttributes, nt, "domComplete");
+  addNavigationTiming(bodyAttributes, nt, "loadEventEnd");
+
+  addNavigationTiming(bodyAttributes, nt, "transferSize");
+  addNavigationTiming(bodyAttributes, nt, "encodedBodySize");
+  addNavigationTiming(bodyAttributes, nt, "decodedBodySize");
 
   const log: LogRecord = {
     timeUnixNano: nowNanos(),
@@ -43,5 +96,20 @@ function onReady() {
       },
     },
   };
+
+  const traceContext = getTraceContextForPageLoad();
+  if (traceContext) {
+    log.traceId = traceContext.traceId;
+    log.spanId = traceContext.spanId;
+  }
+
   sendLog(log);
+}
+
+function addNavigationTiming(attributes: KeyValue[], nt: PerformanceNavigationTiming, field: string) {
+  // @ts-expect-error index access not recognized by TS, but this makes the code more reusable
+  const value = nt[field];
+  if (typeof value === "number" && !isNaN(value)) {
+    addAttribute(attributes, field, value);
+  }
 }

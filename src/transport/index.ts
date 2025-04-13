@@ -4,7 +4,7 @@ import { addCommonSignalAttributes } from "../add-common-signal-attributes";
 import { send } from "./fetch";
 import { vars } from "../vars";
 import { createRateLimiter } from "../utils/rate-limit";
-import { debug, error, warn } from "../utils";
+import { debug, error } from "../utils";
 
 const logBatcher = newBatcher<LogRecord>(sendLogs);
 const spanBatcher = newBatcher<Span>(sendSpans);

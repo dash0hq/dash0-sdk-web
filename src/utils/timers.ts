@@ -1,4 +1,4 @@
-import { warn, info, debug } from "./debug";
+import { warn, debug } from "./debug";
 import { win } from "./globals";
 
 // This module contains wrappers around the standard timer API. These wrappers can be used to
@@ -22,30 +22,30 @@ const globals = {
 // If the globals don't exist at execution time of this file, then we know that the globals stored
 // above are not wrapped by Zone.js. This in turn can mean better performance for Angular users.
 export const isRunningZoneJs =
-  // @ts-ignore
+  // @ts-expect-error We aren't adding the necessary Zone.js types for now
   win["Zone"] != null && win["Zone"]["root"] != null && typeof win["Zone"]["root"]["run"] === "function";
 
 if (isRunningZoneJs) {
   debug("Discovered Zone.js globals. Will attempt to register all timers inside the root Zone.");
 }
 
-export function setTimeout(..._args: Parameters<typeof win.setTimeout>): ReturnType<typeof win.setTimeout> {
-  // eslint-disable-next-line prefer-rest-params
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function setTimeout(..._: Parameters<typeof win.setTimeout>): ReturnType<typeof win.setTimeout> {
   return executeGlobally.apply("setTimeout", arguments as any);
 }
 
-export function clearTimeout(..._args: Parameters<typeof win.clearTimeout>): ReturnType<typeof win.clearTimeout> {
-  // eslint-disable-next-line prefer-rest-params
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function clearTimeout(..._: Parameters<typeof win.clearTimeout>): ReturnType<typeof win.clearTimeout> {
   return executeGlobally.apply("clearTimeout", arguments as any);
 }
 
-export function setInterval(..._args: Parameters<typeof win.setInterval>): ReturnType<typeof win.setInterval> {
-  // eslint-disable-next-line prefer-rest-params
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function setInterval(..._: Parameters<typeof win.setInterval>): ReturnType<typeof win.setInterval> {
   return executeGlobally.apply("setInterval", arguments as any);
 }
 
-export function clearInterval(..._args: Parameters<typeof win.clearInterval>): ReturnType<typeof win.clearInterval> {
-  // eslint-disable-next-line prefer-rest-params
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function clearInterval(..._: Parameters<typeof win.clearInterval>): ReturnType<typeof win.clearInterval> {
   return executeGlobally.apply("clearInterval", arguments as any);
 }
 
@@ -62,9 +62,9 @@ function executeGlobally(this: keyof typeof globals) {
       // Incurr a performance overhead for Zone.js users that we just cannot avoid:
       // Copy the arguments passed in here so that we can use them inside the root
       // zone.
-      // eslint-disable-next-line prefer-rest-params
+
       const args = Array.prototype.slice.apply(arguments);
-      // @ts-ignore
+      // @ts-expect-error necessary Zone.js types not added
       return win["Zone"]["root"]["run"](globals[globalFunctionName], win, args);
     } catch (e) {
       warn(
@@ -79,6 +79,6 @@ function executeGlobally(this: keyof typeof globals) {
   }
 
   // Note: Explicitly passing win as 'this' even though we are getting the function from 'globals'
-  // eslint-disable-next-line prefer-rest-params
+
   return (globals[globalFunctionName] as any).apply(win, arguments);
 }

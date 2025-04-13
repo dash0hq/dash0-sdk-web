@@ -21,6 +21,13 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
+  if (req.query["with-server-timing"]) {
+    res.set("Server-Timing", "traceparent;desc=00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01");
+  }
+  next();
+});
+
+app.use((req, res, next) => {
   if (req.query["csp"]) {
     const hosts = getServerPorts()
       .map((p) => `http://127.0.0.1:${p}`)
@@ -63,6 +70,11 @@ app.post("/v1/:signal", (req, res) => {
 
 app.get("/otlp-requests", (_, res) => {
   res.json(otlpRequests);
+});
+
+app.get("/otlp-requests-and-clear", (_, res) => {
+  res.json(otlpRequests.slice());
+  otlpRequests.length = 0;
 });
 
 app.delete("/otlp-requests", (_, res) => {

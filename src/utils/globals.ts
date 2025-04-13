@@ -8,7 +8,7 @@ export const fetch = win.fetch;
 export const localStorage: Storage | null = (function () {
   try {
     return win.localStorage;
-  } catch (e) {
+  } catch {
     // localStorage access is not permitted in certain security modes, e.g.
     // when cookies are completely disabled in web browsers.
     return null;

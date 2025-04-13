@@ -6,4 +6,7 @@ export * from "./id";
 export * from "./listeners";
 export * from "./local-storage";
 export * from "./otel";
+export * from "./performance";
+export * from "./rate-limit";
 export * from "./time";
+export * from "./trace-context";

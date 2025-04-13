@@ -1,6 +1,6 @@
 import { onLCP, onINP, onCLS, Metric } from "web-vitals";
 import { KeyValue, LogRecord } from "../../types/otlp";
-import { EVENT_NAME, PAGE_VIEW, WEB_VITAL } from "../semantic-conventions";
+import { EVENT_NAME, WEB_VITAL } from "../semantic-conventions";
 import { addAttribute, nowNanos } from "../utils";
 import { sendLog } from "../transport";
 
