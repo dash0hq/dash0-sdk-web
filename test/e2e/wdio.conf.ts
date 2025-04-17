@@ -16,15 +16,84 @@ export const config: WebdriverIO.Config = {
   ],
   maxInstances: 1,
 
+  // Test are generally against stable, beta, and an oldest supported version.
+  // Currently somewhat arbitrarily chosen based on browserslist > 0.2% not dead on 2025-04-17
   capabilities: [
-    // {
-    //   browserName: "chrome",
-    // },
+    {
+      browserName: "chrome",
+      browserVersion: "latest",
+    },
+    {
+      browserName: "chrome",
+      browserVersion: "beta",
+    },
+    {
+      browserName: "chrome",
+      browserVersion: "109",
+      "wdio:enforceWebDriverClassic": true,
+    },
     {
       browserName: "firefox",
+      browserVersion: "latest",
     },
+    {
+      browserName: "firefox",
+      browserVersion: "beta",
+    },
+    {
+      browserName: "firefox",
+      browserVersion: "115",
+      "wdio:enforceWebDriverClassic": true,
+    },
+    {
+      browserName: "microsoftedge",
+      browserVersion: "latest",
+    },
+    {
+      browserName: "microsoftedge",
+      browserVersion: "beta",
+    },
+    {
+      browserName: "microsoftedge",
+      browserVersion: "133",
+    },
+    {
+      browserName: "safari",
+      browserVersion: "latest",
+    },
+    {
+      browserName: "safari",
+      browserVersion: "16",
+    },
+    {
+      browserName: "safari",
+      platformName: "iOS",
+      "appium:deviceName": "iPhone Simulator",
+      "appium:platformVersion": "current_major",
+      "appium:automationName": "XCUITest",
+    },
+    {
+      browserName: "safari",
+      platformName: "iOS",
+      "appium:deviceName": "iPhone Simulator",
+      "appium:platformVersion": "16.2",
+      "appium:automationName": "XCUITest",
+    },
+    // Android Devices seem to not work with proxied connections to localhost at the moment,
+    // Information on this is unclear, so we'll avoid it for now
     // {
-    //     browserName: 'microsoftedge'
+    //   browserName: "chrome",
+    //   platformName: "android",
+    //   "appium:deviceName": "Android GoogleAPI Emulator",
+    //   "appium:platformVersion": "current_major",
+    //   "appium:automationName": "UiAutomator2"
+    // },
+    // {
+    //   browserName: "chrome",
+    //   platformName: "android",
+    //   "appium:deviceName": "Android GoogleAPI Emulator",
+    //   "appium:platformVersion": "14.0",
+    //   "appium:automationName": "UiAutomator2"
     // }
   ],
 

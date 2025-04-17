@@ -42,11 +42,12 @@ jobs:
       - name: build
         run: pnpm run build
 
-      - name: Install Playwright Browsers
-        run: pnpm exec playwright install --with-deps
-
-      - name: Run Playwright tests
+      - name: run e2e tests
         run: pnpm run test:e2e
+        env:
+          SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+          SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
+          SAUCE_REGION: eu
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
