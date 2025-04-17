@@ -1,4 +1,4 @@
-import { ExportLogsServiceRequest, ExportTraceServiceRequest } from "../../types/otlp";
+import { ExportLogsServiceRequest, ExportTraceServiceRequest } from "../../../types/otlp";
 
 export async function sharedBeforeEach() {
   await clearOTLPRequests();
@@ -12,7 +12,7 @@ type OTLPRequest = {
 };
 
 export async function getOTLPRequests(): Promise<OTLPRequest[]> {
-  const resp = await fetch("http://127.0.0.1:3010/otlp-requests");
+  const resp = await fetch("http://127.0.0.1:5001/otlp-requests");
   if (!resp.ok) {
     throw new Error("Failed to retrieve OTLP requests");
   }
@@ -21,7 +21,7 @@ export async function getOTLPRequests(): Promise<OTLPRequest[]> {
 }
 
 export async function clearOTLPRequests() {
-  const resp = await fetch("http://127.0.0.1:3010/otlp-requests", {
+  const resp = await fetch("http://127.0.0.1:5001/otlp-requests", {
     method: "DELETE",
   });
   if (!resp.ok) {
@@ -30,7 +30,7 @@ export async function clearOTLPRequests() {
 }
 
 export async function clearAjaxRequests() {
-  const resp = await fetch("http://127.0.0.1:3010/ajax-requests", {
+  const resp = await fetch("http://127.0.0.1:5001/ajax-requests", {
     method: "DELETE",
   });
   if (!resp.ok) {
