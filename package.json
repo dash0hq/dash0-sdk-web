@@ -1,6 +1,6 @@
 {
   "name": "dash0-sdk-web",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Dash0's Web SDK to collect telemetry from end-users' web browsers",
   "type": "module",
   "main": "dist/dash0.umd.cjs",
@@ -31,7 +31,8 @@
     "test:e2e:server": "SERVER_PORTS='5000,5001,5002' node test/e2e/server/index.mjs",
     "test:coverage": "vitest run --coverage",
     "ci": "run-s lint prettier:check test:unit build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "release": "release-it --dry-run"
   },
   "keywords": [
     "performance",
@@ -71,6 +72,8 @@
     "web-vitals": "^4.2.4"
   },
   "devDependencies": {
+    "@release-it/conventional-changelog": "^10.0.1",
+    "release-it": "^19.0.1",
     "@types/mocha": "^10.0.10",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-replace": "^6.0.2",
@@ -104,5 +107,8 @@
     "vitest": "^3.1.1",
     "webdriverio": "^9.12.5"
   },
-  "packageManager": "pnpm@9.15.1"
+  "packageManager": "pnpm@9.15.1",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
 }

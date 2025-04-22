@@ -1,5 +1,6 @@
 ### Project Specifics
 /dist/
+.npmrc
 
 ### VisualStudioCode template
 .vscode/*
