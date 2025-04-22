@@ -1,5 +1,48 @@
 # Dash0 Web SDK
 
+## Releases
+
+We automatically release new versions of this package whenever a PR is merged to main and the ci is able to detect a
+valid version increase from the merge commit. It uses [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
+to calculate the version increase and to generate additional messaging such as changelogs.
+Please make sure PR merge commits are formatted accordingly.
+Examples:
+
+- A PATCH release:
+  ```
+  fix: Include missing user.name attribute
+  ```
+- A MINOR release:
+
+  ```
+  feat: Add instrumentation for fetch()
+
+  The sdk now supports automatic instrumentation of the fetch api
+  ```
+
+- A MAJOR release:
+
+  ```
+  feat: Add version two of page-load instrumentation
+
+  BREAKING CHANGE: This adds a new updated instrumentation for page-loads, it is no longer
+  compatible with the previous version. For instructions on how to update see: https://example.com
+  ```
+
+  or:
+
+  ```
+  feat!: Add version two of page-load instrumentation
+
+  This adds a new updated instrumentation for page-loads, it is no longer
+  compatible with the previous version. For instructions on how to update see: https://example.com
+  ```
+
+- NOT generating a new release:
+  ```
+  chore: Improve spelling of README
+  ```
+
 ## Development
 
 ### E2E Tests
