@@ -6,6 +6,7 @@ import { v4 as uuidV4 } from "uuid";
 import path from "node:path";
 
 const app = express();
+const servers = [];
 
 app.use((_, res, next) => {
   res.set("Timing-Allow-Origin", "*");
@@ -38,9 +39,9 @@ app.use((req, res, next) => {
 });
 
 [
-  path.join(import.meta.dirname, "..", "..", "dist"),
-  path.join(import.meta.dirname, "..", "e2e"),
-  path.join(import.meta.dirname, "..", "experiments"),
+  path.join(import.meta.dirname, "..", "..", "..", "dist"),
+  path.join(import.meta.dirname, "..", "..", "e2e"),
+  path.join(import.meta.dirname, "..", "..", "experiments"),
 ].forEach((p) =>
   app.use(
     `/${path.basename(p)}`,
@@ -138,11 +139,16 @@ app.delete("/ajax-requests", (_, res) => {
 });
 
 getServerPorts().forEach((port) =>
-  app.listen(port, () => {
-    if (process.env["IS_TEST"] !== "true") {
-      log("Test server available via http://127.0.0.1:%s (check /e2e, /experiments or /dist)", port);
-    }
-  })
+  servers.push(
+    app.listen(port, (error) => {
+      if (error != null) {
+        throw error;
+      }
+      if (process.env["IS_TEST"] !== "true") {
+        log("Test server available via http://127.0.0.1:%s (check /e2e, /experiments or /dist)", port);
+      }
+    })
+  )
 );
 
 if (process.env["IS_TEST"] !== "true") {
@@ -171,3 +177,12 @@ function getServerPorts() {
   }
   return ports.split(",").map((v) => parseInt(v, 10));
 }
+
+const shutdown = () => {
+  console.log("Shutting down servers");
+  servers.forEach((s) => s.close());
+  process.exit(0);
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

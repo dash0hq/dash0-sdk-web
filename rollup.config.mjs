@@ -49,7 +49,7 @@ const configs = [
     output: {
       format: "umd",
       file: `./dist/dash0.umd.cjs`,
-      name: "webVitals",
+      name: "dash0",
     },
     plugins: configurePlugins({ module: false }),
   },
@@ -58,7 +58,7 @@ const configs = [
     output: {
       format: "iife",
       file: "./dist/dash0.iife.js",
-      name: "webVitals",
+      name: "dash0",
     },
     plugins: configurePlugins({ module: false }),
   },

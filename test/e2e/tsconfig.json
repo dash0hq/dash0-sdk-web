@@ -1,6 +1,15 @@
 {
-  "extends": "../..",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "rootDir": "../.."
-  }
+    "rootDir": "../..",
+    "types": [
+      "node",
+      "@wdio/globals/types",
+      "webdriverio/async",
+      "@wdio/mocha-framework",
+      "expect-webdriverio",
+      "@wdio/sauce-service"
+    ]
+  },
+  "include": ["wdio.conf.ts", "./**/*.ts"]
 }
