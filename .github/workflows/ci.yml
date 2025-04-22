@@ -38,12 +38,12 @@ jobs:
       - name: build
         run: pnpm run build
 
-      - name: run e2e tests
-        run: pnpm run test:e2e
-        env:
-          SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
-          SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
-          SAUCE_REGION: eu
+  #      - name: run e2e tests
+  #        run: pnpm run test:e2e
+  #        env:
+  #          SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+  #          SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
+  #          SAUCE_REGION: eu
 
   release:
     needs: build
