@@ -5,7 +5,8 @@
 We automatically release new versions of this package whenever a PR is merged to main and the ci is able to detect a
 valid version increase from the merge commit. It uses [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
 to calculate the version increase and to generate additional messaging such as changelogs.
-Please make sure PR merge commits are formatted accordingly.
+Please make sure PR merge commits are formatted accordingly, not matching messages will create a PATCH release, but no
+changelog entry.
 Examples:
 
 - A PATCH release:
@@ -38,7 +39,7 @@ Examples:
   compatible with the previous version. For instructions on how to update see: https://example.com
   ```
 
-- NOT generating a new release:
+- NO changelog entry, PATCH release:
   ```
   chore: Improve spelling of README
   ```
