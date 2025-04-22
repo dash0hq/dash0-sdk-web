@@ -6,6 +6,7 @@ export const DEPLOYMENT_ENVIRONMENT_NAME = "deployment.environment.name";
 // Signal Attribute Keys
 export const EVENT_NAME = "event.name";
 export const USER_ID = "user.id";
+export const USER_NAME = "user.name";
 export const USER_FULL_NAME = "user.full_name";
 export const USER_EMAIL = "user.email";
 export const PAGE_LOAD_ID = "page.load.id";
