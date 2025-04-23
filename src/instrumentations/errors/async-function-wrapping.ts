@@ -32,6 +32,8 @@ export function addWrappedFunction(
   wrappedFunction: EventListenerOrEventListenerObject,
   valuesForEqualityCheck: any[]
 ): EventListenerOrEventListenerObject {
+  if (!storageTarget) return wrappedFunction;
+
   const storage = ((storageTarget as any)[WRAPPED_EVENT_HANDLERS_ORIGINAL_FUNCTION_STORAGE_KEY] =
     (storageTarget as any)[WRAPPED_EVENT_HANDLERS_ORIGINAL_FUNCTION_STORAGE_KEY] || []);
   const index = findInStorage(storageTarget, valuesForEqualityCheck);
@@ -64,7 +66,7 @@ export function popWrappedFunction(
   valuesForEqualityCheck: any[],
   fallback?: EventListenerOrEventListenerObject
 ): EventListenerOrEventListenerObject | undefined {
-  const storage = (storageTarget as any)[WRAPPED_EVENT_HANDLERS_ORIGINAL_FUNCTION_STORAGE_KEY];
+  const storage = (storageTarget as any)?.[WRAPPED_EVENT_HANDLERS_ORIGINAL_FUNCTION_STORAGE_KEY];
   if (storage == null) {
     return fallback;
   }

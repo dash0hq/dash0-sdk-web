@@ -83,7 +83,14 @@ export type InitOptions = {
   wrapTimers?: boolean;
 };
 
+let hasBeenInitialised: boolean = false;
+
 export function init(opts: InitOptions) {
+  if (hasBeenInitialised) {
+    debug("Dash0 SDK is being reinitialized, skipping ...");
+    return;
+  }
+
   if (!isClient()) {
     debug("Looks like we are not running in a browser context. Stopping Dash0 Web SDK initialization.");
     return;
@@ -111,6 +118,8 @@ export function init(opts: InitOptions) {
   startPageLoadInstrumentation();
   startWebVitalsInstrumentation();
   startErrorInstrumentation();
+
+  hasBeenInitialised = true;
 }
 
 function initializeResourceAttributes(opts: InitOptions) {
