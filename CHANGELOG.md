@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.5](https://github.com/dash0hq/dash0-sdk-web/compare/0.0.4...0.0.5) (2025-04-23)
+
+### Bug Fixes
+
+- avoid double init calls and dont explode on unexpected event handler conditions ([97c2fff](https://github.com/dash0hq/dash0-sdk-web/commit/97c2fff9c80d2a2cb76afd384e8a73ab8126762d))
+- lazy init rate limiter ([0425068](https://github.com/dash0hq/dash0-sdk-web/commit/0425068993af6648a94d96ab9ae284cdeeff806d))
+
 ## [0.0.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.0.2...0.0.4) (2025-04-23)
 
 ### Bug Fixes
