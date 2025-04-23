@@ -4,7 +4,7 @@ const MESSAGE_PREFIX = "Unhandled promise rejection: ";
 const STACK_UNAVAILABLE_MESSAGE = "<unavailable because Promise wasn't rejected with an Error object>";
 
 export function startUnhandledRejectionInstrumentation() {
-  if (typeof win.addEventListener === "function") {
+  if (typeof win?.addEventListener === "function") {
     win.addEventListener("unhandledrejection", onUnhandledRejection);
   }
 }

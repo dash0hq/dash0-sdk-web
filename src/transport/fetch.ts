@@ -1,5 +1,5 @@
 import { vars } from "../vars";
-import { noop, warn } from "../utils";
+import { noop, warn, fetch } from "../utils";
 
 const BEACON_BODY_SIZE_LIMIT = 60000;
 
@@ -35,6 +35,11 @@ export async function send(path: string, body: unknown): Promise<void> {
         // Try to compress if supported
         if (isCompressed) {
           headers["Content-Encoding"] = "gzip";
+        }
+
+        if (!fetch) {
+          warn("Unable to send telemetry, fetch is not defined");
+          return;
         }
 
         const response = await fetch(url, {

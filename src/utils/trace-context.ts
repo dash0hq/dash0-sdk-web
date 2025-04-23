@@ -29,7 +29,7 @@ export function getTraceContextForPageLoad(): TraceContext | undefined {
 
 function getTraceparentFromMetaElement(): string {
   return (
-    Array.from(doc.getElementsByTagName("meta"))
+    Array.from(doc?.getElementsByTagName("meta") ?? [])
       .find((e) => e.getAttribute("name")?.toLowerCase() === TRACE_PARENT_HEADER)
       ?.content.trim() || ""
   );

@@ -1,4 +1,4 @@
-import { win } from "./globals";
+import { perf } from "./performance";
 
 export function now(): number {
   return new Date().getTime();
@@ -7,7 +7,7 @@ export function now(): number {
 export function nowNanos(): string {
   const timeOrigin = getTimeOrigin();
   if (timeOrigin) {
-    return String((win.performance.now() + timeOrigin) * 1000000);
+    return String((perf.now() + timeOrigin) * 1000000);
   }
 
   // We don't multiply, because we want to keep number precision
@@ -15,9 +15,9 @@ export function nowNanos(): string {
 }
 
 export function getTimeOrigin(): number {
-  let timeOrigin = win.performance.timeOrigin;
+  let timeOrigin = perf?.timeOrigin;
   if (typeof timeOrigin !== "number") {
-    timeOrigin = win.performance.timing?.fetchStart;
+    timeOrigin = perf?.timing?.fetchStart;
   }
   return timeOrigin;
 }

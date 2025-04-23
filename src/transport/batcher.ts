@@ -55,5 +55,5 @@ export function newBatcher<T>(sendInternal: (items: T[]) => void): Batcher<T> {
 }
 
 function isWindowHidden() {
-  return doc.visibilityState !== "visible";
+  return doc?.visibilityState !== "visible";
 }

@@ -12,8 +12,10 @@ export function onLastChance(fn: () => void) {
     fn();
   }
 
+  if (!doc || !win) return;
+
   addEventListener(doc, "visibilitychange", function () {
-    if (doc.visibilityState !== "visible") {
+    if (doc!.visibilityState !== "visible") {
       fn();
     }
   });

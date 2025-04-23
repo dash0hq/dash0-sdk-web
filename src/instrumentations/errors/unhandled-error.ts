@@ -38,6 +38,8 @@ export function ignoreNextOnErrorEvent() {
 }
 
 export function startOnErrorInstrumentation() {
+  if (!win) return;
+
   const globalOnError = win.onerror;
 
   win.onerror = function (
@@ -98,7 +100,7 @@ function onUnhandledError(message: string, type?: string, stack?: string, opts?:
 
   message = String(message).substring(0, 300);
   stack = shortenStackTrace(stack);
-  const location = win.location.href;
+  const location = win?.location.href;
   const key = message + stack + location;
 
   let trackedError = seenErrors[key];

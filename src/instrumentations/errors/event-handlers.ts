@@ -1,5 +1,5 @@
 import { vars } from "../../vars";
-import { win } from "../../utils";
+import { win, WindowType } from "../../utils";
 import {
   addWrappedDomEventListener,
   EventListenerOptionsOrUseCapture,
@@ -9,11 +9,11 @@ import { ignoreNextOnErrorEvent } from "./unhandled-error";
 
 export function startEventHandlerInstrumentation() {
   if (vars.wrapEventHandlers) {
-    wrapEventTarget(win.EventTarget);
+    wrapEventTarget(win?.EventTarget);
   }
 }
 
-function wrapEventTarget(EventTarget: typeof win.EventTarget) {
+function wrapEventTarget(EventTarget: WindowType["EventTarget"] | undefined) {
   if (
     !EventTarget ||
     typeof EventTarget.prototype.addEventListener !== "function" ||

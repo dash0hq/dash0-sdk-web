@@ -1,6 +1,6 @@
 import { vars } from "../../vars";
 import { isRunningZoneJs } from "../../utils/timers";
-import { warn, win } from "../../utils";
+import { warn, win, WindowType } from "../../utils";
 import { ignoreNextOnErrorEvent } from "./unhandled-error";
 
 export function startTimerInstrumentation() {
@@ -17,13 +17,13 @@ export function startTimerInstrumentation() {
 }
 
 function wrapTimer(name: "setTimeout" | "setInterval") {
-  const original = win[name];
+  const original = win?.[name];
   if (typeof original !== "function") {
     // cannot wrap because fn is not a function – should actually never happen
     return;
   }
 
-  (win as any)[name] = function wrappedTimerSetter(fn: TimerHandler): ReturnType<(typeof win)[typeof name]> {
+  (win as any)[name] = function wrappedTimerSetter(fn: TimerHandler): ReturnType<WindowType[typeof name]> {
     // non-deopt arguments copy
     const args = new Array(arguments.length);
     for (let i = 0; i < arguments.length; i++) {

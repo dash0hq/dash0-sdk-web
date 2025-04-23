@@ -1,4 +1,4 @@
-import { addAttribute, addEventListener, debug, nowNanos, win } from "../utils";
+import { addAttribute, addEventListener, debug, doc, NO_VALUE_FALLBACK, nowNanos, win } from "../utils";
 import { KeyValue, LogRecord } from "../../types/otlp";
 import { EVENT_NAME, LOG_SEVERITY_INFO, NAVIGATION_TIMING, PAGE_VIEW } from "../semantic-conventions";
 import { sendLog } from "../transport";
@@ -14,14 +14,17 @@ import { addCommonSignalAttributes } from "../add-common-signal-attributes";
 export function startPageLoadInstrumentation() {
   onInit();
 
-  if (document.readyState === "complete") {
+  if (doc?.readyState === "complete") {
     return onLoaded();
   }
-  addEventListener(win, "load", function () {
-    // we want to get timing data for loadEventEnd,
-    // so asynchronously process this
-    setTimeout(onLoaded, 0);
-  });
+
+  if (win) {
+    addEventListener(win, "load", function () {
+      // we want to get timing data for loadEventEnd,
+      // so asynchronously process this
+      setTimeout(onLoaded, 0);
+    });
+  }
 }
 
 /**
@@ -33,9 +36,9 @@ function onInit() {
 
   const bodyAttributes: KeyValue[] = [];
   addAttribute(bodyAttributes, "type", 0);
-  addAttribute(bodyAttributes, "title", document.title);
-  if (document.referrer) {
-    addAttribute(bodyAttributes, "referrer", document.referrer);
+  addAttribute(bodyAttributes, "title", doc?.title ?? NO_VALUE_FALLBACK);
+  if (doc?.referrer) {
+    addAttribute(bodyAttributes, "referrer", doc.referrer);
   }
 
   const log: LogRecord = {
@@ -63,7 +66,7 @@ function onInit() {
  * See https://github.com/open-telemetry/semantic-conventions/pull/1919
  */
 function onLoaded() {
-  const nt = win.performance.getEntriesByType("navigation")[0];
+  const nt = win?.performance.getEntriesByType("navigation")[0];
   if (!nt) {
     debug("Navigation timings not available. Cannot emit navigation timing log");
     return;

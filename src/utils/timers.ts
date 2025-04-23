@@ -1,5 +1,5 @@
 import { warn, debug } from "./debug";
-import { win } from "./globals";
+import { win, WindowType } from "./globals";
 
 // This module contains wrappers around the standard timer API. These wrappers can be used to
 // ensure that execution of timers happens outside of any Angular specific zones. This in turn
@@ -13,10 +13,10 @@ import { win } from "./globals";
 // This ensures that when we register a timeout/interval on one global, that we will be able to
 // de-register it again in all cases.
 const globals = {
-  setTimeout: win.setTimeout,
-  clearTimeout: win.clearTimeout,
-  setInterval: win.setInterval,
-  clearInterval: win.clearInterval,
+  setTimeout: win?.setTimeout,
+  clearTimeout: win?.clearTimeout,
+  setInterval: win?.setInterval,
+  clearInterval: win?.clearInterval,
 };
 
 // If the globals don't exist at execution time of this file, then we know that the globals stored
@@ -30,22 +30,22 @@ if (isRunningZoneJs) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function setTimeout(..._: Parameters<typeof win.setTimeout>): ReturnType<typeof win.setTimeout> {
+export function setTimeout(..._: Parameters<WindowType["setTimeout"]>): ReturnType<WindowType["setTimeout"]> {
   return executeGlobally.apply("setTimeout", arguments as any);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function clearTimeout(..._: Parameters<typeof win.clearTimeout>): ReturnType<typeof win.clearTimeout> {
+export function clearTimeout(..._: Parameters<WindowType["clearTimeout"]>): ReturnType<WindowType["clearTimeout"]> {
   return executeGlobally.apply("clearTimeout", arguments as any);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function setInterval(..._: Parameters<typeof win.setInterval>): ReturnType<typeof win.setInterval> {
+export function setInterval(..._: Parameters<WindowType["setInterval"]>): ReturnType<WindowType["setInterval"]> {
   return executeGlobally.apply("setInterval", arguments as any);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function clearInterval(..._: Parameters<typeof win.clearInterval>): ReturnType<typeof win.clearInterval> {
+export function clearInterval(..._: Parameters<WindowType["clearInterval"]>): ReturnType<WindowType["clearInterval"]> {
   return executeGlobally.apply("clearInterval", arguments as any);
 }
 
