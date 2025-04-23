@@ -8,11 +8,19 @@ import { debug, error } from "../utils";
 const logBatcher = newBatcher<LogRecord>(sendLogs);
 const spanBatcher = newBatcher<Span>(sendSpans);
 
-const isRateLimited = createRateLimiter({
-  maxCalls: 8096,
-  maxCallsPerTenMinutes: 4096,
-  maxCallsPerTenSeconds: 128,
-});
+let rateLimiter: (() => boolean) | undefined;
+
+function isRateLimited() {
+  if (!rateLimiter) {
+    rateLimiter = createRateLimiter({
+      maxCalls: 8096,
+      maxCallsPerTenMinutes: 4096,
+      maxCallsPerTenSeconds: 128,
+    });
+  }
+
+  return rateLimiter();
+}
 
 export function sendLog(log: LogRecord): void {
   if (isRateLimited()) {
