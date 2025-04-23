@@ -21,4 +21,7 @@ export default {
       header: "# Changelog",
     },
   },
+  hooks: {
+    "before:git:release": ["pnpm run prettier:all", "git add . --update"],
+  },
 } satisfies Config;
