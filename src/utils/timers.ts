@@ -23,7 +23,7 @@ const globals = {
 // above are not wrapped by Zone.js. This in turn can mean better performance for Angular users.
 export const isRunningZoneJs =
   // @ts-expect-error We aren't adding the necessary Zone.js types for now
-  win["Zone"] != null && win["Zone"]["root"] != null && typeof win["Zone"]["root"]["run"] === "function";
+  win != null && win["Zone"] != null && win["Zone"]["root"] != null && typeof win["Zone"]["root"]["run"] === "function";
 
 if (isRunningZoneJs) {
   debug("Discovered Zone.js globals. Will attempt to register all timers inside the root Zone.");
