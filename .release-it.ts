@@ -13,6 +13,7 @@ export default {
   npm: {
     publish: true,
     skipChecks: true, // See: https://github.com/release-it/release-it/blob/main/docs/npm.md#npm
+    publishArgs: ["--provenance"],
   },
   plugins: {
     "@release-it/conventional-changelog": {
