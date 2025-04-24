@@ -48,7 +48,7 @@ jobs:
 
   release:
     needs: build
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }} # TODO: enable this before merge
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -71,7 +71,6 @@ jobs:
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
-          registry-url: "https://npm.pkg.github.com"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -84,5 +83,5 @@ jobs:
       - name: Run release-it
         run: pnpm run release
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Temporary release to private github packages npm only
+          NODE_AUTH_TOKEN: ${{ secrets.DASH0_NPMJS_PUBLISH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
