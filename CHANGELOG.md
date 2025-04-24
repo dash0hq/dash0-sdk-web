@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.6](https://github.com/dash0hq/dash0-sdk-web/compare/0.0.5...0.0.6) (2025-04-24)
+
+### Bug Fixes
+
+- include build version ([8ead7fb](https://github.com/dash0hq/dash0-sdk-web/commit/8ead7fb800814d1f77bea3a0de8ebc29eb96267c))
+
 ## [0.0.5](https://github.com/dash0hq/dash0-sdk-web/compare/0.0.4...0.0.5) (2025-04-23)
 
 ### Bug Fixes
