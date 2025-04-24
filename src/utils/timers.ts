@@ -22,7 +22,6 @@ const globals = {
 // If the globals don't exist at execution time of this file, then we know that the globals stored
 // above are not wrapped by Zone.js. This in turn can mean better performance for Angular users.
 export const isRunningZoneJs =
-  // @ts-expect-error We aren't adding the necessary Zone.js types for now
   win != null && win["Zone"] != null && win["Zone"]["root"] != null && typeof win["Zone"]["root"]["run"] === "function";
 
 if (isRunningZoneJs) {

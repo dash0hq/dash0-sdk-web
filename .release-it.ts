@@ -22,6 +22,7 @@ export default {
     },
   },
   hooks: {
+    "after:bump": "pnpm run build",
     "before:git:release": ["pnpm run prettier:all", "git add . --update"],
   },
 } satisfies Config;

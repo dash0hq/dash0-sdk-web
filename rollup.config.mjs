@@ -4,6 +4,7 @@ import { nodeResolve } from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import babel from "@rollup/plugin-babel";
 import terser from "@rollup/plugin-terser";
+import info from "./package.json" with { type: "json" };
 
 const configurePlugins = ({ module }) => {
   return [
@@ -21,7 +22,7 @@ const configurePlugins = ({ module }) => {
       ],
     }),
     replace({
-      SDK_VERSION: "TODO",
+      __sdkVersion: JSON.stringify(info.version),
       preventAssignment: true,
     }),
     nodeResolve({
@@ -65,22 +66,3 @@ const configs = [
 ];
 
 export default configs;
-
-// export default {
-//   input: "dist/esm/src/entrypoint/script.js",
-//   output: {
-//     file: `dist/script/dash0.js`,
-//     format: "iife",
-//   },
-//   // @ts-ignore
-//   plugins: [
-//     // secureWebVitalsLoader(),
-//     replace({
-//       SDK_VERSION: "TODO",
-//     }),
-//     nodeResolve({
-//       browser: true,
-//       extensions,
-//     }),
-//   ],
-// };

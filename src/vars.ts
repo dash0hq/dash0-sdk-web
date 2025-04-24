@@ -82,7 +82,7 @@ export const vars: Vars = {
   },
   scope: {
     name: "dash0-web-sdk",
-    version: "{{SDK_VERSION}}",
+    version: __sdkVersion,
     attributes: [],
   },
   signalAttributes: [],

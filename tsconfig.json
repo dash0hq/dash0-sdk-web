@@ -20,6 +20,6 @@
     "declarationDir": "./dist/types",
     "target": "esnext"
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "types/*.ts"],
   "exclude": ["node_modules", "dist", "rollup.config.mjs"]
 }

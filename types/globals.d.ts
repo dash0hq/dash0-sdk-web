@@ -14,4 +14,6 @@ declare global {
     // when pushed through the Closure compiler
     [key: string]: number | string | null | undefined;
   };
+
+  const __sdkVersion: string;
 }
