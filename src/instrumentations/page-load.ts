@@ -1,5 +1,4 @@
 import {
-  addAttribute,
   addEventListener,
   debug,
   doc,
@@ -17,7 +16,7 @@ import {
   PAGE_VIEW,
 } from "../semantic-conventions";
 import { sendLog } from "../transport";
-import { getTraceContextForPageLoad } from "../utils/trace-context";
+import { getTraceContextForPageLoad, addAttribute } from "../utils/otel";
 import { addCommonSignalAttributes } from "../add-common-signal-attributes";
 
 /**

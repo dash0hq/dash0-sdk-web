@@ -28,22 +28,18 @@ if (isRunningZoneJs) {
   debug("Discovered Zone.js globals. Will attempt to register all timers inside the root Zone.");
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function setTimeout(..._: Parameters<WindowType["setTimeout"]>): ReturnType<WindowType["setTimeout"]> {
   return executeGlobally.apply("setTimeout", arguments as any);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function clearTimeout(..._: Parameters<WindowType["clearTimeout"]>): ReturnType<WindowType["clearTimeout"]> {
   return executeGlobally.apply("clearTimeout", arguments as any);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function setInterval(..._: Parameters<WindowType["setInterval"]>): ReturnType<WindowType["setInterval"]> {
   return executeGlobally.apply("setInterval", arguments as any);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function clearInterval(..._: Parameters<WindowType["clearInterval"]>): ReturnType<WindowType["clearInterval"]> {
   return executeGlobally.apply("clearInterval", arguments as any);
 }

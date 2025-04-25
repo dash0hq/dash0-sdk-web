@@ -1,4 +1,4 @@
-import { AnyValue, KeyValue } from "../../types/otlp";
+import { AnyValue, KeyValue } from "../../../types/otlp";
 
 export function toKeyValue(key: string, value: string | number | AnyValue): KeyValue {
   let anyValue: AnyValue = {};

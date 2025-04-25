@@ -1,5 +1,5 @@
 import { vars } from "../vars";
-import { addAttribute, removeAttribute } from "../utils";
+import { addAttribute, removeAttribute } from "../utils/otel";
 import { USER_EMAIL, USER_FULL_NAME, USER_ID, USER_NAME } from "../semantic-conventions";
 
 type IdentifyOpts = {
