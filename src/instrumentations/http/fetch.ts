@@ -103,11 +103,10 @@ export function instrumentFetch() {
     const performanceObserver = observeResourcePerformance({
       // We match on both fetch and XHR here to support polyfills
       resourceMatcher: ({ initiatorType, name }) =>
-        initiatorType === "fetch" || (initiatorType === "xmlhttprequest" && name === parseUrl(url).href),
+        (initiatorType === "fetch" || initiatorType === "xmlhttprequest") && name === parseUrl(url).href,
       maxWaitForResourceMillis: vars.maxWaitForResourceTimingsMillis,
       maxToleranceForResourceTimingsMillis: vars.maxToleranceForResourceTimingsMillis,
       onEnd: ({ duration, resource }) => {
-        // TODO: add child span for CORS preflight
         if (resource) {
           addResourceNetworkEvents(span, resource);
           addResourceSize(span, resource);

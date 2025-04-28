@@ -127,8 +127,9 @@ export function observeResourcePerformance(opts: ObserveResourcePerformanceOptio
       // This polymorphism is not properly represented in the api types. The cast is safe since we're only accessing the resource timings.
       const entry = e as PerformanceResourceTiming;
       return (
-        (entry.startTime >= startTime && !endTime) ||
-        (endTime + opts.maxToleranceForResourceTimingsMillis >= entry.responseEnd && opts.resourceMatcher(entry))
+        entry.startTime >= startTime &&
+        (!endTime || endTime + opts.maxToleranceForResourceTimingsMillis >= entry.responseEnd) &&
+        opts.resourceMatcher(entry)
       );
     });
 
