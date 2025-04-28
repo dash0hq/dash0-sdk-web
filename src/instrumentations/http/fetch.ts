@@ -169,6 +169,6 @@ function tryCaptureHttpHeaders(headers: Headers, span: InProgressSpan, getAttrib
 
 function addResponseData(span: InProgressSpan, response: Response) {
   addSpanStatus(span, SPAN_STATUS_UNSET, response.statusText);
-  addAttribute(span.attributes, HTTP_RESPONSE_STATUS_CODE, response.status);
+  addAttribute(span.attributes, HTTP_RESPONSE_STATUS_CODE, String(response.status));
   tryCaptureHttpHeaders(response.headers, span, (k) => httpResponseHeaderKey(k));
 }
