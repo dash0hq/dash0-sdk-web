@@ -33,6 +33,7 @@ export const HTTP_RESPONSE_HEADER = "http.response.header";
 export const PAGE_VIEW = "browser.page_view";
 export const NAVIGATION_TIMING = "browser.navigation_timing";
 export const WEB_VITAL = "browser.web_vital";
+export const EVENT_NAME_EXCEPTION = "exception";
 
 // Log Severities
 export const LOG_SEVERITY_INFO = 9;

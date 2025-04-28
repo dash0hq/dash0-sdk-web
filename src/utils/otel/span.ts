@@ -1,7 +1,7 @@
 import { KeyValue, Span, SpanStatus } from "../../../types/otlp";
 import { nowNanos } from "../time";
 import { generateUniqueId, SPAN_ID_BYTES, TRACE_ID_BYTES } from "../id";
-import { SPAN_STATUS_ERROR, SPAN_STATUS_UNSET } from "../../semantic-conventions";
+import { SPAN_STATUS_UNSET } from "../../semantic-conventions";
 
 export type InProgressSpan = Omit<Span, "endTimeUnixNano">;
 
@@ -65,12 +65,5 @@ export function addSpanStatus(span: InProgressSpan, code: SpanStatus["code"], me
   span.status = {
     code,
     message,
-  };
-}
-
-export function errorToSpanStatus(e: unknown): SpanStatus {
-  return {
-    code: SPAN_STATUS_ERROR,
-    message: e && typeof e === "object" && "message" in e ? (e.message as string) : String(e),
   };
 }

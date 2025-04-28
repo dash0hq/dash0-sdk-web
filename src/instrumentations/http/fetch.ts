@@ -7,7 +7,9 @@ import {
   addTraceContextHttpHeaders,
   endSpan,
   errorToSpanStatus,
+  Exception,
   InProgressSpan,
+  recordException,
   removeAttribute,
   startSpan,
 } from "../../utils/otel";
@@ -122,7 +124,8 @@ export function instrumentFetch() {
       return response;
     } catch (e) {
       performanceObserver.cancel();
-      sendSpan(endSpan(span, errorToSpanStatus(e), undefined));
+      recordException(span, e as Exception);
+      sendSpan(endSpan(span, errorToSpanStatus(e as Exception), undefined));
       throw e;
     }
   }
