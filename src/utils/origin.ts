@@ -34,6 +34,7 @@ function getUrlAnalysisElement() {
 
 /**
  * Parses url using URL constructor or fallback to anchor element.
+ * May throw if parsing fails
  * @param url
  */
 export function parseUrl(url: string): URLLike {

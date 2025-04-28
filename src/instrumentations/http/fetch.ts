@@ -3,7 +3,7 @@ import { isAlreadyInstrumented, markAsInstrumented } from "../../utils/is-alread
 import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
 import {
   addAttribute,
-  addSpanStatus,
+  setSpanStatus,
   addTraceContextHttpHeaders,
   endSpan,
   errorToSpanStatus,
@@ -19,14 +19,19 @@ import {
   HTTP_REQUEST_METHOD,
   HTTP_REQUEST_METHOD_ORIGINAL,
   HTTP_RESPONSE_STATUS_CODE,
+  SPAN_STATUS_ERROR,
   SPAN_STATUS_UNSET,
+  URL_FRAGMENT,
   URL_FULL,
+  URL_PATH,
+  URL_QUERY,
+  URL_SCHEME,
 } from "../../semantic-conventions";
 import { isSameOrigin, parseUrl } from "../../utils/origin";
 import { vars } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
 import { sendSpan } from "../../transport";
-import { addResourceNetworkEvents, HTTP_METHOD_OTHER, isWellKnownHttpMethod } from "./utils";
+import { addResourceNetworkEvents, addResourceSize, HTTP_METHOD_OTHER, isWellKnownHttpMethod } from "./utils";
 
 export function instrumentFetch() {
   if (!win || !win.fetch || !win.Request) {
@@ -74,9 +79,7 @@ export function instrumentFetch() {
     if (!isWellKnownMethod) {
       addAttribute(span.attributes, HTTP_REQUEST_METHOD_ORIGINAL, originalMethod);
     }
-    // url.full is already set to browser location with the common attributes
-    removeAttribute(span.attributes, URL_FULL);
-    addAttribute(span.attributes, URL_FULL, url);
+    addUrlAttributes(span, url);
 
     const shouldSetCorrelationHeaders = isSameOrigin(url) || matchesAny(vars.propagateTraceHeadersCorsURLs, url);
     if (shouldSetCorrelationHeaders) {
@@ -98,7 +101,6 @@ export function instrumentFetch() {
     tryCaptureHttpHeaders(request.headers, span, (k) => httpRequestHeaderKey(k));
 
     const performanceObserver = observeResourcePerformance({
-      // TODO: make sure matcher works correctly
       // We match on both fetch and XHR here to support polyfills
       resourceMatcher: ({ initiatorType, name }) =>
         initiatorType === "fetch" || (initiatorType === "xmlhttprequest" && name === parseUrl(url).href),
@@ -108,6 +110,7 @@ export function instrumentFetch() {
         // TODO: add child span for CORS preflight
         if (resource) {
           addResourceNetworkEvents(span, resource);
+          addResourceSize(span, resource);
         }
         // duration is millis we need to convert to nanos
         sendSpan(endSpan(span, undefined, duration * 1000000));
@@ -116,16 +119,21 @@ export function instrumentFetch() {
 
     performanceObserver.start();
     try {
-      // TODO: add request sizing
       const response = await originalFetch(input instanceof Request ? request : input, copyOfInit);
       addResponseData(span, response);
-      // TODO: add response sizing
-      performanceObserver.end();
+
+      // We use a separate promise here because this needs to happen in parallel to application code consuming the response
+      waitForFullResponse(response)
+        .then(() => performanceObserver.end())
+        .catch((e) => {
+          performanceObserver.cancel();
+          endSpanOnError(span, e as Exception);
+        });
+
       return response;
     } catch (e) {
       performanceObserver.cancel();
-      recordException(span, e as Exception);
-      sendSpan(endSpan(span, errorToSpanStatus(e as Exception), undefined));
+      endSpanOnError(span, e as Exception);
       throw e;
     }
   }
@@ -171,7 +179,53 @@ function tryCaptureHttpHeaders(headers: Headers, span: InProgressSpan, getAttrib
 }
 
 function addResponseData(span: InProgressSpan, response: Response) {
-  addSpanStatus(span, SPAN_STATUS_UNSET, response.statusText);
-  addAttribute(span.attributes, HTTP_RESPONSE_STATUS_CODE, String(response.status));
+  const status = response.status;
+  setSpanStatus(span, status >= 200 && status < 400 ? SPAN_STATUS_UNSET : SPAN_STATUS_ERROR, response.statusText);
+  addAttribute(span.attributes, HTTP_RESPONSE_STATUS_CODE, String(status));
   tryCaptureHttpHeaders(response.headers, span, (k) => httpResponseHeaderKey(k));
+}
+
+function addUrlAttributes(span: InProgressSpan, url: string) {
+  // url.full is already set to browser location with the common attributes
+  removeAttribute(span.attributes, URL_FULL);
+
+  try {
+    const parsed = parseUrl(url);
+    if (parsed.username) parsed.username = "REDACTED";
+    if (parsed.password) parsed.password = "REDACTED";
+
+    addAttribute(span.attributes, URL_FULL, parsed.href);
+    addAttribute(span.attributes, URL_PATH, parsed.pathname);
+    addAttribute(span.attributes, URL_SCHEME, parsed.protocol.replace(":", ""));
+    if (parsed.hash) {
+      addAttribute(span.attributes, URL_FRAGMENT, parsed.hash.replace("#", ""));
+    }
+    if (parsed.search) {
+      addAttribute(span.attributes, URL_QUERY, parsed.search.replace("?", ""));
+    }
+  } catch (_e) {
+    /* Nothing to do if parsing fails */
+  }
+}
+
+function waitForFullResponse(response: Response): Promise<void> {
+  return new Promise((resolve) => {
+    const clonedResponse = response.clone();
+    const body = clonedResponse.body;
+
+    if (!body) return resolve();
+
+    const reader = body.getReader();
+    const read = async () => {
+      const { done } = await reader.read();
+      if (done) return resolve();
+      return read();
+    };
+    return read();
+  });
+}
+
+function endSpanOnError(span: InProgressSpan, error: Exception) {
+  recordException(span, error);
+  sendSpan(endSpan(span, errorToSpanStatus(error), undefined));
 }

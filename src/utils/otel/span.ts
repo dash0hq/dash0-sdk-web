@@ -61,7 +61,7 @@ export function addSpanEvent(
   });
 }
 
-export function addSpanStatus(span: InProgressSpan, code: SpanStatus["code"], message?: string) {
+export function setSpanStatus(span: InProgressSpan, code: SpanStatus["code"], message?: string) {
   span.status = {
     code,
     message,

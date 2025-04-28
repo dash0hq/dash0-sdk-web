@@ -1,5 +1,6 @@
-import { addSpanEvent, InProgressSpan } from "../../utils/otel";
+import { addAttribute, addSpanEvent, InProgressSpan } from "../../utils/otel";
 import { domHRTimestampToNanos, hasKey, PerformanceTimingNames } from "../../utils";
+import { HTTP_RESPONSE_BODY_SIZE } from "../../semantic-conventions";
 
 // SEE: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/attributes-registry/http.md?plain=1#L67
 const KNOWN_HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
@@ -38,4 +39,11 @@ function addSpanNetworkEvent(
   }
 
   addSpanEvent(span, propertyName, domHRTimestampToNanos(resource[propertyName]));
+}
+
+export function addResourceSize(span: InProgressSpan, resource: PerformanceResourceTiming) {
+  const encodedLength = resource.encodedBodySize;
+  if (encodedLength != undefined) {
+    addAttribute(span.attributes, HTTP_RESPONSE_BODY_SIZE, encodedLength);
+  }
 }

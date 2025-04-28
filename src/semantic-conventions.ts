@@ -12,15 +12,23 @@ export const USER_EMAIL = "user.email";
 export const PAGE_LOAD_ID = "page.load.id";
 export const SESSION_ID = "session.id";
 export const USER_AGENT = "user_agent.original";
-export const URL_FULL = "url.full";
 export const WINDOW_WIDTH = "browser.window.width";
 export const WINDOW_HEIGHT = "browser.window.height";
 export const NETWORK_CONNECTION_TYPE = "network.connection.subtype";
+export const EXCEPTION_COMPONENT_STACK = "exception.component_stack";
+export const COMPONENT = "component";
+
+// Exception Attribute Keys
 export const EXCEPTION_MESSAGE = "exception.message";
 export const EXCEPTION_TYPE = "exception.type";
 export const EXCEPTION_STACKTRACE = "exception.stacktrace";
-export const EXCEPTION_COMPONENT_STACK = "exception.component_stack";
-export const COMPONENT = "component";
+
+// URL Attribute Keys
+export const URL_FRAGMENT = "url.fragment";
+export const URL_FULL = "url.full";
+export const URL_PATH = "url.path";
+export const URL_QUERY = "url.query";
+export const URL_SCHEME = "url.scheme";
 
 // Http Attribute Keys
 export const HTTP_REQUEST_METHOD = "http.request.method";
@@ -28,6 +36,7 @@ export const HTTP_REQUEST_METHOD_ORIGINAL = "http.request.method_original";
 export const HTTP_REQUEST_HEADER = "http.request.header";
 export const HTTP_RESPONSE_STATUS_CODE = "http.response.status_code";
 export const HTTP_RESPONSE_HEADER = "http.response.header";
+export const HTTP_RESPONSE_BODY_SIZE = "http.response.body.size";
 
 // Event Names
 export const PAGE_VIEW = "browser.page_view";
