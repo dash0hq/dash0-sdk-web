@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.7](https://github.com/dash0hq/dash0-sdk-web/compare/0.0.6...0.0.7) (2025-04-29)
+
+### Bug Fixes
+
+- **semantic-conventions:** update attribute key to align with the network semantic conventions ([c368b38](https://github.com/dash0hq/dash0-sdk-web/commit/c368b382ef402e917b2913c36ff6db6cec26d381))
+
 ## [0.0.6](https://github.com/dash0hq/dash0-sdk-web/compare/0.0.5...0.0.6) (2025-04-24)
 
 ### Bug Fixes
