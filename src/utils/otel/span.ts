@@ -10,8 +10,9 @@ export function startSpan(name: string): InProgressSpan {
     traceId: generateUniqueId(TRACE_ID_BYTES),
     spanId: generateUniqueId(SPAN_ID_BYTES),
     name,
-    // Always CLIENT for now https://github.com/open-telemetry/opentelemetry-js-api/blob/main/src/trace/span_kind.ts
-    kind: 2,
+    // Always CLIENT for now https://github.com/open-telemetry/opentelemetry-proto/blob/ac3242b03157295e4ee9e616af53b81517b06559/opentelemetry/proto/trace/v1/trace.proto#L143-L169
+    // Note: we directly define otlp here, this differs from the values used by oteljs internally.
+    kind: 3,
     startTimeUnixNano: nowNanos(),
     attributes: [],
     events: [],
