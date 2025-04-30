@@ -28,6 +28,7 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:e2e": "wdio run ./test/e2e/wdio.conf.ts",
+    "test:e2e:local": "wdio run ./test/e2e/wdio.local.conf.ts",
     "test:e2e:server": "SERVER_PORTS='5000,5001,5002' node test/e2e/server/index.mjs",
     "test:coverage": "vitest run --coverage",
     "ci": "run-s lint prettier:check test:unit build",

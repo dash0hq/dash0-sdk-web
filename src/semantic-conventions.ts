@@ -54,3 +54,7 @@ export const LOG_SEVERITY_ERROR_TEXT = "ERROR";
 export const SPAN_STATUS_UNSET = 0;
 export const SPAN_STATUS_OK = 1; // This is here for completion, status ok is reserved for use by application developers
 export const SPAN_STATUS_ERROR = 2;
+
+// Span Kind
+// See: https://github.com/open-telemetry/opentelemetry-proto/blob/ac3242b03157295e4ee9e616af53b81517b06559/opentelemetry/proto/trace/v1/trace.proto#L143-L169
+export const SPAN_KIND_CLIENT = 3;

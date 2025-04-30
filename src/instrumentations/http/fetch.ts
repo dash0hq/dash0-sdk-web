@@ -67,7 +67,7 @@ export function instrumentFetch() {
     }
 
     // https://fetch.spec.whatwg.org/#concept-request-method
-    const originalMethod = copyOfInit?.method ?? "GET";
+    const originalMethod = request.method ?? "GET";
     const isWellKnownMethod = isWellKnownHttpMethod(originalMethod);
     const method = isWellKnownMethod ? originalMethod : HTTP_METHOD_OTHER;
 

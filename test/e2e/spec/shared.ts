@@ -1,8 +1,22 @@
 import { ExportLogsServiceRequest, ExportTraceServiceRequest } from "../../../types/otlp";
+import { browser } from "@wdio/globals";
+
+type BrowserLog = {
+  level: string;
+  text: string | null;
+  timestamp: number;
+};
+
+let browserLogs: BrowserLog[] = [];
 
 export async function sharedBeforeEach() {
   await clearOTLPRequests();
   await clearAjaxRequests();
+  await subscribeToBrowserLogs();
+}
+
+export async function sharedAfterEach() {
+  unsubscribeFromBrowserLogs();
 }
 
 type OTLPRequest = {
@@ -38,48 +52,20 @@ export async function clearAjaxRequests() {
   }
 }
 
-export function retry<T>(fn: () => Promise<T>, maxMillis: number = 10000, until?: number): Promise<T> {
-  until = until || Date.now() + maxMillis;
-
-  if (Date.now() > until) {
-    return fn();
-  }
-
-  return delay(maxMillis / 20)
-    .then(fn)
-    .catch(() => retry(fn, maxMillis, until));
+export function getBrowserLogs() {
+  return browserLogs;
 }
 
-function delay(millis): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, millis));
+function handleLogEvent(event: BrowserLog) {
+  browserLogs.push(event);
 }
 
-export function expectOneMatching<T>(arr: T[], fn: (item: T) => void): T {
-  if (!arr || arr.length === 0) {
-    throw new Error("Could not find an item which matches all the criteria. Got 0 items.");
-  }
+async function subscribeToBrowserLogs() {
+  browserLogs = [];
+  await browser.sessionSubscribe({ events: ["log.entryAdded"] });
+  browser.on("log.entryAdded", handleLogEvent);
+}
 
-  let error: Error;
-
-  for (const item of arr) {
-    try {
-      fn(item);
-      return item;
-    } catch (e) {
-      error = e;
-    }
-  }
-
-  if (error) {
-    throw new Error(
-      "Could not find an item which matches all the criteria. Got " +
-        arr.length +
-        " items. Last error: " +
-        error.message +
-        ". All Items:\n" +
-        JSON.stringify(arr, undefined, 2) +
-        ". Error stack trace: " +
-        error.stack
-    );
-  }
+function unsubscribeFromBrowserLogs() {
+  browser.off("log.entryAdded", handleLogEvent);
 }

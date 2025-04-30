@@ -1,7 +1,7 @@
 import { KeyValue, Span, SpanStatus } from "../../../types/otlp";
 import { nowNanos } from "../time";
 import { generateUniqueId, SPAN_ID_BYTES, TRACE_ID_BYTES } from "../id";
-import { SPAN_STATUS_UNSET } from "../../semantic-conventions";
+import { SPAN_KIND_CLIENT, SPAN_STATUS_UNSET } from "../../semantic-conventions";
 
 export type InProgressSpan = Omit<Span, "endTimeUnixNano">;
 
@@ -12,7 +12,7 @@ export function startSpan(name: string): InProgressSpan {
     name,
     // Always CLIENT for now https://github.com/open-telemetry/opentelemetry-proto/blob/ac3242b03157295e4ee9e616af53b81517b06559/opentelemetry/proto/trace/v1/trace.proto#L143-L169
     // Note: we directly define otlp here, this differs from the values used by oteljs internally.
-    kind: 3,
+    kind: SPAN_KIND_CLIENT,
     startTimeUnixNano: nowNanos(),
     attributes: [],
     events: [],

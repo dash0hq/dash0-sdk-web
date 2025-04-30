@@ -1,7 +1,10 @@
-import { expectOneMatching, getOTLPRequests, retry, sharedBeforeEach } from "../shared";
+import { getOTLPRequests, sharedAfterEach, sharedBeforeEach } from "../shared";
+import { retry } from "../utils";
+import { expectOneMatching } from "../expectations";
 
 describe("Page Load", () => {
   beforeEach(sharedBeforeEach);
+  afterEach(sharedAfterEach);
 
   it("transmits page load logs", async () => {
     await browser.url("/e2e/spec/00-page-load/empty.html");
