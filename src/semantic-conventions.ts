@@ -28,4 +28,6 @@ export const WEB_VITAL = "browser.web_vital";
 
 // Log Severities
 export const LOG_SEVERITY_INFO = 9;
+export const LOG_SERVERITY_INFO_TEXT = "INFO";
 export const LOG_SEVERITY_ERROR = 17;
+export const LOG_SEVERITY_ERROR_TEXT = "ERROR";

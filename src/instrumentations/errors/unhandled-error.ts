@@ -10,6 +10,7 @@ import {
   EXCEPTION_STACKTRACE,
   EXCEPTION_TYPE,
   LOG_SEVERITY_ERROR,
+  LOG_SEVERITY_ERROR_TEXT,
 } from "../../semantic-conventions";
 
 type TrackedError = {
@@ -127,6 +128,7 @@ function onUnhandledError(message: string, type?: string, stack?: string, opts?:
         timeUnixNano: nowNanos(),
         attributes: attributes,
         severityNumber: LOG_SEVERITY_ERROR,
+        severityText: LOG_SEVERITY_ERROR_TEXT,
         body: {
           stringValue: message,
         },
