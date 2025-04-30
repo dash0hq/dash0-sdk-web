@@ -10,6 +10,7 @@ import {
   EXCEPTION_STACKTRACE,
   EXCEPTION_TYPE,
   LOG_SEVERITY_ERROR,
+  LOG_SEVERITY_ERROR_TEXT,
 } from "../../semantic-conventions";
 
 type TrackedError = {
@@ -64,7 +65,7 @@ export function startOnErrorInstrumentation() {
         stack += ":" + columnNumber;
       }
     }
-    onUnhandledError(String(message), stack);
+    onUnhandledError({ message: String(message), stack });
 
     if (typeof globalOnError === "function") {
       return globalOnError.apply(this, arguments as any);
@@ -78,13 +79,20 @@ export function reportError(error: string | ErrorLike, opts?: ReportErrorOpts) {
   }
 
   if (typeof error === "string") {
-    onUnhandledError(error, undefined, undefined, opts);
+    onUnhandledError({ message: error, opts });
   } else {
-    onUnhandledError(error.message, error.name, error.stack, opts);
+    onUnhandledError({ message: error.message, type: error.name, stack: error.stack, opts });
   }
 }
 
-function onUnhandledError(message: string, type?: string, stack?: string, opts?: ReportErrorOpts) {
+type UnhandledErrorArgs = {
+  message: string;
+  type?: string;
+  stack?: string;
+  opts?: ReportErrorOpts;
+};
+
+function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
   if (!message || reportedErrors > MAX_ERRORS_TO_REPORT) {
     return;
   }
@@ -127,6 +135,7 @@ function onUnhandledError(message: string, type?: string, stack?: string, opts?:
         timeUnixNano: nowNanos(),
         attributes: attributes,
         severityNumber: LOG_SEVERITY_ERROR,
+        severityText: LOG_SEVERITY_ERROR_TEXT,
         body: {
           stringValue: message,
         },

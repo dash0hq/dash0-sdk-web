@@ -1,6 +1,21 @@
-import { addAttribute, addEventListener, debug, doc, NO_VALUE_FALLBACK, nowNanos, win } from "../utils";
+import {
+  addAttribute,
+  addEventListener,
+  debug,
+  doc,
+  NO_VALUE_FALLBACK,
+  nowNanos,
+  win,
+  roundToTwoDecimals,
+} from "../utils";
 import { KeyValue, LogRecord } from "../../types/otlp";
-import { EVENT_NAME, LOG_SEVERITY_INFO, NAVIGATION_TIMING, PAGE_VIEW } from "../semantic-conventions";
+import {
+  EVENT_NAME,
+  LOG_SERVERITY_INFO_TEXT,
+  LOG_SEVERITY_INFO,
+  NAVIGATION_TIMING,
+  PAGE_VIEW,
+} from "../semantic-conventions";
 import { sendLog } from "../transport";
 import { getTraceContextForPageLoad } from "../utils/trace-context";
 import { addCommonSignalAttributes } from "../add-common-signal-attributes";
@@ -45,6 +60,7 @@ function onInit() {
     timeUnixNano: nowNanos(),
     attributes: attributes,
     severityNumber: LOG_SEVERITY_INFO,
+    severityText: LOG_SERVERITY_INFO_TEXT,
     body: {
       kvlistValue: {
         values: bodyAttributes,
@@ -95,6 +111,7 @@ function onLoaded() {
     timeUnixNano: nowNanos(),
     attributes: attributes,
     severityNumber: LOG_SEVERITY_INFO,
+    severityText: LOG_SERVERITY_INFO_TEXT,
     body: {
       kvlistValue: {
         values: bodyAttributes,
@@ -116,6 +133,6 @@ function addNavigationTiming(attributes: KeyValue[], nt: PerformanceNavigationTi
   // @ts-expect-error index access not recognized by TS, but this makes the code more reusable
   const value = nt[field];
   if (typeof value === "number" && !isNaN(value)) {
-    addAttribute(attributes, field, value);
+    addAttribute(attributes, field, Number.isInteger(value) ? value : roundToTwoDecimals(value));
   }
 }
