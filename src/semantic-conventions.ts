@@ -24,6 +24,7 @@ export const EXCEPTION_TYPE = "exception.type";
 export const EXCEPTION_STACKTRACE = "exception.stacktrace";
 
 // URL Attribute Keys
+export const URL_DOMAIN = "url.domain";
 export const URL_FRAGMENT = "url.fragment";
 export const URL_FULL = "url.full";
 export const URL_PATH = "url.path";

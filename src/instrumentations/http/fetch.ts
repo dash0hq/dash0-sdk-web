@@ -15,12 +15,12 @@ import {
 } from "../../utils/otel";
 import { addCommonSignalAttributes } from "../../add-common-signal-attributes";
 import {
-  COMPONENT,
   HTTP_REQUEST_METHOD,
   HTTP_REQUEST_METHOD_ORIGINAL,
   HTTP_RESPONSE_STATUS_CODE,
   SPAN_STATUS_ERROR,
   SPAN_STATUS_UNSET,
+  URL_DOMAIN,
   URL_FRAGMENT,
   URL_FULL,
   URL_PATH,
@@ -76,7 +76,6 @@ export function instrumentFetch() {
     const span = startSpan(`HTTP ${method}`);
     addCommonSignalAttributes(span.attributes);
     addGraphQlProperties(input, init, span);
-    addAttribute(span.attributes, COMPONENT, "fetch");
     addAttribute(span.attributes, HTTP_REQUEST_METHOD, method);
     if (!isWellKnownMethod) {
       addAttribute(span.attributes, HTTP_REQUEST_METHOD_ORIGINAL, originalMethod);
@@ -197,6 +196,7 @@ function addUrlAttributes(span: InProgressSpan, url: string) {
 
     addAttribute(span.attributes, URL_FULL, parsed.href);
     addAttribute(span.attributes, URL_PATH, parsed.pathname);
+    addAttribute(span.attributes, URL_DOMAIN, parsed.hostname);
     addAttribute(span.attributes, URL_SCHEME, parsed.protocol.replace(":", ""));
     if (parsed.hash) {
       addAttribute(span.attributes, URL_FRAGMENT, parsed.hash.replace("#", ""));

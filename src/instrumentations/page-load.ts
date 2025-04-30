@@ -1,12 +1,4 @@
-import {
-  addEventListener,
-  debug,
-  doc,
-  NO_VALUE_FALLBACK,
-  nowNanos,
-  win,
-  roundToTwoDecimals,
-} from "../utils";
+import { addEventListener, debug, doc, NO_VALUE_FALLBACK, nowNanos, win, roundToTwoDecimals } from "../utils";
 import { KeyValue, LogRecord } from "../../types/otlp";
 import {
   EVENT_NAME,
