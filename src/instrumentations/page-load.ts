@@ -1,4 +1,13 @@
-import { addAttribute, addEventListener, debug, doc, NO_VALUE_FALLBACK, nowNanos, win } from "../utils";
+import {
+  addAttribute,
+  addEventListener,
+  debug,
+  doc,
+  NO_VALUE_FALLBACK,
+  nowNanos,
+  win,
+  roundToTwoDecimals,
+} from "../utils";
 import { KeyValue, LogRecord } from "../../types/otlp";
 import {
   EVENT_NAME,
@@ -124,6 +133,6 @@ function addNavigationTiming(attributes: KeyValue[], nt: PerformanceNavigationTi
   // @ts-expect-error index access not recognized by TS, but this makes the code more reusable
   const value = nt[field];
   if (typeof value === "number" && !isNaN(value)) {
-    addAttribute(attributes, field, value);
+    addAttribute(attributes, field, Number.isInteger(value) ? value : roundToTwoDecimals(value));
   }
 }

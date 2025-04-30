@@ -11,3 +11,4 @@ export * from "./rate-limit";
 export * from "./time";
 export * from "./trace-context";
 export * from "./constants";
+export * from "./math";

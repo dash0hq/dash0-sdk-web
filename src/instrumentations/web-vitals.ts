@@ -1,7 +1,7 @@
 import { onLCP, onINP, onCLS, Metric } from "web-vitals";
 import { KeyValue, LogRecord } from "../../types/otlp";
 import { EVENT_NAME, LOG_SERVERITY_INFO_TEXT, LOG_SEVERITY_INFO, WEB_VITAL } from "../semantic-conventions";
-import { addAttribute, nowNanos } from "../utils";
+import { addAttribute, nowNanos, roundToTwoDecimals } from "../utils";
 import { sendLog } from "../transport";
 import { addCommonSignalAttributes } from "../add-common-signal-attributes";
 
@@ -17,8 +17,8 @@ function onWebVital(metric: Metric) {
 
   const bodyAttributes: KeyValue[] = [];
   addAttribute(bodyAttributes, "name", metric.name);
-  addAttribute(bodyAttributes, "value", metric.value);
-  addAttribute(bodyAttributes, "delta", metric.delta);
+  addAttribute(bodyAttributes, "value", roundToTwoDecimals(metric.value));
+  addAttribute(bodyAttributes, "delta", roundToTwoDecimals(metric.delta));
 
   const log: LogRecord = {
     timeUnixNano: nowNanos(),
