@@ -4,7 +4,6 @@ import serveIndex from "serve-index";
 import express from "express";
 import { v4 as uuidV4 } from "uuid";
 import path from "node:path";
-import { text } from "node:stream/consumers";
 
 const app = express();
 const servers = [];

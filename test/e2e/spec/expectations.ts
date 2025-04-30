@@ -1,4 +1,5 @@
 import { getBrowserLogs, getOTLPRequests } from "./shared";
+import { browser } from "@wdio/globals";
 
 export function expectOneMatching<T>(arr: T[], fn: (item: T) => void): T {
   if (!arr || arr.length === 0) {
@@ -59,6 +60,11 @@ export async function expectSpanCount(n: number) {
 }
 
 export function expectNoBrowserErrors() {
+  // bidi is required to subscribe to browser logs
+  if (!browser.isBidi) {
+    return;
+  }
+
   const errors = getBrowserLogs().filter(({ level }) => level === "error");
   expect(errors).toHaveLength(0);
 }

@@ -62,6 +62,13 @@ function handleLogEvent(event: BrowserLog) {
 
 async function subscribeToBrowserLogs() {
   browserLogs = [];
+  if (!browser.isBidi) {
+    console.log(
+      "Browser connection does not have a bidi session, browser logs are unavailable and expectations on them will implicitly pass"
+    );
+    return;
+  }
+
   await browser.sessionSubscribe({ events: ["log.entryAdded"] });
   browser.on("log.entryAdded", handleLogEvent);
 }
