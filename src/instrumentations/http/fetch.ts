@@ -67,9 +67,11 @@ export function instrumentFetch() {
     }
 
     // https://fetch.spec.whatwg.org/#concept-request-method
+    // We'll match methods case insensitive here to make the user experience a bit less painful
     const originalMethod = request.method ?? "GET";
     const isWellKnownMethod = isWellKnownHttpMethod(originalMethod);
-    const method = isWellKnownMethod ? originalMethod : HTTP_METHOD_OTHER;
+    const isWellKnownMethodMatchingLeniently = isWellKnownHttpMethod(originalMethod.toUpperCase());
+    const method = isWellKnownMethodMatchingLeniently ? originalMethod.toUpperCase() : HTTP_METHOD_OTHER;
 
     const span = startSpan(`HTTP ${method}`);
     addCommonSignalAttributes(span.attributes);
