@@ -73,5 +73,5 @@ export function addTraceContextHttpHeaders(
    * https://www.w3.org/TR/trace-context-2/#trace-flags
    * https://www.w3.org/TR/trace-context-2/#random-trace-id-flag
    */
-  fn.call(ctx, "traceparent", `00-0000000000000000${span.traceId}-${span.traceId}-03`);
+  fn.call(ctx, "traceparent", `00-${span.traceId}-${span.traceId}-03`);
 }

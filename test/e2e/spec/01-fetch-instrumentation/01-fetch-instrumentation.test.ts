@@ -35,7 +35,7 @@ describe("Fetch Instrumentation", () => {
           events: [
             {
               name: "fetchStart",
-              timeUnixNano: expect.stringMatching(/\n*/),
+              timeUnixNano: expect.stringMatching(/\d*/),
               attributes: [],
             },
             expect.objectContaining({ name: "domainLookupStart" }),

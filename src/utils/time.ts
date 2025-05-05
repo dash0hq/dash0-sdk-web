@@ -23,5 +23,5 @@ export function getTimeOrigin(): number {
 }
 
 export function domHRTimestampToNanos(ts: number): string {
-  return String(Math.round(ts * 1000));
+  return String(Math.round((ts + getTimeOrigin()) * 1000000));
 }
