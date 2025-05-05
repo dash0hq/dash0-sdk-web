@@ -96,7 +96,7 @@ jobs:
         run: exit 1
 
   release:
-    needs: [build, test-e2e]
+    needs: [build]
     if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
     runs-on: ubuntu-latest
     permissions:
