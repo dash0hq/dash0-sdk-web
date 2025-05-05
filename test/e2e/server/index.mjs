@@ -8,6 +8,8 @@ import path from "node:path";
 const app = express();
 const servers = [];
 
+app.use(express.text());
+
 app.use((_, res, next) => {
   res.set("Timing-Allow-Origin", "*");
   next();
@@ -16,7 +18,10 @@ app.use((_, res, next) => {
 app.use((req, res, next) => {
   if (req.query["cors"]) {
     res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Headers", "Authorization, Content-Encoding, Dash0-Dataset, Content-Type");
+    res.set(
+      "Access-Control-Allow-Headers",
+      "Authorization, Content-Encoding, Dash0-Dataset, Content-Type, traceparent"
+    );
   }
   next();
 });
@@ -24,6 +29,17 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   if (req.query["with-server-timing"]) {
     res.set("Server-Timing", "traceparent;desc=00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01");
+  }
+  next();
+});
+
+app.use(async (req, res, next) => {
+  if (req.query["assert-body"]) {
+    const body = req.body;
+
+    if (body != req.query["assert-body"]) {
+      return res.status(400).send(`Failed body assertion, got ${body}`);
+    }
   }
   next();
 });

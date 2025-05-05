@@ -1,8 +1,9 @@
 import { KeyValue } from "../types/otlp";
-import { addAttribute, nav, NO_VALUE_FALLBACK, win } from "./utils";
+import { nav, NO_VALUE_FALLBACK, win } from "./utils";
 import { NETWORK_CONNECTION_TYPE, SESSION_ID, URL_FULL, WINDOW_HEIGHT, WINDOW_WIDTH } from "./semantic-conventions";
 import { sessionId } from "./api/session";
 import { vars } from "./vars";
+import { addAttribute } from "./utils/otel";
 
 export function addCommonSignalAttributes(attributes: KeyValue[]): void {
   for (let i = 0; i < vars.signalAttributes.length; i++) {

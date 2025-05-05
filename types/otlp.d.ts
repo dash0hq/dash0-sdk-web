@@ -78,7 +78,7 @@ export type ScopeSpans = {
 
 export type SpanStatus = {
   message?: string;
-  code: number;
+  code: 0 | 1 | 2;
 };
 
 export type SpanEvent = {

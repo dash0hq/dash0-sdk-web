@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>fetch with zonejs test</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zone.js/0.9.1/zone.min.js"></script>
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: [
+          {
+            url: "http://127.0.0.1:5001?cors=true",
+            authToken: "auth_abc123",
+            dataset: "production",
+          },
+        ],
+        propagateTraceHeadersCorsURLs: [/http:\/\/127\.0\.0\.1:5002/],
+      });
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+    <script>
+      addEventListener("load", () => {
+        window.tasksScheduled = 0;
+        window.testZone = Zone.current.fork({
+          name: "testZone",
+          onScheduleTask(delegate, current, target, task) {
+            window.tasksScheduled++;
+            delegate.scheduleTask(target, task);
+          },
+        });
+      });
+      function onDoAFetch() {
+        window.testZone.run(() => {
+          fetch(`/ajax?cacheBust=${new Date().getTime()}`);
+          document.getElementById("tasksScheduled").textContent = window.tasksScheduled;
+        });
+        return fetch("/ajax");
+      }
+    </script>
+  </head>
+  <body>
+    <div id="tasksScheduled">0</div>
+    <button onclick="onDoAFetch()">Do A Fetch</button>
+  </body>
+</html>

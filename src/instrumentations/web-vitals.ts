@@ -1,9 +1,10 @@
 import { onLCP, onINP, onCLS, Metric } from "web-vitals";
 import { KeyValue, LogRecord } from "../../types/otlp";
 import { EVENT_NAME, LOG_SERVERITY_INFO_TEXT, LOG_SEVERITY_INFO, WEB_VITAL } from "../semantic-conventions";
-import { addAttribute, nowNanos, roundToTwoDecimals } from "../utils";
+import { nowNanos, roundToTwoDecimals } from "../utils";
 import { sendLog } from "../transport";
 import { addCommonSignalAttributes } from "../add-common-signal-attributes";
+import { addAttribute } from "../utils/otel";
 
 export function startWebVitalsInstrumentation() {
   onLCP(onWebVital);

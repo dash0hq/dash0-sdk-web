@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>fetch instrumentation test</title>
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: [
+          {
+            url: "http://127.0.0.1:5001?cors=true",
+            authToken: "auth_abc123",
+            dataset: "production",
+          },
+        ],
+        propagateTraceHeadersCorsURLs: [/http:\/\/127\.0\.0\.1:5002/],
+        headersToCapture: [/x-test-header/],
+        ignoreUrls: [/you-cant-see-this/],
+      });
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+    <script>
+      const deepFreeze = (obj) => {
+        if (obj && typeof obj === "object" && !Object.isFrozen(obj)) {
+          Object.freeze(obj);
+          Object.getOwnPropertyNames(obj).forEach((prop) => deepFreeze(obj[prop]));
+        }
+        return obj;
+      };
+
+      function onSameOriginFetch() {
+        return fetch(
+          "/ajax?thisIsA=test#someFragment",
+          deepFreeze({ headers: new Headers({ "x-test-header": "this is a green test" }) })
+        );
+      }
+
+      function onCrossOriginFetch() {
+        return fetch("http://127.0.0.1:5002/ajax?cors=true", { method: "POST" });
+      }
+
+      function onFetchWithRequest() {
+        return fetch(
+          deepFreeze(
+            new Request(`/ajax?cacheBust=${new Date().getTime()}`, {
+              method: "POST",
+              headers: new Headers({
+                "x-test-header": "this is a yellow test",
+              }),
+            })
+          )
+        );
+      }
+
+      function onFetchWithRequestAndInit() {
+        const req = deepFreeze(new Request(`/ajax?cacheBust=${new Date().getTime()}`));
+        return fetch(
+          req,
+          deepFreeze({
+            method: "POST",
+            headers: new Headers({
+              "x-test-header": "is this test green or yellow?",
+            }),
+          })
+        );
+      }
+
+      function onFetchWithIgnoredUrl() {
+        return fetch("/ajax?you-cant-see-this");
+      }
+
+      function onFailingFetch() {
+        return fetch("boom://nothing-here");
+      }
+
+      function onFetchWithBodyFromInit() {
+        return fetch("/ajax?assert-body=this_is_an_important_message", {
+          method: "POST",
+          body: "this_is_an_important_message",
+        });
+      }
+
+      function onFetchWithBodyFromRequest() {
+        const req = new Request("/ajax?assert-body=this_is_also_an_important_message", {
+          method: "POST",
+          body: "this_is_also_an_important_message",
+        });
+        return fetch(req);
+      }
+    </script>
+  </head>
+  <body>
+    <button onclick="onSameOriginFetch()">Same Origin Fetch</button>
+    <button onclick="onCrossOriginFetch()">Cross Origin Fetch</button>
+    <button onclick="onFetchWithRequest()">Fetch With Request Object</button>
+    <button onclick="onFetchWithRequestAndInit()">Fetch With Request and Init</button>
+    <button onclick="onFetchWithIgnoredUrl()">Fetch With Ignored URL</button>
+    <button onclick="onFailingFetch()">Failing Fetch</button>
+    <button onclick="onFetchWithBodyFromInit()">Fetch With Body From Init</button>
+    <button onclick="onFetchWithBodyFromRequest()">Fetch With Body From Request</button>
+  </body>
+</html>

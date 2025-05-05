@@ -8,6 +8,9 @@ export type WindowType = typeof window;
 export const win: typeof window | undefined = typeof window !== "undefined" ? window : undefined;
 export const doc: typeof window.document | undefined = win?.document;
 export const nav: typeof navigator | undefined = win?.navigator;
+export const loc: typeof location | undefined = typeof location !== "undefined" ? location : undefined;
+export const perf =
+  win?.performance || (win as any)?.webkitPerformance || (win as any)?.msPerformance || (win as any)?.mozPerformance;
 export const encodeURIComponent: ((arg: string) => string) | undefined = win?.encodeURIComponent;
 export const fetch = win?.fetch;
 export const localStorage: Storage | null = (function () {

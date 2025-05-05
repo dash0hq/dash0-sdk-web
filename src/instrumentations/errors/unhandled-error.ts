@@ -1,5 +1,5 @@
 import { KeyValue, LogRecord } from "../../../types/otlp";
-import { addAttribute, hasOwnProperty, nowNanos, win } from "../../utils";
+import { hasOwnProperty, nowNanos, win } from "../../utils";
 import { ErrorLike, ReportErrorOpts } from "../../../types/errors";
 import { isErrorMessageIgnored } from "../../utils/ignore-rules";
 import { sendLog } from "../../transport";
@@ -12,6 +12,7 @@ import {
   LOG_SEVERITY_ERROR,
   LOG_SEVERITY_ERROR_TEXT,
 } from "../../semantic-conventions";
+import { addAttribute } from "../../utils/otel";
 
 type TrackedError = {
   seenCount: number;

@@ -1,4 +1,4 @@
-import { perf } from "./performance";
+import { perf } from "./globals";
 
 export function now(): number {
   return new Date().getTime();
@@ -20,4 +20,8 @@ export function getTimeOrigin(): number {
     timeOrigin = perf?.timing?.fetchStart;
   }
   return timeOrigin;
+}
+
+export function domHRTimestampToNanos(ts: number): string {
+  return String(Math.round((ts + getTimeOrigin()) * 1000000));
 }

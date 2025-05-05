@@ -73,6 +73,34 @@ type Vars = {
    * stability.
    */
   wrapTimers: boolean;
+
+  /**
+   * An array of URL regular expressions
+   * for which trace context headers should be sent across origins by http client instrumentations.
+   */
+  propagateTraceHeadersCorsURLs: RegExp[];
+
+  /**
+   * How long to wait after an XMLHttpRequest or fetch request has finished
+   * for the retrieval of resource timing data. Performance timeline events
+   * are placed on the low priority task queue and therefore high values
+   * might be necessary.
+   */
+  maxWaitForResourceTimingsMillis: number;
+
+  /**
+   * The number of milliseconds added to endTime so that performanceEntry is
+   * available before endTime and backendTraceId does not become undefined for
+   * xhr beacons
+   */
+  maxToleranceForResourceTimingsMillis: number;
+
+  /**
+   * A set of regular expressions that will be matched against HTTP headers to be
+   * captured in `XMLHttpRequest` and `fetch` Instrumentations.
+   * These headers will be transferred as span attributes
+   */
+  headersToCapture: RegExp[];
 };
 
 export const vars: Vars = {
@@ -90,4 +118,8 @@ export const vars: Vars = {
   ignoreErrorMessages: [],
   wrapEventHandlers: true,
   wrapTimers: true,
+  propagateTraceHeadersCorsURLs: [],
+  maxWaitForResourceTimingsMillis: 10000,
+  maxToleranceForResourceTimingsMillis: 3000,
+  headersToCapture: [],
 };

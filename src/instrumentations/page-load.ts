@@ -1,13 +1,4 @@
-import {
-  addAttribute,
-  addEventListener,
-  debug,
-  doc,
-  NO_VALUE_FALLBACK,
-  nowNanos,
-  win,
-  roundToTwoDecimals,
-} from "../utils";
+import { addEventListener, debug, doc, NO_VALUE_FALLBACK, nowNanos, win, roundToTwoDecimals } from "../utils";
 import { KeyValue, LogRecord } from "../../types/otlp";
 import {
   EVENT_NAME,
@@ -17,7 +8,7 @@ import {
   PAGE_VIEW,
 } from "../semantic-conventions";
 import { sendLog } from "../transport";
-import { getTraceContextForPageLoad } from "../utils/trace-context";
+import { getTraceContextForPageLoad, addAttribute } from "../utils/otel";
 import { addCommonSignalAttributes } from "../add-common-signal-attributes";
 
 /**

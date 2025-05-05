@@ -1,5 +1,6 @@
-import { doc } from "./globals";
-import { perf } from "./performance";
+import { doc } from "../globals";
+import { perf } from "../globals";
+import { InProgressSpan } from "./span";
 
 const TRACE_PARENT_HEADER = "traceparent";
 
@@ -56,4 +57,21 @@ function getTraceparentFromServerTiming(serverTimings: readonly PerformanceServe
   }
 
   return "";
+}
+
+export function addTraceContextHttpHeaders(
+  fn: (name: string, value: string) => void,
+  ctx: unknown,
+  span: InProgressSpan
+) {
+  /**
+   * The following code supports W3C trace context headers, ensuring compatibility with OpenTelemetry (OTel).
+   * The "03" flag at the end indicates that the trace was randomly generated and is not sampled from the client.
+   * If the trace generation method changes in the future, remove the "03" flag from the end.
+   *
+   * References:
+   * https://www.w3.org/TR/trace-context-2/#trace-flags
+   * https://www.w3.org/TR/trace-context-2/#random-trace-id-flag
+   */
+  fn.call(ctx, "traceparent", `00-${span.traceId}-${span.traceId}-03`);
 }
