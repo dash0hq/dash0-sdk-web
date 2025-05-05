@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.0.8...0.1.0) (2025-05-05)
+
+### Features
+
+- fetch instrumentation ([#5](https://github.com/dash0hq/dash0-sdk-web/issues/5)) ([06dc689](https://github.com/dash0hq/dash0-sdk-web/commit/06dc6896461c7578a798d1ea3c8b1b8d6685bd6f))
+
 ## [0.0.8](https://github.com/dash0hq/dash0-sdk-web/compare/0.0.7...0.0.8) (2025-04-30)
 
 ### Bug Fixes
