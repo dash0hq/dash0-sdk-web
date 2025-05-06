@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.1.0...0.1.1) (2025-05-06)
+
+### Bug Fixes
+
+- clarify traceparent header value and set right trace flags ([#8](https://github.com/dash0hq/dash0-sdk-web/issues/8)) ([c5ef4da](https://github.com/dash0hq/dash0-sdk-web/commit/c5ef4da2175a2c7ff29366d9a32c507d1959a30a))
+
 ## [0.1.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.0.8...0.1.0) (2025-05-05)
 
 ### Features
