@@ -65,13 +65,20 @@ export function addTraceContextHttpHeaders(
   span: InProgressSpan
 ) {
   /**
-   * The following code supports W3C trace context headers, ensuring compatibility with OpenTelemetry (OTel).
-   * The "03" flag at the end indicates that the trace was randomly generated and is not sampled from the client.
-   * If the trace generation method changes in the future, remove the "03" flag from the end.
+   * W3C Traceparent header.
+   * General format is ${version}-${trace-id}-${parent-id}-${trace-flags}
+   *
+   * The only spec'd version is currently 00
+   * Trace flags are an 8 bit field of bit flags:
+   * Sampled: 00000001 - Should only be set if a definite decision to record the trace was made.
+   * If set downstream processors should also record the trace
+   * Random Trace ID: 00000010 - IF set the component guarantees that the seven right most bytes of the trace-id
+   * are randomly generated. Downstream processors are then able to rely on this for technical things like shard keys.
    *
    * References:
+   * https://www.w3.org/TR/trace-context-2/#traceparent-header
    * https://www.w3.org/TR/trace-context-2/#trace-flags
    * https://www.w3.org/TR/trace-context-2/#random-trace-id-flag
    */
-  fn.call(ctx, "traceparent", `00-${span.traceId}-${span.traceId}-03`);
+  fn.call(ctx, "traceparent", `00-${span.traceId}-${span.traceId}-02`);
 }
