@@ -8,7 +8,7 @@
   "unpkg": "dist/dash0.iife.js",
   "exports": {
     ".": {
-      "types": "./dist/modules/index.d.ts",
+      "types": "./dist/types/entrypoint/npm-package.d.ts",
       "require": "./dist/dash0.umd.cjs",
       "default": "./dist/dash0.js"
     }
