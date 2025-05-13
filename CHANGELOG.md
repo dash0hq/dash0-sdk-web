@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.1.1...0.1.2) (2025-05-13)
+
+### Bug Fixes
+
+- types export to point to the correct file ([#9](https://github.com/dash0hq/dash0-sdk-web/issues/9)) ([faa766b](https://github.com/dash0hq/dash0-sdk-web/commit/faa766ba976deff017ca017a39003ae8b54b2ea8))
+
 ## [0.1.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.1.0...0.1.1) (2025-05-06)
 
 ### Bug Fixes
