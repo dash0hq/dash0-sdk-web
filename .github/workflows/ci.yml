@@ -76,9 +76,8 @@ jobs:
       - name: Run E2E test for ${{ matrix.capability }}
         run: pnpm run test:e2e
         env:
-          SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
-          SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
-          SAUCE_REGION: eu
+          LT_USERNAME: ${{ secrets.LT_USERNAME }}
+          LT_ACCESS_KEY: ${{ secrets.LT_ACCESS_KEY }}
           WDIO_SELECTED_CAPABILITIES: ${{ matrix.capability }}
 
   check-e2e-tests:

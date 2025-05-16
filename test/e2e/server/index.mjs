@@ -46,8 +46,9 @@ app.use(async (req, res, next) => {
 
 app.use((req, res, next) => {
   if (req.query["csp"]) {
+    const hostname = getServerHostname();
     const hosts = getServerPorts()
-      .map((p) => `http://127.0.0.1:${p}`)
+      .map((p) => `http://${hostname}:${p}`)
       .join(" ");
     res.set("Content-Security-Policy", `default-src ${hosts}; script-src 'unsafe-inline' ${hosts};`);
   }
@@ -192,6 +193,11 @@ function getServerPorts() {
     throw new Error("Required env var SERVER_PORTS is not defined");
   }
   return ports.split(",").map((v) => parseInt(v, 10));
+}
+
+function getServerHostname() {
+  const url = process.env["SERVER_BASE_URL"] || "http://127.0.0.1";
+  return new URL(url).hostname;
 }
 
 const shutdown = () => {
