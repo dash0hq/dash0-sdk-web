@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>error-instrumentation test</title>
+
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: {
+          url: `http://${window.location.hostname}:5001?cors=true`,
+          authToken: "auth_abc123",
+          dataset: "production",
+        },
+      });
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+    <script>
+      function onThrowUnhandledError() {
+        throw new Error("This is a hot potato");
+      }
+
+      function onUnhandledRejection() {
+        const p = new Promise((_, reject) => {
+          reject(new Error("This is a lava potato"));
+        });
+
+        p.then(console.log);
+      }
+
+      function onTriggerErrorInTimer() {
+        setTimeout(onThrowUnhandledError);
+      }
+
+      window.addEventListener("load", function () {
+        document.getElementById("event-handler-button").addEventListener("click", onThrowUnhandledError);
+      });
+    </script>
+  </head>
+  <body>
+    <button onclick="onThrowUnhandledError()">Throw unhandled error</button>
+    <button onclick="onUnhandledRejection()">Cause unhandled rejection</button>
+    <button id="event-handler-button">Throw error in event handler</button>
+    <button onclick="onTriggerErrorInTimer()">Trigger error in timeout</button>
+  </body>
+</html>
