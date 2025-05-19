@@ -1,0 +1,34 @@
+import { KeyValue } from "../../types/otlp";
+import { nav, NO_VALUE_FALLBACK, win } from "../utils";
+import { NETWORK_CONNECTION_TYPE, SESSION_ID, WINDOW_HEIGHT, WINDOW_WIDTH } from "../semantic-conventions";
+import { sessionId } from "../api/session";
+import { vars } from "../vars";
+import { addAttribute } from "../utils/otel";
+import { addUrlAttributes } from "./url";
+
+type Options = {
+  omitURLNamespace?: boolean;
+};
+
+export function addCommonAttributes(attributes: KeyValue[], options?: Options): void {
+  for (let i = 0; i < vars.signalAttributes.length; i++) {
+    attributes.push(vars.signalAttributes[i]!);
+  }
+
+  if (!options?.omitURLNamespace) {
+    addUrlAttributes(attributes, win?.location.href ?? NO_VALUE_FALLBACK);
+  }
+
+  if (sessionId) {
+    addAttribute(attributes, SESSION_ID, sessionId);
+  }
+
+  addAttribute(attributes, WINDOW_WIDTH, win?.innerWidth ?? NO_VALUE_FALLBACK);
+  addAttribute(attributes, WINDOW_HEIGHT, win?.innerHeight ?? NO_VALUE_FALLBACK);
+
+  // TypeScript is not aware of navigator.connection.effectiveType
+  const anyNav = nav as any;
+  if (anyNav["connection"] && anyNav["connection"]["effectiveType"]) {
+    addAttribute(attributes, NETWORK_CONNECTION_TYPE, anyNav["connection"]["effectiveType"]);
+  }
+}

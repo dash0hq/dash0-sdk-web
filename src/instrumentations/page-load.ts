@@ -9,7 +9,7 @@ import {
 } from "../semantic-conventions";
 import { sendLog } from "../transport";
 import { getTraceContextForPageLoad, addAttribute } from "../utils/otel";
-import { addCommonSignalAttributes } from "../add-common-signal-attributes";
+import { addCommonAttributes } from "../attributes";
 
 /**
  * Tracks page loads as per this OTel spec:
@@ -58,7 +58,7 @@ function onInit() {
       },
     },
   };
-  addCommonSignalAttributes(log.attributes);
+  addCommonAttributes(log.attributes);
 
   const traceContext = getTraceContextForPageLoad();
   if (traceContext) {
@@ -109,7 +109,7 @@ function onLoaded() {
       },
     },
   };
-  addCommonSignalAttributes(log.attributes);
+  addCommonAttributes(log.attributes);
 
   const traceContext = getTraceContextForPageLoad();
   if (traceContext) {
