@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.1.3...0.2.0) (2025-05-20)
+
+### Features
+
+- url attributes on events ([#11](https://github.com/dash0hq/dash0-sdk-web/issues/11)) ([abca409](https://github.com/dash0hq/dash0-sdk-web/commit/abca4091f1f06b09fa99226e0c94dbb22ca55afa))
+
 ## [0.1.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.1.2...0.1.3) (2025-05-20)
 
 ### Bug Fixes
