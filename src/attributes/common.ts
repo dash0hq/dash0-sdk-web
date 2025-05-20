@@ -26,9 +26,9 @@ export function addCommonAttributes(attributes: KeyValue[], options?: Options): 
   addAttribute(attributes, WINDOW_WIDTH, win?.innerWidth ?? NO_VALUE_FALLBACK);
   addAttribute(attributes, WINDOW_HEIGHT, win?.innerHeight ?? NO_VALUE_FALLBACK);
 
-  // TypeScript is not aware of navigator.connection.effectiveType
-  const anyNav = nav as any;
-  if (anyNav["connection"] && anyNav["connection"]["effectiveType"]) {
-    addAttribute(attributes, NETWORK_CONNECTION_TYPE, anyNav["connection"]["effectiveType"]);
+  // @ts-expect-error -- TypeScript is not aware of navigator.connection.effectiveType
+  const connectionType = nav?.connection?.effectiveType;
+  if (connectionType) {
+    addAttribute(attributes, NETWORK_CONNECTION_TYPE, connectionType);
   }
 }

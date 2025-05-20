@@ -35,6 +35,7 @@ describe("Page Load", () => {
               { key: "url.domain", value: { stringValue: expect.any(String) } },
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
               { key: "browser.window.height", value: { doubleValue: expect.any(Number) } },
+              { key: "the_answer", value: { doubleValue: 42 } },
             ]),
             body: {
               kvlistValue: {
@@ -83,6 +84,7 @@ describe("Page Load", () => {
               { key: "url.domain", value: { stringValue: expect.any(String) } },
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
               { key: "browser.window.height", value: { doubleValue: expect.any(Number) } },
+              { key: "the_answer", value: { doubleValue: 42 } },
             ]),
             body: {
               kvlistValue: {
