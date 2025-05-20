@@ -10,28 +10,21 @@ import {
   Exception,
   InProgressSpan,
   recordException,
-  removeAttribute,
   startSpan,
 } from "../../utils/otel";
-import { addCommonSignalAttributes } from "../../add-common-signal-attributes";
 import {
   HTTP_REQUEST_METHOD,
   HTTP_REQUEST_METHOD_ORIGINAL,
   HTTP_RESPONSE_STATUS_CODE,
   SPAN_STATUS_ERROR,
   SPAN_STATUS_UNSET,
-  URL_DOMAIN,
-  URL_FRAGMENT,
-  URL_FULL,
-  URL_PATH,
-  URL_QUERY,
-  URL_SCHEME,
 } from "../../semantic-conventions";
 import { isSameOrigin, parseUrl } from "../../utils/origin";
 import { vars } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
 import { sendSpan } from "../../transport";
 import { addResourceNetworkEvents, addResourceSize, HTTP_METHOD_OTHER, isWellKnownHttpMethod } from "./utils";
+import { addCommonAttributes, addUrlAttributes } from "../../attributes";
 
 export function instrumentFetch() {
   if (!win || !win.fetch || !win.Request) {
@@ -74,13 +67,14 @@ export function instrumentFetch() {
     const method = isWellKnownMethodMatchingLeniently ? originalMethod.toUpperCase() : HTTP_METHOD_OTHER;
 
     const span = startSpan(`HTTP ${method}`);
-    addCommonSignalAttributes(span.attributes);
+    // The url namespace of a http span has a different meaning than for common rum signals.
+    addCommonAttributes(span.attributes, { omitURLNamespace: true });
     addGraphQlProperties(input, init, span);
     addAttribute(span.attributes, HTTP_REQUEST_METHOD, method);
     if (!isWellKnownMethod) {
       addAttribute(span.attributes, HTTP_REQUEST_METHOD_ORIGINAL, originalMethod);
     }
-    addUrlAttributes(span, url);
+    addUrlAttributes(span.attributes, url);
 
     const shouldSetCorrelationHeaders = isSameOrigin(url) || matchesAny(vars.propagateTraceHeadersCorsURLs, url);
     if (shouldSetCorrelationHeaders) {
@@ -183,30 +177,6 @@ function addResponseData(span: InProgressSpan, response: Response) {
   setSpanStatus(span, status >= 200 && status < 400 ? SPAN_STATUS_UNSET : SPAN_STATUS_ERROR, response.statusText);
   addAttribute(span.attributes, HTTP_RESPONSE_STATUS_CODE, String(status));
   tryCaptureHttpHeaders(response.headers, span, (k) => httpResponseHeaderKey(k));
-}
-
-function addUrlAttributes(span: InProgressSpan, url: string) {
-  // url.full is already set to browser location with the common attributes
-  removeAttribute(span.attributes, URL_FULL);
-
-  try {
-    const parsed = parseUrl(url);
-    if (parsed.username) parsed.username = "REDACTED";
-    if (parsed.password) parsed.password = "REDACTED";
-
-    addAttribute(span.attributes, URL_FULL, parsed.href);
-    addAttribute(span.attributes, URL_PATH, parsed.pathname);
-    addAttribute(span.attributes, URL_DOMAIN, parsed.hostname);
-    addAttribute(span.attributes, URL_SCHEME, parsed.protocol.replace(":", ""));
-    if (parsed.hash) {
-      addAttribute(span.attributes, URL_FRAGMENT, parsed.hash.replace("#", ""));
-    }
-    if (parsed.search) {
-      addAttribute(span.attributes, URL_QUERY, parsed.search.replace("?", ""));
-    }
-  } catch (_e) {
-    /* Nothing to do if parsing fails */
-  }
 }
 
 function waitForFullResponse(response: Response): Promise<void> {

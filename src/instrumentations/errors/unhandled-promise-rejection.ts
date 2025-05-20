@@ -1,4 +1,5 @@
 import { win } from "../../utils";
+import { reportError } from "./unhandled-error";
 
 const MESSAGE_PREFIX = "Unhandled promise rejection: ";
 const STACK_UNAVAILABLE_MESSAGE = "<unavailable because Promise wasn't rejected with an Error object>";

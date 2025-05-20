@@ -3,7 +3,6 @@ import { hasOwnProperty, nowNanos, win } from "../../utils";
 import { ErrorLike, ReportErrorOpts } from "../../../types/errors";
 import { isErrorMessageIgnored } from "../../utils/ignore-rules";
 import { sendLog } from "../../transport";
-import { addCommonSignalAttributes } from "../../add-common-signal-attributes";
 import {
   EXCEPTION_COMPONENT_STACK,
   EXCEPTION_MESSAGE,
@@ -13,6 +12,7 @@ import {
   LOG_SEVERITY_ERROR_TEXT,
 } from "../../semantic-conventions";
 import { addAttribute } from "../../utils/otel";
+import { addCommonAttributes } from "../../attributes";
 
 type TrackedError = {
   seenCount: number;
@@ -127,7 +127,7 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
     if (opts?.componentStack) {
       addAttribute(attributes, EXCEPTION_COMPONENT_STACK, opts?.componentStack.substring(0, 2048));
     }
-    addCommonSignalAttributes(attributes);
+    addCommonAttributes(attributes);
 
     trackedError = {
       seenCount: 1,

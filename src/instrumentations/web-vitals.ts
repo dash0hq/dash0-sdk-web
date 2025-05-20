@@ -3,8 +3,8 @@ import { KeyValue, LogRecord } from "../../types/otlp";
 import { EVENT_NAME, LOG_SERVERITY_INFO_TEXT, LOG_SEVERITY_INFO, WEB_VITAL } from "../semantic-conventions";
 import { nowNanos, roundToTwoDecimals } from "../utils";
 import { sendLog } from "../transport";
-import { addCommonSignalAttributes } from "../add-common-signal-attributes";
 import { addAttribute } from "../utils/otel";
+import { addCommonAttributes } from "../attributes";
 
 export function startWebVitalsInstrumentation() {
   onLCP(onWebVital);
@@ -32,6 +32,6 @@ function onWebVital(metric: Metric) {
       },
     },
   };
-  addCommonSignalAttributes(log.attributes);
+  addCommonAttributes(log.attributes);
   sendLog(log);
 }
