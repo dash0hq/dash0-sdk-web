@@ -8,7 +8,7 @@ type CapabilityConfig = WebdriverIO.Config["capabilities"][number] & {
 };
 
 // Test are generally against stable, beta, and an oldest supported version.
-// Currently somewhat arbitrarily chosen based on browserslist > 0.2% not dead on 2025-04-17
+// Currently somewhat arbitrarily chosen based on what works with wdio/lambdatest without horribly exploding
 const allCapabilitities: Record<string, CapabilityConfig> = {
   "chrome-latest": {
     browserName: "chrome",
@@ -20,8 +20,7 @@ const allCapabilitities: Record<string, CapabilityConfig> = {
   },
   "chrome-baseline": {
     browserName: "chrome",
-    browserVersion: "109",
-    "wdio:enforceWebDriverClassic": true,
+    browserVersion: "128",
   },
   "firefox-latest": {
     browserName: "firefox",
@@ -33,8 +32,7 @@ const allCapabilitities: Record<string, CapabilityConfig> = {
   },
   "firefox-baseline": {
     browserName: "firefox",
-    browserVersion: "115",
-    "wdio:enforceWebDriverClassic": true,
+    browserVersion: "119",
   },
   "edge-latest": {
     browserName: "microsoftedge",
@@ -62,6 +60,7 @@ const allCapabilitities: Record<string, CapabilityConfig> = {
     "appium:deviceName": "iPhone Simulator",
     "appium:platformVersion": "current_major",
     "appium:automationName": "XCUITest",
+    enabled: false,
   },
   "safari-ios-baseline": {
     browserName: "safari",
@@ -69,6 +68,7 @@ const allCapabilitities: Record<string, CapabilityConfig> = {
     "appium:deviceName": "iPhone Simulator",
     "appium:platformVersion": "16.2",
     "appium:automationName": "XCUITest",
+    enabled: false,
   },
   // Android Devices seem to not work with proxied connections to localhost at the moment,
   // Information on this is unclear, so we'll disable them for now.
@@ -99,7 +99,7 @@ export function getCapabilityNames() {
 function getSelectedCapabilities() {
   const selected = (process.env["WDIO_SELECTED_CAPABILITIES"] ?? "").split(",");
 
-  if (!selected.length) {
+  if (!selected.length || selected[0] === "") {
     selected.push(...Object.keys(allCapabilitities));
   }
 
@@ -113,10 +113,8 @@ export const config: WebdriverIO.Config = {
   runner: "local",
   tsConfigPath: "./tsconfig.json",
 
-  user: process.env["SAUCE_USERNAME"],
-  key: process.env["SAUCE_ACCESS_KEY"],
-  // @ts-expect-error -- we currently don't validate env. Should be one of "eu" | "us"
-  region: process.env["SAUCE_REGION"],
+  user: process.env["LT_USERNAME"],
+  key: process.env["LT_ACCESS_KEY"],
   specs: ["./spec/**/*.test.ts"],
   exclude: [
     // 'path/to/excluded/files'
@@ -127,22 +125,16 @@ export const config: WebdriverIO.Config = {
 
   logLevel: "info",
   bail: 0,
-  baseUrl: "http://127.0.0.1:5001",
+  baseUrl: "http://localhost.lambdatest.com:5001",
   waitforTimeout: 10000,
   connectionRetryTimeout: 120000,
   connectionRetryCount: 3,
 
   services: [
-    [
-      "sauce",
-      {
-        sauceConnect: true,
-        sauceConnectOpts: {
-          proxyLocalhost: "allow",
-        },
-      },
-    ],
+    ["lambdatest", { tunnel: true, sessionNameOmitTestTitle: true, sessionNamePrependTopLevelSuiteTitle: true }],
   ],
+  // @ts-expect-error -- this is not inluded in the type, but required for lambdatest
+  product: "appAutomation",
 
   framework: "mocha",
 
@@ -160,6 +152,7 @@ export const config: WebdriverIO.Config = {
         env: {
           ...process.env,
           SERVER_PORTS: "5000,5001,5002",
+          SERVER_BASE_URL: config.baseUrl,
         },
       });
 

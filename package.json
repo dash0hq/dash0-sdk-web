@@ -90,6 +90,7 @@
     "@wdio/mocha-framework": "^9.12.5",
     "@wdio/sauce-service": "^9.12.5",
     "@wdio/spec-reporter": "^9.12.3",
+    "wdio-lambdatest-service": "^4.0.0",
     "body-parser": "^2.2.0",
     "eslint": "^9.24.0",
     "express": "^5.1.0",

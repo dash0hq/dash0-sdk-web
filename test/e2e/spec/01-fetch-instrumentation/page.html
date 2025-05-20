@@ -20,12 +20,12 @@
         environment: "prod",
         endpoint: [
           {
-            url: "http://127.0.0.1:5001?cors=true",
+            url: `http://${window.location.hostname}:5001?cors=true`,
             authToken: "auth_abc123",
             dataset: "production",
           },
         ],
-        propagateTraceHeadersCorsURLs: [/http:\/\/127\.0\.0\.1:5002/],
+        propagateTraceHeadersCorsURLs: [new RegExp(`http:\/\/${window.location.hostname.replace(".", "\.")}:5002`)],
         headersToCapture: [/x-test-header/],
         ignoreUrls: [/you-cant-see-this/],
       });
@@ -48,7 +48,7 @@
       }
 
       function onCrossOriginFetch() {
-        return fetch("http://127.0.0.1:5002/ajax?cors=true", { method: "POST" });
+        return fetch(`http://${window.location.hostname}:5002/ajax?cors=true`, { method: "POST" });
       }
 
       function onFetchWithRequest() {

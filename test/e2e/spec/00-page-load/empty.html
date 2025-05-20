@@ -20,7 +20,7 @@
         serviceVersion: "1.2.3",
         environment: "prod",
         endpoint: {
-          url: "http://127.0.0.1:5001?cors=true",
+          url: `http://${window.location.hostname}:5001?cors=true`,
           authToken: "auth_abc123",
           dataset: "production",
         },

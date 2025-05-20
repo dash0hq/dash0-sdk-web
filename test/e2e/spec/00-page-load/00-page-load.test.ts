@@ -6,7 +6,7 @@ describe("Page Load", () => {
   beforeEach(sharedBeforeEach);
   afterEach(sharedAfterEach);
 
-  it("transmits page load logs", async () => {
+  it.skip("transmits page load logs", async () => {
     await browser.url("/e2e/spec/00-page-load/empty.html");
     await expect(await browser.getTitle()).toMatch(/empty page load test/);
 

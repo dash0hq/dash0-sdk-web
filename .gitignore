@@ -1,6 +1,7 @@
 ### Project Specifics
 /dist/
 .npmrc
+.lambdatest
 
 ### VisualStudioCode template
 .vscode/*

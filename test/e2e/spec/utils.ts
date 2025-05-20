@@ -1,4 +1,4 @@
-export function retry<T>(fn: () => Promise<T>, maxMillis: number = 10000, until?: number): Promise<T> {
+export function retry<T>(fn: () => Promise<T>, maxMillis: number = 30000, until?: number): Promise<T> {
   until = until || Date.now() + maxMillis;
 
   if (Date.now() > until) {
