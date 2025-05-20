@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.2.0...0.3.0) (2025-05-20)
+
+### Features
+
+- custom attributes ([#12](https://github.com/dash0hq/dash0-sdk-web/issues/12)) ([3f45cdd](https://github.com/dash0hq/dash0-sdk-web/commit/3f45cddfaaf787ab60654655a958a35d281c745c))
+
 ## [0.2.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.1.3...0.2.0) (2025-05-20)
 
 ### Features
