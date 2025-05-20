@@ -19,6 +19,9 @@
         serviceName: "dash0.com",
         serviceVersion: "1.2.3",
         environment: "prod",
+        additionalSignalAttributes: {
+          the_answer: 42,
+        },
         endpoint: {
           url: `http://${window.location.hostname}:5001?cors=true`,
           authToken: "auth_abc123",

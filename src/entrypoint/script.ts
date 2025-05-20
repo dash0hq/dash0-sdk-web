@@ -5,6 +5,7 @@ import { identify } from "../api/identify";
 import { debug as debugApi } from "../api/debug";
 import { init as initApi } from "../api/init";
 import { terminateSession } from "../api/session";
+import { addSignalAttribute, removeSignalAttribute } from "../api/attributes";
 
 /**
  * All the APIs exposed through the script tag via `dash0('{{api name}}')`
@@ -15,6 +16,8 @@ const scriptApis = {
   identify,
   terminateSession,
   reportError,
+  addSignalAttribute,
+  removeSignalAttribute,
 } as const;
 
 type GlobalObject = {

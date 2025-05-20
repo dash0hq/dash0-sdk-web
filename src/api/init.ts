@@ -13,11 +13,17 @@ import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { startErrorInstrumentation } from "../instrumentations/errors";
 import { addAttribute } from "../utils/otel";
 import { instrumentFetch } from "../instrumentations/http/fetch";
+import { AnyValue } from "../../types/otlp";
 
 export type InitOptions = {
   serviceName: string;
   serviceVersion?: string;
   environment?: string;
+
+  /**
+   * Additional attributes to include with transmitted signals
+   */
+  additionalSignalAttributes?: Record<string, string | number | AnyValue>;
 
   /**
    * OTLP endpoints to which the generated telemetry should be sent to.
@@ -137,7 +143,7 @@ export function init(opts: InitOptions) {
   vars.headersToCapture = opts.headersToCapture ?? vars.headersToCapture;
 
   initializeResourceAttributes(opts);
-  initializeSignalAttributes();
+  initializeSignalAttributes(opts);
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
   startPageLoadInstrumentation();
   startWebVitalsInstrumentation();
@@ -158,9 +164,15 @@ function initializeResourceAttributes(opts: InitOptions) {
   }
 }
 
-function initializeSignalAttributes() {
+function initializeSignalAttributes(opts: InitOptions) {
   addAttribute(vars.signalAttributes, PAGE_LOAD_ID, generateUniqueId(PAGE_LOAD_ID_BYTES));
   addAttribute(vars.signalAttributes, USER_AGENT, nav?.userAgent ?? NO_VALUE_FALLBACK);
+
+  if (opts.additionalSignalAttributes) {
+    Object.entries(opts.additionalSignalAttributes).forEach(([key, value]) => {
+      addAttribute(vars.signalAttributes, key, value);
+    });
+  }
 }
 
 function isSupported() {

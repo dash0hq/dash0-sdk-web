@@ -31,6 +31,7 @@ describe("Fetch Instrumentation", () => {
             { key: "http.response.status_code", value: { stringValue: "200" } },
             { key: "http.response.body.size", value: { doubleValue: expect.any(Number) } },
             { key: "http.request.header.x-test-header", value: { stringValue: "this is a green test" } },
+            { key: "the_answer", value: { doubleValue: 42 } },
           ]),
           events: [
             {
