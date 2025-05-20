@@ -21,6 +21,8 @@ export type InitOptions = {
   serviceName: string;
   serviceVersion?: string;
   environment?: string;
+  deploymentName?: string;
+  deploymentId?: string;
 
   /**
    * Additional attributes to include with transmitted signals
@@ -167,12 +169,12 @@ function initializeResourceAttributes(opts: InitOptions) {
     addAttribute(vars.resource.attributes, DEPLOYMENT_ENVIRONMENT_NAME, env);
   }
 
-  const deploymentName = detectDeploymentName();
+  const deploymentName = detectDeploymentName(opts);
   if (deploymentName) {
     addAttribute(vars.resource.attributes, DEPLOYMENT_NAME, deploymentName);
   }
 
-  const deploymentId = detectDeploymentId();
+  const deploymentId = detectDeploymentId(opts);
   if (deploymentId) {
     addAttribute(vars.resource.attributes, DEPLOYMENT_ID, deploymentId);
   }
@@ -203,19 +205,45 @@ function detectEnvironment(opts: InitOptions): string | undefined {
     return opts.environment;
   }
 
-  // vercel
-  // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
-  return process?.env?.NEXT_PUBLIC_VERCEL_ENV;
+  // if process isn't defined access to it causes an exception, but we can't check for its present due to how
+  // plugins like webpack define work.
+  try {
+    // vercel
+    // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
+    return process?.env?.NEXT_PUBLIC_VERCEL_ENV;
+  } catch (_ignored) {
+    return undefined;
+  }
 }
 
-function detectDeploymentName(): string | undefined {
-  // vercel
-  // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
-  return process?.env?.NEXT_PUBLIC_VERCEL_TARGET_ENV;
+function detectDeploymentName(opts: InitOptions): string | undefined {
+  if (opts.deploymentName) {
+    return opts.deploymentName;
+  }
+
+  // if process isn't defined access to it causes an exception, but we can't check for its present due to how
+  // plugins like webpack define work.
+  try {
+    // vercel
+    // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
+    return process?.env?.NEXT_PUBLIC_VERCEL_TARGET_ENV;
+  } catch (_ignored) {
+    return undefined;
+  }
 }
 
-function detectDeploymentId(): string | undefined {
-  // vercel
-  // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
-  return process?.env?.NEXT_PUBLIC_VERCEL_BRANCH_URL;
+function detectDeploymentId(opts: InitOptions): string | undefined {
+  if (opts.deploymentId) {
+    return opts.deploymentId;
+  }
+
+  // if process isn't defined access to it causes an exception, but we can't check for its present due to how
+  // plugins like webpack define work.
+  try {
+    // vercel
+    // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
+    return process?.env?.NEXT_PUBLIC_VERCEL_BRANCH_URL;
+  } catch (_ignored) {
+    return undefined;
+  }
 }
