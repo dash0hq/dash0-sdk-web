@@ -1,6 +1,8 @@
 import { Endpoint, vars } from "../vars";
 import {
   DEPLOYMENT_ENVIRONMENT_NAME,
+  DEPLOYMENT_ID,
+  DEPLOYMENT_NAME,
   PAGE_LOAD_ID,
   SERVICE_NAME,
   SERVICE_VERSION,
@@ -159,8 +161,20 @@ function initializeResourceAttributes(opts: InitOptions) {
   if (opts.serviceVersion) {
     addAttribute(vars.resource.attributes, SERVICE_VERSION, opts["serviceVersion"]);
   }
-  if (opts.environment) {
-    addAttribute(vars.resource.attributes, DEPLOYMENT_ENVIRONMENT_NAME, opts["environment"]);
+
+  const env = detectEnvironment(opts);
+  if (env) {
+    addAttribute(vars.resource.attributes, DEPLOYMENT_ENVIRONMENT_NAME, env);
+  }
+
+  const deploymentName = detectDeploymentName();
+  if (deploymentName) {
+    addAttribute(vars.resource.attributes, DEPLOYMENT_NAME, deploymentName);
+  }
+
+  const deploymentId = detectDeploymentId();
+  if (deploymentId) {
+    addAttribute(vars.resource.attributes, DEPLOYMENT_ID, deploymentId);
   }
 }
 
@@ -181,4 +195,27 @@ function isSupported() {
 
 function isClient() {
   return win != null;
+}
+
+function detectEnvironment(opts: InitOptions): string | undefined {
+  // if there is a manually specified value we use that
+  if (opts.environment) {
+    return opts.environment;
+  }
+
+  // vercel
+  // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
+  return process?.env?.NEXT_PUBLIC_VERCEL_ENV;
+}
+
+function detectDeploymentName(): string | undefined {
+  // vercel
+  // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
+  return process?.env?.NEXT_PUBLIC_VERCEL_TARGET_ENV;
+}
+
+function detectDeploymentId(): string | undefined {
+  // vercel
+  // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
+  return process?.env?.NEXT_PUBLIC_VERCEL_BRANCH_URL;
 }

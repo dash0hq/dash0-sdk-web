@@ -2,6 +2,8 @@
 export const SERVICE_NAME = "service.name";
 export const SERVICE_VERSION = "service.version";
 export const DEPLOYMENT_ENVIRONMENT_NAME = "deployment.environment.name";
+export const DEPLOYMENT_NAME = "deployment.name";
+export const DEPLOYMENT_ID = "deployment.id";
 
 // Signal Attribute Keys
 export const EVENT_NAME = "event.name";
