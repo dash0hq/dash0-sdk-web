@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.1.2...0.1.3) (2025-05-20)
+
+### Bug Fixes
+
+- run e2e tests with lambdatest ([#10](https://github.com/dash0hq/dash0-sdk-web/issues/10)) ([d400810](https://github.com/dash0hq/dash0-sdk-web/commit/d400810e3822c7d0098f579e71d53ad8b0939975))
+
 ## [0.1.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.1.1...0.1.2) (2025-05-13)
 
 ### Bug Fixes
