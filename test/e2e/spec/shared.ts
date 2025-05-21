@@ -71,6 +71,7 @@ async function subscribeToBrowserLogs() {
 
   await browser.sessionSubscribe({ events: ["log.entryAdded"] });
   browser.on("log.entryAdded", handleLogEvent);
+  await browser.execute(() => console.log("Subscribed to browser logs"));
 }
 
 function unsubscribeFromBrowserLogs() {
