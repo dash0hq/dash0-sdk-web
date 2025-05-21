@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.3.0...0.3.1) (2025-05-21)
+
+### Bug Fixes
+
+- properly support array attributes ([#14](https://github.com/dash0hq/dash0-sdk-web/issues/14)) ([61cf57b](https://github.com/dash0hq/dash0-sdk-web/commit/61cf57b5cbf4e503393d0c3af9b746002b38a81f))
+
 ## [0.3.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.2.0...0.3.0) (2025-05-20)
 
 ### Features
