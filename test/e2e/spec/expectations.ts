@@ -85,8 +85,6 @@ export function expectNoBrowserErrors() {
     return;
   }
 
-  console.log("all browser logs", JSON.stringify(getBrowserLogs(), null, 2));
-
   const errors = getBrowserLogs().filter(({ level }) => level === "error");
   expect(errors).toHaveLength(0);
 }

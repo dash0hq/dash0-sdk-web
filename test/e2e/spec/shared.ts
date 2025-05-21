@@ -1,5 +1,6 @@
 import { ExportLogsServiceRequest, ExportTraceServiceRequest } from "../../../types/otlp";
 import { browser } from "@wdio/globals";
+import { INIT_MESSAGE } from "../../../src/utils";
 
 type BrowserLog = {
   level: string;
@@ -53,7 +54,19 @@ export async function clearAjaxRequests() {
 }
 
 export function getBrowserLogs() {
-  return browserLogs;
+  // We ignore all logs that happen before the dash0 sdk is starting initialization.
+  // This is because the e2e tooling can in some rare conditions cause errors on browser init.
+  let initTs: number | undefined = undefined;
+  return browserLogs.filter(({ timestamp, text }) => {
+    if (initTs != undefined) return true;
+
+    if (text?.includes(INIT_MESSAGE)) {
+      initTs = timestamp;
+      return true;
+    }
+
+    return false;
+  });
 }
 
 function handleLogEvent(event: BrowserLog) {
@@ -71,7 +84,6 @@ async function subscribeToBrowserLogs() {
 
   await browser.sessionSubscribe({ events: ["log.entryAdded"] });
   browser.on("log.entryAdded", handleLogEvent);
-  await browser.execute(() => console.log("Subscribed to browser logs"));
 }
 
 function unsubscribeFromBrowserLogs() {
