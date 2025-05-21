@@ -1,18 +1,28 @@
 import { AnyValue, KeyValue } from "../../../types/otlp";
 
-export function toKeyValue(key: string, value: string | number | AnyValue): KeyValue {
+type AttributeValueType = string | number | boolean | Array<string | number | boolean>;
+
+function toAnyValue(value: AttributeValueType | AnyValue): AnyValue {
   let anyValue: AnyValue = {};
-  if (typeof value === "string") {
+  if (Array.isArray(value)) {
+    anyValue["arrayValue"] = { values: value.map((e) => toAnyValue(e)) };
+  } else if (typeof value === "string") {
     anyValue["stringValue"] = value;
   } else if (typeof value === "number") {
     anyValue["doubleValue"] = value;
+  } else if (typeof value === "boolean") {
+    anyValue["boolValue"] = value;
   } else {
     anyValue = value;
   }
 
+  return anyValue;
+}
+
+export function toKeyValue(key: string, value: AttributeValueType | AnyValue): KeyValue {
   return {
     key: key,
-    value: anyValue,
+    value: toAnyValue(value),
   };
 }
 
