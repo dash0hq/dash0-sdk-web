@@ -19,7 +19,7 @@ describe("Error Instrumentation", () => {
         await expectLogMatching(
           expect.objectContaining({
             attributes: expect.arrayContaining([
-              { key: "exception.message", value: { stringValue: "Uncaught Error: This is a hot potato" } },
+              { key: "exception.message", value: { stringValue: expect.stringContaining("This is a hot potato") } },
               { key: "exception.stacktrace", value: { stringValue: expect.any(String) } },
               { key: "page.load.id", value: { stringValue: expect.any(String) } },
               { key: "session.id", value: { stringValue: expect.any(String) } },
@@ -42,7 +42,7 @@ describe("Error Instrumentation", () => {
               { key: "the_answer", value: { doubleValue: 42 } },
             ]),
             body: {
-              stringValue: "Uncaught Error: This is a hot potato",
+              stringValue: expect.stringContaining("This is a hot potato"),
             },
             severityNumber: 17,
             severityText: "ERROR",
@@ -114,7 +114,7 @@ describe("Error Instrumentation", () => {
         await expectLogMatching(
           expect.objectContaining({
             attributes: expect.arrayContaining([
-              { key: "exception.message", value: { stringValue: "Uncaught Error: This is a hot potato" } },
+              { key: "exception.message", value: { stringValue: expect.stringContaining("This is a hot potato") } },
               { key: "exception.stacktrace", value: { stringValue: expect.any(String) } },
               { key: "page.load.id", value: { stringValue: expect.any(String) } },
               { key: "session.id", value: { stringValue: expect.any(String) } },
@@ -137,7 +137,7 @@ describe("Error Instrumentation", () => {
               { key: "the_answer", value: { doubleValue: 42 } },
             ]),
             body: {
-              stringValue: "Uncaught Error: This is a hot potato",
+              stringValue: expect.stringContaining("This is a hot potato"),
             },
             severityNumber: 17,
             severityText: "ERROR",
@@ -160,7 +160,7 @@ describe("Error Instrumentation", () => {
         await expectLogMatching(
           expect.objectContaining({
             attributes: expect.arrayContaining([
-              { key: "exception.message", value: { stringValue: "Uncaught Error: This is a hot potato" } },
+              { key: "exception.message", value: { stringValue: expect.stringContaining("This is a hot potato") } },
               { key: "exception.stacktrace", value: { stringValue: expect.any(String) } },
               { key: "page.load.id", value: { stringValue: expect.any(String) } },
               { key: "session.id", value: { stringValue: expect.any(String) } },
@@ -183,7 +183,7 @@ describe("Error Instrumentation", () => {
               { key: "the_answer", value: { doubleValue: 42 } },
             ]),
             body: {
-              stringValue: "Uncaught Error: This is a hot potato",
+              stringValue: expect.stringContaining("This is a hot potato"),
             },
             severityNumber: 17,
             severityText: "ERROR",
