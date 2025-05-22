@@ -30,6 +30,8 @@
     "test:e2e": "wdio run ./test/e2e/wdio.conf.ts",
     "test:e2e:local": "wdio run ./test/e2e/wdio.local.conf.ts",
     "test:e2e:server": "SERVER_PORTS='5000,5001,5002' node test/e2e/server/index.mjs",
+    "test:e2e:tunnel": "dotenv -- bash -c './.lambdatest/v3/LT --user $LT_USERNAME --key $LT_ACCESS_KEY'",
+    "test:e2e:live": "run-p test:e2e:server test:e2e:tunnel",
     "test:coverage": "vitest run --coverage",
     "ci": "run-s lint prettier:check test:unit build",
     "prepare": "husky",
@@ -73,6 +75,7 @@
     "web-vitals": "^4.2.4"
   },
   "devDependencies": {
+    "dotenv-cli": "^8.0.0",
     "@release-it/conventional-changelog": "^10.0.1",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-replace": "^6.0.2",

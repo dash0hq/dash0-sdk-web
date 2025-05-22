@@ -2,6 +2,7 @@ import { sharedAfterEach, sharedBeforeEach } from "../shared";
 import { browser } from "@wdio/globals";
 import { retry } from "../utils";
 import { expectLogMatching } from "../expectations";
+import { generateUniqueId } from "../../../../src/utils";
 
 describe("Error Instrumentation", () => {
   beforeEach(sharedBeforeEach);
@@ -9,7 +10,8 @@ describe("Error Instrumentation", () => {
 
   describe("on unhandled error", () => {
     it("transmits error logs", async () => {
-      await browser.url("/e2e/spec/03-error-instrumentation/page.html?thisIs=aTest#someFragment");
+      const testId = generateUniqueId(16);
+      await browser.url(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
       await expect(await browser.getTitle()).toMatch(/error-instrumentation test/);
 
       const btn = await $("button=Throw unhandled error");
@@ -19,7 +21,7 @@ describe("Error Instrumentation", () => {
         await expectLogMatching(
           expect.objectContaining({
             attributes: expect.arrayContaining([
-              { key: "exception.message", value: { stringValue: "Uncaught Error: This is a hot potato" } },
+              { key: "exception.message", value: { stringValue: expect.stringContaining("This is a hot potato") } },
               { key: "exception.stacktrace", value: { stringValue: expect.any(String) } },
               { key: "page.load.id", value: { stringValue: expect.any(String) } },
               { key: "session.id", value: { stringValue: expect.any(String) } },
@@ -28,13 +30,13 @@ describe("Error Instrumentation", () => {
                 key: "url.full",
                 value: {
                   stringValue: expect.stringContaining(
-                    "/e2e/spec/03-error-instrumentation/page.html?thisIs=aTest#someFragment"
+                    `/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`
                   ),
                 },
               },
               { key: "url.path", value: { stringValue: "/e2e/spec/03-error-instrumentation/page.html" } },
               { key: "url.fragment", value: { stringValue: "someFragment" } },
-              { key: "url.query", value: { stringValue: "thisIs=aTest" } },
+              { key: "url.query", value: { stringValue: `testId=${testId}` } },
               { key: "url.scheme", value: { stringValue: expect.any(String) } },
               { key: "url.domain", value: { stringValue: expect.any(String) } },
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
@@ -42,7 +44,7 @@ describe("Error Instrumentation", () => {
               { key: "the_answer", value: { doubleValue: 42 } },
             ]),
             body: {
-              stringValue: "Uncaught Error: This is a hot potato",
+              stringValue: expect.stringContaining("This is a hot potato"),
             },
             severityNumber: 17,
             severityText: "ERROR",
@@ -55,7 +57,8 @@ describe("Error Instrumentation", () => {
 
   describe("on unhandled rejection", () => {
     it("transmits error logs", async () => {
-      await browser.url("/e2e/spec/03-error-instrumentation/page.html?thisIs=aTest#someFragment");
+      const testId = generateUniqueId(16);
+      await browser.url(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
       await expect(await browser.getTitle()).toMatch(/error-instrumentation test/);
 
       const btn = await $("button=Cause unhandled rejection");
@@ -77,13 +80,13 @@ describe("Error Instrumentation", () => {
                 key: "url.full",
                 value: {
                   stringValue: expect.stringContaining(
-                    "/e2e/spec/03-error-instrumentation/page.html?thisIs=aTest#someFragment"
+                    `/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`
                   ),
                 },
               },
               { key: "url.path", value: { stringValue: "/e2e/spec/03-error-instrumentation/page.html" } },
               { key: "url.fragment", value: { stringValue: "someFragment" } },
-              { key: "url.query", value: { stringValue: "thisIs=aTest" } },
+              { key: "url.query", value: { stringValue: `testId=${testId}` } },
               { key: "url.scheme", value: { stringValue: expect.any(String) } },
               { key: "url.domain", value: { stringValue: expect.any(String) } },
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
@@ -104,7 +107,8 @@ describe("Error Instrumentation", () => {
 
   describe("on error in event handler", () => {
     it("transmits error logs", async () => {
-      await browser.url("/e2e/spec/03-error-instrumentation/page.html?thisIs=aTest#someFragment");
+      const testId = generateUniqueId(16);
+      await browser.url(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
       await expect(await browser.getTitle()).toMatch(/error-instrumentation test/);
 
       const btn = await $("button=Throw error in event handler");
@@ -114,7 +118,7 @@ describe("Error Instrumentation", () => {
         await expectLogMatching(
           expect.objectContaining({
             attributes: expect.arrayContaining([
-              { key: "exception.message", value: { stringValue: "Uncaught Error: This is a hot potato" } },
+              { key: "exception.message", value: { stringValue: expect.stringContaining("This is a hot potato") } },
               { key: "exception.stacktrace", value: { stringValue: expect.any(String) } },
               { key: "page.load.id", value: { stringValue: expect.any(String) } },
               { key: "session.id", value: { stringValue: expect.any(String) } },
@@ -123,13 +127,13 @@ describe("Error Instrumentation", () => {
                 key: "url.full",
                 value: {
                   stringValue: expect.stringContaining(
-                    "/e2e/spec/03-error-instrumentation/page.html?thisIs=aTest#someFragment"
+                    `/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`
                   ),
                 },
               },
               { key: "url.path", value: { stringValue: "/e2e/spec/03-error-instrumentation/page.html" } },
               { key: "url.fragment", value: { stringValue: "someFragment" } },
-              { key: "url.query", value: { stringValue: "thisIs=aTest" } },
+              { key: "url.query", value: { stringValue: `testId=${testId}` } },
               { key: "url.scheme", value: { stringValue: expect.any(String) } },
               { key: "url.domain", value: { stringValue: expect.any(String) } },
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
@@ -137,7 +141,7 @@ describe("Error Instrumentation", () => {
               { key: "the_answer", value: { doubleValue: 42 } },
             ]),
             body: {
-              stringValue: "Uncaught Error: This is a hot potato",
+              stringValue: expect.stringContaining("This is a hot potato"),
             },
             severityNumber: 17,
             severityText: "ERROR",
@@ -150,7 +154,8 @@ describe("Error Instrumentation", () => {
 
   describe("on error in timer", () => {
     it("transmits error logs", async () => {
-      await browser.url("/e2e/spec/03-error-instrumentation/page.html?thisIs=aTest#someFragment");
+      const testId = generateUniqueId(16);
+      await browser.url(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
       await expect(await browser.getTitle()).toMatch(/error-instrumentation test/);
 
       const btn = await $("button=Trigger error in timeout");
@@ -160,7 +165,7 @@ describe("Error Instrumentation", () => {
         await expectLogMatching(
           expect.objectContaining({
             attributes: expect.arrayContaining([
-              { key: "exception.message", value: { stringValue: "Uncaught Error: This is a hot potato" } },
+              { key: "exception.message", value: { stringValue: expect.stringContaining("This is a hot potato") } },
               { key: "exception.stacktrace", value: { stringValue: expect.any(String) } },
               { key: "page.load.id", value: { stringValue: expect.any(String) } },
               { key: "session.id", value: { stringValue: expect.any(String) } },
@@ -169,13 +174,13 @@ describe("Error Instrumentation", () => {
                 key: "url.full",
                 value: {
                   stringValue: expect.stringContaining(
-                    "/e2e/spec/03-error-instrumentation/page.html?thisIs=aTest#someFragment"
+                    `/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`
                   ),
                 },
               },
               { key: "url.path", value: { stringValue: "/e2e/spec/03-error-instrumentation/page.html" } },
               { key: "url.fragment", value: { stringValue: "someFragment" } },
-              { key: "url.query", value: { stringValue: "thisIs=aTest" } },
+              { key: "url.query", value: { stringValue: `testId=${testId}` } },
               { key: "url.scheme", value: { stringValue: expect.any(String) } },
               { key: "url.domain", value: { stringValue: expect.any(String) } },
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
@@ -183,7 +188,7 @@ describe("Error Instrumentation", () => {
               { key: "the_answer", value: { doubleValue: 42 } },
             ]),
             body: {
-              stringValue: "Uncaught Error: This is a hot potato",
+              stringValue: expect.stringContaining("This is a hot potato"),
             },
             severityNumber: 17,
             severityText: "ERROR",

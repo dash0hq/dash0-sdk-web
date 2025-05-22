@@ -2,6 +2,8 @@ import { sharedAfterEach, sharedBeforeEach } from "../shared";
 import { retry } from "../utils";
 import { expectLogMatching, expectNoBrowserErrors } from "../expectations";
 import { browser } from "@wdio/globals";
+import { generateUniqueId } from "../../../../src/utils";
+import { supportsNavTimingResponseStatus } from "../browser-compat";
 
 describe("Page Load", () => {
   beforeEach(sharedBeforeEach);
@@ -9,9 +11,8 @@ describe("Page Load", () => {
 
   describe("page load events", () => {
     it("transmits page load logs", async () => {
-      await browser.url("/e2e/spec/00-page-load/empty.html?thisIs=aTest#someFragment");
-      // make sure we actually have a new page load. urls with fragments don't always trigger a new navigation
-      await browser.refresh();
+      const testId = generateUniqueId(16);
+      await browser.url(`/e2e/spec/00-page-load/empty.html?testId=${testId}#someFragment`);
       await expect(await browser.getTitle()).toMatch(/empty page load test/);
 
       await retry(async () => {
@@ -25,12 +26,14 @@ describe("Page Load", () => {
               {
                 key: "url.full",
                 value: {
-                  stringValue: expect.stringContaining("/e2e/spec/00-page-load/empty.html?thisIs=aTest#someFragment"),
+                  stringValue: expect.stringContaining(
+                    `/e2e/spec/00-page-load/empty.html?testId=${testId}#someFragment`
+                  ),
                 },
               },
               { key: "url.path", value: { stringValue: "/e2e/spec/00-page-load/empty.html" } },
               { key: "url.fragment", value: { stringValue: "someFragment" } },
-              { key: "url.query", value: { stringValue: "thisIs=aTest" } },
+              { key: "url.query", value: { stringValue: `testId=${testId}` } },
               { key: "url.scheme", value: { stringValue: expect.any(String) } },
               { key: "url.domain", value: { stringValue: expect.any(String) } },
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
@@ -58,9 +61,8 @@ describe("Page Load", () => {
 
   describe("navigation timing events", () => {
     it("transmits navigation timing logs", async () => {
-      await browser.url("/e2e/spec/00-page-load/empty.html?thisIs=aTest#someFragment");
-      // make sure we actually have a new page load. urls with fragments don't always trigger a new navigation
-      await browser.refresh();
+      const testId = generateUniqueId(16);
+      await browser.url(`/e2e/spec/00-page-load/empty.html?testId=${testId}#someFragment`);
       await expect(await browser.getTitle()).toMatch(/empty page load test/);
 
       await retry(async () => {
@@ -74,12 +76,14 @@ describe("Page Load", () => {
               {
                 key: "url.full",
                 value: {
-                  stringValue: expect.stringContaining("/e2e/spec/00-page-load/empty.html?thisIs=aTest#someFragment"),
+                  stringValue: expect.stringContaining(
+                    `/e2e/spec/00-page-load/empty.html?testId=${testId}#someFragment`
+                  ),
                 },
               },
               { key: "url.path", value: { stringValue: "/e2e/spec/00-page-load/empty.html" } },
               { key: "url.fragment", value: { stringValue: "someFragment" } },
-              { key: "url.query", value: { stringValue: "thisIs=aTest" } },
+              { key: "url.query", value: { stringValue: `testId=${testId}` } },
               { key: "url.scheme", value: { stringValue: expect.any(String) } },
               { key: "url.domain", value: { stringValue: expect.any(String) } },
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
@@ -90,7 +94,9 @@ describe("Page Load", () => {
               kvlistValue: {
                 values: expect.arrayContaining([
                   { key: "name", value: { stringValue: expect.any(String) } },
-                  { key: "responseStatus", value: { doubleValue: 200 } },
+                  ...(supportsNavTimingResponseStatus()
+                    ? [{ key: "responseStatus", value: { doubleValue: 200 } }]
+                    : []),
                   { key: "fetchStart", value: { doubleValue: expect.any(Number) } },
                   { key: "requestStart", value: { doubleValue: expect.any(Number) } },
                   { key: "responseStart", value: { doubleValue: expect.any(Number) } },

@@ -1,4 +1,4 @@
-import { win, debug, warn } from "../utils";
+import { win, debug, warn, INIT_MESSAGE } from "../utils";
 
 import { reportError } from "../api/report-error";
 import { identify } from "../api/identify";
@@ -31,7 +31,7 @@ type GlobalObject = {
 init();
 
 function init(): void {
-  debug("Initializing Dash0 Web SDK (via Script)");
+  debug(`${INIT_MESSAGE} (via Script)`);
 
   const globalObject: GlobalObject = (win as any)["dash0"] as GlobalObject;
 
