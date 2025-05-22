@@ -2,15 +2,21 @@ import { sharedAfterEach, sharedBeforeEach } from "../shared";
 import { browser } from "@wdio/globals";
 import { retry } from "../utils";
 import { expectLogMatching, expectNoBrowserErrors } from "../expectations";
+import { generateUniqueId } from "../../../../src/utils";
+import { supportsLCPWebVital } from "../browser-compat";
 
 describe("Web Vitals", () => {
   beforeEach(sharedBeforeEach);
   afterEach(sharedAfterEach);
 
-  it("transmits web vitals logs", async () => {
-    await browser.url("/e2e/spec/02-web-vitals/page.html?thisIs=aTest#someFragment");
-    // make sure we actually have a new page load. urls with fragments don't always trigger a new navigation
-    await browser.refresh();
+  // the classic function usage is important here, otherwise this.skip won't be available
+  it("transmits web vitals logs", async function () {
+    if (!supportsLCPWebVital()) {
+      this.skip();
+    }
+
+    const testId = generateUniqueId(16);
+    await browser.url(`/e2e/spec/02-web-vitals/page.html?testId=${testId}#someFragment`);
     await expect(await browser.getTitle()).toMatch(/web-vitals test/);
 
     // We need some interaction to trigger the web vital calculation
@@ -28,12 +34,12 @@ describe("Web Vitals", () => {
             {
               key: "url.full",
               value: {
-                stringValue: expect.stringContaining("/e2e/spec/02-web-vitals/page.html?thisIs=aTest#someFragment"),
+                stringValue: expect.stringContaining(`/e2e/spec/02-web-vitals/page.html?testId=${testId}#someFragment`),
               },
             },
             { key: "url.path", value: { stringValue: "/e2e/spec/02-web-vitals/page.html" } },
             { key: "url.fragment", value: { stringValue: "someFragment" } },
-            { key: "url.query", value: { stringValue: "thisIs=aTest" } },
+            { key: "url.query", value: { stringValue: `testId=${testId}` } },
             { key: "url.scheme", value: { stringValue: expect.any(String) } },
             { key: "url.domain", value: { stringValue: expect.any(String) } },
             { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
