@@ -43,7 +43,7 @@
 
       function onSameOriginFetch() {
         return fetch(
-          "/ajax?thisIsA=test#someFragment",
+          "/ajax?thisIsA=test",
           deepFreeze({ headers: new Headers({ "x-test-header": "this is a green test" }) })
         );
       }
