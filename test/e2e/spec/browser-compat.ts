@@ -11,3 +11,9 @@ export function supportsLCPWebVital() {
 
   return browserName?.toLowerCase() !== "firefox" && parseInt(browserVersion ?? "0") > 119;
 }
+
+export function supportsExceptionStacktrace() {
+  const { browserName } = browser.capabilities;
+
+  return browserName?.toLowerCase() !== "safari";
+}
