@@ -1,6 +1,6 @@
 import { AnyValue, KeyValue } from "../../../types/otlp";
 
-type AttributeValueType = string | number | boolean | Array<string | number | boolean>;
+export type AttributeValueType = string | number | boolean | Array<string | number | boolean>;
 
 function toAnyValue(value: AttributeValueType | AnyValue): AnyValue {
   let anyValue: AnyValue = {};
@@ -26,7 +26,7 @@ export function toKeyValue(key: string, value: AttributeValueType | AnyValue): K
   };
 }
 
-export function addAttribute(attributes: KeyValue[], key: string, value: string | number | AnyValue) {
+export function addAttribute(attributes: KeyValue[], key: string, value: AttributeValueType | AnyValue) {
   attributes.push(toKeyValue(key, value));
 }
 

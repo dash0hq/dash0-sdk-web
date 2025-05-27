@@ -5,12 +5,8 @@ export const DEPLOYMENT_ENVIRONMENT_NAME = "deployment.environment.name";
 export const DEPLOYMENT_NAME = "deployment.name";
 export const DEPLOYMENT_ID = "deployment.id";
 
-// Signal Attribute Keys
+// Misc Signal Attribute Keys
 export const EVENT_NAME = "event.name";
-export const USER_ID = "user.id";
-export const USER_NAME = "user.name";
-export const USER_FULL_NAME = "user.full_name";
-export const USER_EMAIL = "user.email";
 export const PAGE_LOAD_ID = "page.load.id";
 export const SESSION_ID = "session.id";
 export const USER_AGENT = "user_agent.original";
@@ -18,7 +14,14 @@ export const WINDOW_WIDTH = "browser.window.width";
 export const WINDOW_HEIGHT = "browser.window.height";
 export const NETWORK_CONNECTION_TYPE = "network.connection.subtype";
 export const EXCEPTION_COMPONENT_STACK = "exception.component_stack";
-export const COMPONENT = "component";
+
+// User Attribute Keys
+export const USER_ID = "user.id";
+export const USER_NAME = "user.name";
+export const USER_FULL_NAME = "user.full_name";
+export const USER_EMAIL = "user.email";
+export const USER_HASH = "user.hash";
+export const USER_ROLES = "user.roles";
 
 // Exception Attribute Keys
 export const EXCEPTION_MESSAGE = "exception.message";
