@@ -1,11 +1,13 @@
 import { vars } from "../vars";
 import { addAttribute, removeAttribute } from "../utils/otel";
-import { USER_EMAIL, USER_FULL_NAME, USER_ID, USER_NAME } from "../semantic-conventions";
+import { USER_EMAIL, USER_FULL_NAME, USER_HASH, USER_ID, USER_NAME, USER_ROLES } from "../semantic-conventions";
 
 type IdentifyOpts = {
   name?: string;
   fullName?: string;
   email?: string;
+  hash?: string;
+  roles?: string[];
 };
 
 export function identify(id?: string, opts?: IdentifyOpts) {
@@ -27,5 +29,15 @@ export function identify(id?: string, opts?: IdentifyOpts) {
   removeAttribute(vars.signalAttributes, USER_EMAIL);
   if (opts?.email != null) {
     addAttribute(vars.signalAttributes, USER_EMAIL, opts.email);
+  }
+
+  removeAttribute(vars.signalAttributes, USER_HASH);
+  if (opts?.hash != null) {
+    addAttribute(vars.signalAttributes, USER_HASH, opts.hash);
+  }
+
+  removeAttribute(vars.signalAttributes, USER_ROLES);
+  if (opts?.roles != null) {
+    addAttribute(vars.signalAttributes, USER_ROLES, opts.roles);
   }
 }
