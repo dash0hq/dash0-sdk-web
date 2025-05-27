@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.3.2...0.3.3) (2025-05-27)
+
+### Bug Fixes
+
+- **sdk:** Added compat helper to detect support for stacktraces in exceptions ([770c8e7](https://github.com/dash0hq/dash0-sdk-web/commit/770c8e722292afd94804f1b123a7a482d0626e05))
+- **sdk:** Removed fragment assertion from tests ([db71703](https://github.com/dash0hq/dash0-sdk-web/commit/db717037491db46af752bfd57f79d9faa5d89c33))
+
 ## [0.3.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.3.1...0.3.2) (2025-05-22)
 
 ## [0.3.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.3.0...0.3.1) (2025-05-21)
