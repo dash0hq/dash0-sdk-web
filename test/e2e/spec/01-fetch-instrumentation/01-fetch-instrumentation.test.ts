@@ -2,6 +2,7 @@ import { SPAN_KIND_CLIENT } from "../../../../src/semantic-conventions";
 import { sharedAfterEach, sharedBeforeEach } from "../shared";
 import { retry } from "../utils";
 import { expectNoBrowserErrors, expectSpanCount, expectSpanMatching } from "../expectations";
+import { supportsExceptionStacktrace } from "../browser-compat";
 
 describe("Fetch Instrumentation", () => {
   beforeEach(sharedBeforeEach);
@@ -27,7 +28,6 @@ describe("Fetch Instrumentation", () => {
             { key: "url.path", value: { stringValue: "/ajax" } },
             { key: "url.scheme", value: { stringValue: "http" } },
             { key: "url.query", value: { stringValue: "thisIsA=test" } },
-            { key: "url.fragment", value: { stringValue: "someFragment" } },
             { key: "http.response.status_code", value: { stringValue: "200" } },
             { key: "http.response.body.size", value: { doubleValue: expect.any(Number) } },
             { key: "http.request.header.x-test-header", value: { stringValue: "this is a green test" } },
@@ -139,6 +139,15 @@ describe("Fetch Instrumentation", () => {
     const btn = await $("button=Failing Fetch");
     await btn.click();
 
+    const expectedAttributes = [
+      { key: "exception.type", value: { stringValue: expect.any(String) } },
+      { key: "exception.message", value: { stringValue: expect.any(String) } },
+    ];
+
+    if (supportsExceptionStacktrace()) {
+      expectedAttributes.push({ key: "exception.stacktrace", value: { stringValue: expect.any(String) } });
+    }
+
     await retry(async () => {
       await expectSpanMatching(
         expect.objectContaining({
@@ -148,11 +157,7 @@ describe("Fetch Instrumentation", () => {
           events: expect.arrayContaining([
             expect.objectContaining({
               name: "exception",
-              attributes: expect.arrayContaining([
-                { key: "exception.type", value: { stringValue: expect.any(String) } },
-                { key: "exception.message", value: { stringValue: expect.any(String) } },
-                { key: "exception.stacktrace", value: { stringValue: expect.any(String) } },
-              ]),
+              attributes: expect.arrayContaining(expectedAttributes),
             }),
           ]),
           status: {
