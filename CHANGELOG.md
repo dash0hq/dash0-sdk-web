@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.3.3...0.3.4) (2025-05-27)
+
+### Bug Fixes
+
+- support all user attributes on identify ([#16](https://github.com/dash0hq/dash0-sdk-web/issues/16)) ([e8e8e7d](https://github.com/dash0hq/dash0-sdk-web/commit/e8e8e7deec7fe61b8d01deda5561b5c44c577fb2))
+
 ## [0.3.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.3.2...0.3.3) (2025-05-27)
 
 ### Bug Fixes
