@@ -26,6 +26,10 @@ function isAnyValue(value: unknown): value is AnyValue {
 export function toAnyValue(value: AttributeValueType | AnyValue): AnyValue;
 export function toAnyValue(value?: AttributeValueType | AnyValue): AnyValue | undefined;
 export function toAnyValue(value?: AttributeValueType | AnyValue): AnyValue | undefined {
+  if (value == null) {
+    return undefined;
+  }
+
   let anyValue: AnyValue = {};
   if (Array.isArray(value)) {
     anyValue["arrayValue"] = { values: value.map((e) => toAnyValue(e)) };
