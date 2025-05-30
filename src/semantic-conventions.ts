@@ -51,10 +51,17 @@ export const WEB_VITAL = "browser.web_vital";
 export const EVENT_NAME_EXCEPTION = "exception";
 
 // Log Severities
-export const LOG_SEVERITY_INFO = 9;
-export const LOG_SERVERITY_INFO_TEXT = "INFO";
-export const LOG_SEVERITY_ERROR = 17;
-export const LOG_SEVERITY_ERROR_TEXT = "ERROR";
+export const LOG_SEVERITIES = {
+  UNSPECIFIED: 0,
+  TRACE: 1,
+  DEBUG: 5,
+  INFO: 9,
+  WARN: 13,
+  ERROR: 17,
+  FATAL: 21,
+};
+export type LOG_SEVERITY_TEXT = keyof typeof LOG_SEVERITIES;
+export type LOG_SEVERITY_NUMBER = (typeof LOG_SEVERITIES)[LOG_SEVERITY_TEXT];
 
 // Span Status
 export const SPAN_STATUS_UNSET = 0;

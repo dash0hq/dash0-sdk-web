@@ -1,12 +1,6 @@
 import { addEventListener, debug, doc, NO_VALUE_FALLBACK, nowNanos, win, roundToTwoDecimals } from "../utils";
 import { KeyValue, LogRecord } from "../../types/otlp";
-import {
-  EVENT_NAME,
-  LOG_SERVERITY_INFO_TEXT,
-  LOG_SEVERITY_INFO,
-  NAVIGATION_TIMING,
-  PAGE_VIEW,
-} from "../semantic-conventions";
+import { EVENT_NAME, LOG_SEVERITIES, NAVIGATION_TIMING, PAGE_VIEW } from "../semantic-conventions";
 import { sendLog } from "../transport";
 import { getTraceContextForPageLoad, addAttribute } from "../utils/otel";
 import { addCommonAttributes } from "../attributes";
@@ -50,8 +44,8 @@ function onInit() {
   const log: LogRecord = {
     timeUnixNano: nowNanos(),
     attributes: attributes,
-    severityNumber: LOG_SEVERITY_INFO,
-    severityText: LOG_SERVERITY_INFO_TEXT,
+    severityNumber: LOG_SEVERITIES.INFO,
+    severityText: "INFO",
     body: {
       kvlistValue: {
         values: bodyAttributes,
@@ -101,8 +95,8 @@ function onLoaded() {
   const log: LogRecord = {
     timeUnixNano: nowNanos(),
     attributes: attributes,
-    severityNumber: LOG_SEVERITY_INFO,
-    severityText: LOG_SERVERITY_INFO_TEXT,
+    severityNumber: LOG_SEVERITIES.INFO,
+    severityText: "INFO",
     body: {
       kvlistValue: {
         values: bodyAttributes,

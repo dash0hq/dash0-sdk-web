@@ -6,6 +6,7 @@ import { debug as debugApi } from "../api/debug";
 import { init as initApi } from "../api/init";
 import { terminateSession } from "../api/session";
 import { addSignalAttribute, removeSignalAttribute } from "../api/attributes";
+import { sendEvent } from "../api/events";
 
 /**
  * All the APIs exposed through the script tag via `dash0('{{api name}}')`
@@ -18,6 +19,7 @@ const scriptApis = {
   reportError,
   addSignalAttribute,
   removeSignalAttribute,
+  sendEvent,
 } as const;
 
 type GlobalObject = {
@@ -74,8 +76,7 @@ function processQueuedApiCall(apiCall: IArguments) {
 }
 
 function addApiCallAfterInitializationSupport() {
-  const globalObjectName = (win as any)["dash0"];
-  (win as any)[globalObjectName] = function () {
+  (win as any)["dash0"] = function () {
     return processQueuedApiCall(arguments as any);
   };
 }
