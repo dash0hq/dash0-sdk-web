@@ -8,8 +8,7 @@ import {
   EXCEPTION_MESSAGE,
   EXCEPTION_STACKTRACE,
   EXCEPTION_TYPE,
-  LOG_SEVERITY_ERROR,
-  LOG_SEVERITY_ERROR_TEXT,
+  LOG_SEVERITIES,
 } from "../../semantic-conventions";
 import { addAttribute } from "../../utils/otel";
 import { addCommonAttributes } from "../../attributes";
@@ -135,8 +134,8 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
       log: {
         timeUnixNano: nowNanos(),
         attributes: attributes,
-        severityNumber: LOG_SEVERITY_ERROR,
-        severityText: LOG_SEVERITY_ERROR_TEXT,
+        severityNumber: LOG_SEVERITIES.ERROR,
+        severityText: "ERROR",
         body: {
           stringValue: message,
         },

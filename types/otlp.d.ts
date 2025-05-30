@@ -1,3 +1,5 @@
+import { LOG_SEVERITY_NUMBER, LOG_SEVERITY_TEXT } from "../src/semantic-conventions";
+
 export type AnyValue = {
   ["stringValue"]?: string;
   ["boolValue"]?: boolean;
@@ -52,8 +54,8 @@ export type ScopeLogs = {
 export type LogRecord = {
   /** Format: uint64 */
   timeUnixNano: string;
-  severityNumber?: number;
-  severityText?: string;
+  severityNumber?: LOG_SEVERITY_NUMBER;
+  severityText?: LOG_SEVERITY_TEXT;
   body?: AnyValue;
   attributes: KeyValue[];
   /** Format: byte */

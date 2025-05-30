@@ -1,5 +1,7 @@
 import { perf } from "./globals";
 
+export type TimeInput = number | Date;
+
 export function now(): number {
   return new Date().getTime();
 }
@@ -10,8 +12,16 @@ export function nowNanos(): string {
     return String((perf.now() + timeOrigin) * 1000000);
   }
 
+  return toNanosTs(new Date());
+}
+
+export function toNanosTs(time: TimeInput): string {
+  if (typeof time === "object") {
+    return toNanosTs(time.getTime());
+  }
+
   // We don't multiply, because we want to keep number precision
-  return String(new Date().getTime()) + "000000";
+  return String(time) + "000000";
 }
 
 export function getTimeOrigin(): number {
