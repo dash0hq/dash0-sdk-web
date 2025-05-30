@@ -1,9 +1,9 @@
-import { addEventListener, debug, doc, NO_VALUE_FALLBACK, nowNanos, win, roundToTwoDecimals } from "../utils";
-import { KeyValue, LogRecord } from "../../types/otlp";
-import { EVENT_NAME, LOG_SEVERITIES, NAVIGATION_TIMING, PAGE_VIEW } from "../semantic-conventions";
-import { sendLog } from "../transport";
-import { getTraceContextForPageLoad, addAttribute } from "../utils/otel";
-import { addCommonAttributes } from "../attributes";
+import { addEventListener, debug, doc, NO_VALUE_FALLBACK, nowNanos, win, roundToTwoDecimals } from "../../utils";
+import { KeyValue, LogRecord } from "../../../types/otlp";
+import { EVENT_NAME, LOG_SEVERITIES, NAVIGATION_TIMING, PAGE_VIEW } from "../../semantic-conventions";
+import { sendLog } from "../../transport";
+import { getTraceContextForPageLoad, addAttribute } from "../../utils/otel";
+import { addCommonAttributes } from "../../attributes";
 
 /**
  * Tracks page loads as per this OTel spec:

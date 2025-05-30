@@ -10,12 +10,12 @@ import {
 } from "../semantic-conventions";
 import { fetch, generateUniqueId, PAGE_LOAD_ID_BYTES, warn, debug, perf, nav, win, NO_VALUE_FALLBACK } from "../utils";
 import { trackSessions } from "./session";
-import { startPageLoadInstrumentation } from "../instrumentations/page-load";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { startErrorInstrumentation } from "../instrumentations/errors";
 import { addAttribute } from "../utils/otel";
 import { instrumentFetch } from "../instrumentations/http/fetch";
 import { AnyValue } from "../../types/otlp";
+import { startNavigationInstrumentation } from "../instrumentations/navigation";
 import { initializeTabId } from "../utils/tab-id";
 
 export type InitOptions = {
@@ -151,7 +151,7 @@ export function init(opts: InitOptions) {
   initializeSignalAttributes(opts);
   initializeTabId();
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
-  startPageLoadInstrumentation();
+  startNavigationInstrumentation();
   startWebVitalsInstrumentation();
   startErrorInstrumentation();
   instrumentFetch();
