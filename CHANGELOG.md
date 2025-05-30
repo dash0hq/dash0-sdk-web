@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.4.2...0.4.3) (2025-05-30)
+
+### Bug Fixes
+
+- remove duplicated event name ([#20](https://github.com/dash0hq/dash0-sdk-web/issues/20)) ([52bec7f](https://github.com/dash0hq/dash0-sdk-web/commit/52bec7f7e7b2da04f06198a4ee69397440cd0139))
+
 ## [0.4.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.4.1...0.4.2) (2025-05-30)
 
 ### Bug Fixes
