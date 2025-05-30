@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.4.0...0.4.1) (2025-05-30)
+
+### Bug Fixes
+
+- expose send event api for module build ([#18](https://github.com/dash0hq/dash0-sdk-web/issues/18)) ([20a7c23](https://github.com/dash0hq/dash0-sdk-web/commit/20a7c23540497451abffcc5b3c7c771c19bba2da))
+
 ## [0.4.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.3.4...0.4.0) (2025-05-30)
 
 ### Features
