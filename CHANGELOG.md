@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.3.4...0.4.0) (2025-05-30)
+
+### Features
+
+- add support for custom events ([#17](https://github.com/dash0hq/dash0-sdk-web/issues/17)) ([51fa4d2](https://github.com/dash0hq/dash0-sdk-web/commit/51fa4d287cab9ecbadec99a3f69bed1735e4f41a))
+
 ## [0.3.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.3.3...0.3.4) (2025-05-27)
 
 ### Bug Fixes
