@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.4.1...0.4.2) (2025-05-30)
+
+### Bug Fixes
+
+- dont make users create otel type objects for events ([#19](https://github.com/dash0hq/dash0-sdk-web/issues/19)) ([5d3b8c0](https://github.com/dash0hq/dash0-sdk-web/commit/5d3b8c0cc2c687475dd50465b986e94ae796f870))
+
 ## [0.4.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.4.0...0.4.1) (2025-05-30)
 
 ### Bug Fixes
