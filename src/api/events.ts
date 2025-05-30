@@ -7,7 +7,6 @@ import { nowNanos, TimeInput, toNanosTs } from "../utils";
 
 type EventOptions = {
   timestamp?: TimeInput;
-  name: string;
   data?: AttributeValueType | AnyValue;
   attributes?: Record<string, AttributeValueType | AnyValue>;
   severity?: LOG_SEVERITY_TEXT;
