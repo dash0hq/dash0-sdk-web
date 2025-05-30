@@ -1,8 +1,31 @@
 import { AnyValue, KeyValue } from "../../../types/otlp";
 
-export type AttributeValueType = string | number | boolean | Array<string | number | boolean>;
+type PrimitiveAttributeValue = string | number | boolean;
+export type AttributeValueType =
+  | PrimitiveAttributeValue
+  | Array<PrimitiveAttributeValue>
+  | Record<string, PrimitiveAttributeValue>;
 
-function toAnyValue(value: AttributeValueType | AnyValue): AnyValue {
+const ANY_VALUE_KEYS = [
+  "stringValue",
+  "boolValue",
+  "intValue",
+  "doubleValue",
+  "arrayValue",
+  "kvlistValue",
+  "bytesValue",
+];
+
+function isAnyValue(value: unknown): value is AnyValue {
+  if (value == null || typeof value !== "object") return false;
+
+  const keys = Object.keys(value);
+  return keys.length === 1 && ANY_VALUE_KEYS.includes(keys[0]!);
+}
+
+export function toAnyValue(value: AttributeValueType | AnyValue): AnyValue;
+export function toAnyValue(value?: AttributeValueType | AnyValue): AnyValue | undefined;
+export function toAnyValue(value?: AttributeValueType | AnyValue): AnyValue | undefined {
   let anyValue: AnyValue = {};
   if (Array.isArray(value)) {
     anyValue["arrayValue"] = { values: value.map((e) => toAnyValue(e)) };
@@ -12,8 +35,10 @@ function toAnyValue(value: AttributeValueType | AnyValue): AnyValue {
     anyValue["doubleValue"] = value;
   } else if (typeof value === "boolean") {
     anyValue["boolValue"] = value;
-  } else {
+  } else if (isAnyValue(value)) {
     anyValue = value;
+  } else if (typeof value === "object") {
+    anyValue["kvlistValue"] = { values: Object.entries(value).map(([key, value]) => toKeyValue(key, value)) };
   }
 
   return anyValue;

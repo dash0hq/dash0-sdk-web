@@ -29,13 +29,10 @@
 
       function onSendEvent() {
         dash0("sendEvent", "snacks_appeared", {
-          data: { stringValue: "This is an event" },
-          attributes: [
-            {
-              key: "snack.kind",
-              value: { stringValue: "ice cream" },
-            },
-          ],
+          data: "This is an event",
+          attributes: {
+            "snack.kind": "ice cream",
+          },
           severity: "INFO",
         });
       }
