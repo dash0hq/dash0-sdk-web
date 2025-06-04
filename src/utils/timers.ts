@@ -75,5 +75,5 @@ function executeGlobally(this: keyof typeof globals) {
 
   // Note: Explicitly passing win as 'this' even though we are getting the function from 'globals'
 
-  return (globals[globalFunctionName] as any).apply(win, arguments);
+  return (globals[globalFunctionName] as any)?.apply(win, arguments);
 }
