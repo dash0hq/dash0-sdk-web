@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.4.3...0.4.4) (2025-06-04)
+
+### Bug Fixes
+
+- dont attempt to call global timer functions if undefined ([#21](https://github.com/dash0hq/dash0-sdk-web/issues/21)) ([b643683](https://github.com/dash0hq/dash0-sdk-web/commit/b643683844c077da32a9987b457e4386cfeb494b))
+
 ## [0.4.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.4.2...0.4.3) (2025-05-30)
 
 ### Bug Fixes
