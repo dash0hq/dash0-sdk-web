@@ -14,7 +14,7 @@ import { addUrlAttributes } from "./url";
 import { tabId } from "../utils/tab-id";
 
 type Options = {
-  url?: string;
+  url?: string | URL;
 };
 
 export function addCommonAttributes(attributes: KeyValue[], options?: Options): void {

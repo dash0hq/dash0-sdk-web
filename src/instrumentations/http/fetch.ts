@@ -18,13 +18,12 @@ import {
   SPAN_STATUS_ERROR,
   SPAN_STATUS_UNSET,
 } from "../../semantic-conventions";
-import { isSameOrigin, parseUrl } from "../../utils/origin";
+import { isSameOrigin, wrap, parseUrl } from "../../utils";
 import { vars } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
 import { sendSpan } from "../../transport";
 import { addResourceNetworkEvents, addResourceSize, HTTP_METHOD_OTHER, isWellKnownHttpMethod } from "./utils";
 import { addCommonAttributes } from "../../attributes";
-import { wrap } from "../../utils/wrap";
 
 export function instrumentFetch() {
   if (!win || !win.fetch || !win.Request) {

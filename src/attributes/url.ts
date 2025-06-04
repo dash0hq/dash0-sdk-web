@@ -1,9 +1,9 @@
 import { KeyValue } from "../../types/otlp";
-import { parseUrl } from "../utils/origin";
 import { addAttribute } from "../utils/otel";
 import { URL_DOMAIN, URL_FRAGMENT, URL_FULL, URL_PATH, URL_QUERY, URL_SCHEME } from "../semantic-conventions";
+import { parseUrl } from "../utils/url";
 
-export function addUrlAttributes(attributes: KeyValue[], url: string) {
+export function addUrlAttributes(attributes: KeyValue[], url: string | URL) {
   try {
     const parsed = parseUrl(url);
     if (parsed.username) parsed.username = "REDACTED";
@@ -20,6 +20,6 @@ export function addUrlAttributes(attributes: KeyValue[], url: string) {
       addAttribute(attributes, URL_QUERY, parsed.search.replace("?", ""));
     }
   } catch (_e) {
-    addAttribute(attributes, URL_FULL, url);
+    addAttribute(attributes, URL_FULL, String(url));
   }
 }

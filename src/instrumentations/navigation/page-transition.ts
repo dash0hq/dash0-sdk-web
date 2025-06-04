@@ -1,5 +1,4 @@
-import { debug, win } from "../../utils";
-import { wrap } from "../../utils/wrap";
+import { debug, win, wrap } from "../../utils";
 import { vars } from "../../vars";
 import { transmitPageViewEvent } from "./event";
 
@@ -36,14 +35,24 @@ export function startPageTransitionInstrumentation() {
    * Not wrapping history.go, history.backward and history.forward here, because their call signatures don't receive
    * url information. For these cases we can use the popstate and hashchange events.
    */
-  wrap(win.history, "replaceState", (original) => (state, unused, url) => {
-    onUrlChange(url ? String(url) : undefined, true);
-    return original(state, unused, url);
-  });
-  wrap(win.history, "pushState", (original) => (state, unused, url) => {
-    onUrlChange(url ? String(url) : undefined);
-    return original(state, unused, url);
-  });
+  wrap(
+    win.history,
+    "replaceState",
+    (original) =>
+      function (this: History, state, unused, url) {
+        onUrlChange(url ? String(url) : undefined, true);
+        return original.apply(this, [state, unused, url]);
+      }
+  );
+  wrap(
+    win.history,
+    "pushState",
+    (original) =>
+      function (this: History, state, unused, url) {
+        onUrlChange(url ? String(url) : undefined);
+        return original.apply(this, [state, unused, url]);
+      }
+  );
 
   win.addEventListener("hashchange", onHashChange);
   win.addEventListener("popstate", onPopState);

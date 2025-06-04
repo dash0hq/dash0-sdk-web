@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>empty page load test</title>
+    <title>page transition test</title>
 
     <script>
       (function (d, a, s, h, z, e, r, o) {
@@ -23,7 +23,7 @@
           the_answer: 42,
         },
         endpoint: {
-          url: `http://${window.location.hostname}:8011?cors=true`,
+          url: `http://${window.location.hostname}:5001?cors=true`,
           authToken: "auth_abc123",
           dataset: "production",
         },
@@ -38,10 +38,18 @@
           },
         },
       });
+
+      function doATransition() {
+        history.pushState(
+          undefined,
+          "",
+          new URL(`./virtual-page${window.location.search ? `${window.location.search}` : ""}`, window.location.href)
+        );
+      }
     </script>
     <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
   </head>
   <body>
-    Hello World!
+    <button onclick="doATransition()">Do a transition</button>
   </body>
 </html>

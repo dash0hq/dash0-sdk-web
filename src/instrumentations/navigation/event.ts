@@ -21,13 +21,17 @@ function getPageViewMeta(url?: URL): PageViewMeta {
 }
 
 export function transmitPageViewEvent(url?: URL, virtual?: boolean, replaced?: boolean) {
-  const meta = getPageViewMeta();
+  const meta = getPageViewMeta(url);
 
   const attributes: KeyValue[] = [];
   addAttribute(attributes, EVENT_NAME, PAGE_VIEW);
 
+  if (meta.attributes) {
+    Object.entries(meta.attributes).forEach(([key, value]) => addAttribute(attributes, key, value));
+  }
+  addCommonAttributes(attributes, { url });
+
   const bodyAttributes: KeyValue[] = [];
-  addAttribute(bodyAttributes, "type", 0);
   addAttribute(bodyAttributes, "title", meta.title ?? doc?.title ?? NO_VALUE_FALLBACK);
   if (doc?.referrer) {
     addAttribute(bodyAttributes, "referrer", doc.referrer);
@@ -51,7 +55,6 @@ export function transmitPageViewEvent(url?: URL, virtual?: boolean, replaced?: b
       },
     },
   };
-  addCommonAttributes(log.attributes);
 
   const traceContext = getTraceContextForPageLoad();
   if (traceContext) {
