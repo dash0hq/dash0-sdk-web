@@ -29,7 +29,7 @@
     "test:unit:watch": "vitest",
     "test:e2e": "wdio run ./test/e2e/wdio.conf.ts",
     "test:e2e:local": "wdio run ./test/e2e/wdio.local.conf.ts",
-    "test:e2e:server": "SERVER_PORTS='5000,5001,5002' node test/e2e/server/index.mjs",
+    "test:e2e:server": "SERVER_PORTS='8010,8011,8012' node test/e2e/server/index.mjs",
     "test:e2e:tunnel": "dotenv -- bash -c './.lambdatest/v3/LT --user $LT_USERNAME --key $LT_ACCESS_KEY'",
     "test:e2e:live": "run-p test:e2e:server test:e2e:tunnel",
     "test:coverage": "vitest run --coverage",
