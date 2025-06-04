@@ -14,7 +14,7 @@ import { addUrlAttributes } from "./url";
 import { tabId } from "../utils/tab-id";
 
 type Options = {
-  omitURLNamespace?: boolean;
+  url?: string;
 };
 
 export function addCommonAttributes(attributes: KeyValue[], options?: Options): void {
@@ -22,9 +22,7 @@ export function addCommonAttributes(attributes: KeyValue[], options?: Options): 
     attributes.push(vars.signalAttributes[i]!);
   }
 
-  if (!options?.omitURLNamespace) {
-    addUrlAttributes(attributes, win?.location.href ?? NO_VALUE_FALLBACK);
-  }
+  addUrlAttributes(attributes, options?.url ?? win?.location.href ?? NO_VALUE_FALLBACK);
 
   if (sessionId) {
     addAttribute(attributes, SESSION_ID, sessionId);

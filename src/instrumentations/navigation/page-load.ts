@@ -1,9 +1,10 @@
-import { addEventListener, debug, doc, NO_VALUE_FALLBACK, nowNanos, win, roundToTwoDecimals } from "../../utils";
+import { addEventListener, debug, doc, nowNanos, win, roundToTwoDecimals, error } from "../../utils";
 import { KeyValue, LogRecord } from "../../../types/otlp";
-import { EVENT_NAME, LOG_SEVERITIES, NAVIGATION_TIMING, PAGE_VIEW } from "../../semantic-conventions";
+import { EVENT_NAME, LOG_SEVERITIES, NAVIGATION_TIMING } from "../../semantic-conventions";
 import { sendLog } from "../../transport";
 import { getTraceContextForPageLoad, addAttribute } from "../../utils/otel";
 import { addCommonAttributes } from "../../attributes";
+import { transmitPageViewEvent } from "./event";
 
 /**
  * Tracks page loads as per this OTel spec:
@@ -12,7 +13,11 @@ import { addCommonAttributes } from "../../attributes";
  * Notable difference: The full URL is transmitted as a signal attribute.
  */
 export function startPageLoadInstrumentation() {
-  onInit();
+  try {
+    transmitPageViewEvent(win?.location.href ? new URL(win?.location.href) : undefined);
+  } catch (e) {
+    error("Failed to transmit initial page view event", e);
+  }
 
   if (doc?.readyState === "complete") {
     return onLoaded();
@@ -25,42 +30,6 @@ export function startPageLoadInstrumentation() {
       setTimeout(onLoaded, 0);
     });
   }
-}
-
-/**
- * See https://github.com/open-telemetry/semantic-conventions/pull/1910
- */
-function onInit() {
-  const attributes: KeyValue[] = [];
-  addAttribute(attributes, EVENT_NAME, PAGE_VIEW);
-
-  const bodyAttributes: KeyValue[] = [];
-  addAttribute(bodyAttributes, "type", 0);
-  addAttribute(bodyAttributes, "title", doc?.title ?? NO_VALUE_FALLBACK);
-  if (doc?.referrer) {
-    addAttribute(bodyAttributes, "referrer", doc.referrer);
-  }
-
-  const log: LogRecord = {
-    timeUnixNano: nowNanos(),
-    attributes: attributes,
-    severityNumber: LOG_SEVERITIES.INFO,
-    severityText: "INFO",
-    body: {
-      kvlistValue: {
-        values: bodyAttributes,
-      },
-    },
-  };
-  addCommonAttributes(log.attributes);
-
-  const traceContext = getTraceContextForPageLoad();
-  if (traceContext) {
-    log.traceId = traceContext.traceId;
-    log.spanId = traceContext.spanId;
-  }
-
-  sendLog(log);
 }
 
 /**

@@ -1,5 +1,4 @@
 import { debug, observeResourcePerformance, win } from "../../utils";
-import { isAlreadyInstrumented, markAsInstrumented } from "../../utils/is-already-instrumented";
 import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
 import {
   addAttribute,
@@ -24,22 +23,20 @@ import { vars } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
 import { sendSpan } from "../../transport";
 import { addResourceNetworkEvents, addResourceSize, HTTP_METHOD_OTHER, isWellKnownHttpMethod } from "./utils";
-import { addCommonAttributes, addUrlAttributes } from "../../attributes";
+import { addCommonAttributes } from "../../attributes";
+import { wrap } from "../../utils/wrap";
 
 export function instrumentFetch() {
   if (!win || !win.fetch || !win.Request) {
     debug("Browser does not support the Fetch API, skipping instrumentation");
     return;
   }
+  wrap(win, "fetch", wrapFetch);
+}
 
-  const originalFetch = win.fetch;
-
-  if (isAlreadyInstrumented(originalFetch)) {
-    debug("Fetch is already instrumented by dash0, skipping instrumentation");
-    return;
-  }
-
-  async function fetchWithInstrumentation(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+// eslint-disable-next-line no-restricted-globals -- only used as type here
+function wrapFetch(original: typeof fetch) {
+  return async function fetchWithInstrumentation(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     let copyOfInit = init ? Object.assign({}, init) : init;
 
     let body: BodyInit | null = null;
@@ -56,7 +53,7 @@ export function instrumentFetch() {
     const url = request.url;
     if (isUrlIgnored(url)) {
       debug(`Not creating span for fetch call because the url is ignored, URL: ${url}`);
-      return originalFetch(input instanceof Request ? request : input, init);
+      return original(input instanceof Request ? request : input, init);
     }
 
     // https://fetch.spec.whatwg.org/#concept-request-method
@@ -68,13 +65,12 @@ export function instrumentFetch() {
 
     const span = startSpan(`HTTP ${method}`);
     // The url namespace of a http span has a different meaning than for common rum signals.
-    addCommonAttributes(span.attributes, { omitURLNamespace: true });
+    addCommonAttributes(span.attributes, { url });
     addGraphQlProperties(input, init, span);
     addAttribute(span.attributes, HTTP_REQUEST_METHOD, method);
     if (!isWellKnownMethod) {
       addAttribute(span.attributes, HTTP_REQUEST_METHOD_ORIGINAL, originalMethod);
     }
-    addUrlAttributes(span.attributes, url);
 
     const shouldSetCorrelationHeaders = isSameOrigin(url) || matchesAny(vars.propagateTraceHeadersCorsURLs, url);
     if (shouldSetCorrelationHeaders) {
@@ -113,7 +109,7 @@ export function instrumentFetch() {
 
     performanceObserver.start();
     try {
-      const response = await originalFetch(input instanceof Request ? request : input, copyOfInit);
+      const response = await original(input instanceof Request ? request : input, copyOfInit);
       addResponseData(span, response);
 
       // We use a separate promise here because this needs to happen in parallel to application code consuming the response
@@ -130,10 +126,7 @@ export function instrumentFetch() {
       endSpanOnError(span, e as Exception);
       throw e;
     }
-  }
-
-  markAsInstrumented(fetchWithInstrumentation);
-  win.fetch = fetchWithInstrumentation;
+  };
 }
 
 // @ts-expect-error -- WIP

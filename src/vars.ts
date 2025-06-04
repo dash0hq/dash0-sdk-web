@@ -1,6 +1,7 @@
 // TODO use OTel types here?
 
 import { InstrumentationScope, KeyValue, Resource } from "../types/otlp";
+import { AttributeValueType } from "./utils/otel";
 
 export type Endpoint = {
   /**
@@ -21,7 +22,36 @@ export type Endpoint = {
   dataset?: string;
 };
 
-type Vars = {
+export type PageViewMeta = {
+  /**
+   * Defaults to document.title
+   */
+  title?: string;
+  attributes?: Record<string, AttributeValueType>;
+};
+
+export type PageViewInstrumentationSettings = {
+  /**
+   * Allows the selection of custom page metadata, falls back to default behaviour if undefined is returned.
+   */
+  generateMetadata?: (url: URL) => PageViewMeta | undefined;
+
+  /**
+   * Whether the sdk should track virtual page views by instrumenting the history api.
+   * Only relevant for websites utilizing virtual navigation.
+   * Defaults to true.
+   */
+  trackVirtualPageViews?: boolean;
+
+  /**
+   * Do not generate virtual page views when these url parts change.
+   * - "HASH" ignore changes to the urls hash / fragment
+   * - "SEARCH" ignore changes to the urls search / query parameters
+   */
+  ignoreParts?: Array<"HASH" | "SEARCH">;
+};
+
+export type Vars = {
   /**
    * Telemetry endpoints to which the generated telemetry should be sent
    */
@@ -62,6 +92,8 @@ type Vars = {
    * This results in improved uncaught error tracking for cross-origin
    * errors, but may have adverse effects on website performance and
    * stability.
+   *
+   * @default true
    */
   wrapEventHandlers: boolean;
 
@@ -71,6 +103,8 @@ type Vars = {
    * This results in improved uncaught error tracking for cross-origin
    * errors, but may have adverse effects on website performance and
    * stability.
+   *
+   * @default true
    */
   wrapTimers: boolean;
 
@@ -85,6 +119,8 @@ type Vars = {
    * for the retrieval of resource timing data. Performance timeline events
    * are placed on the low priority task queue and therefore high values
    * might be necessary.
+   *
+   * @default 10000
    */
   maxWaitForResourceTimingsMillis: number;
 
@@ -92,6 +128,8 @@ type Vars = {
    * The number of milliseconds added to endTime so that performanceEntry is
    * available before endTime and backendTraceId does not become undefined for
    * xhr beacons
+   *
+   * @default 3000
    */
   maxToleranceForResourceTimingsMillis: number;
 
@@ -101,6 +139,8 @@ type Vars = {
    * These headers will be transferred as span attributes
    */
   headersToCapture: RegExp[];
+
+  pageViewInstrumentation: PageViewInstrumentationSettings;
 };
 
 export const vars: Vars = {
@@ -122,4 +162,7 @@ export const vars: Vars = {
   maxWaitForResourceTimingsMillis: 10000,
   maxToleranceForResourceTimingsMillis: 3000,
   headersToCapture: [],
+  pageViewInstrumentation: {
+    trackVirtualPageViews: true,
+  },
 };
