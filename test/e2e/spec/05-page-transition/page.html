@@ -15,6 +15,11 @@
           (z._v = 1),
           (h = z._q = []));
       })(window, "dash0");
+
+      const url = new URL(window.location.href);
+      const ignoreParts = url.searchParams.get("ignore-parts")?.split(",");
+      const disablePageViewTracking = Boolean(url.searchParams.get("disable-page-view-tracking"));
+
       dash0("init", {
         serviceName: "dash0.com",
         serviceVersion: "1.2.3",
@@ -23,11 +28,13 @@
           the_answer: 42,
         },
         endpoint: {
-          url: `http://${window.location.hostname}:5001?cors=true`,
+          url: `http://${window.location.hostname}:8011?cors=true`,
           authToken: "auth_abc123",
           dataset: "production",
         },
         pageViewInstrumentation: {
+          ignoreParts,
+          trackVirtualPageViews: !disablePageViewTracking,
           generateMetadata: (url) => {
             return {
               title: url.search.includes("useCustomTitle") ? "this is a custom title" : undefined,
@@ -46,10 +53,53 @@
           new URL(`./virtual-page${window.location.search ? `${window.location.search}` : ""}`, window.location.href)
         );
       }
+
+      function onReplaceState() {
+        history.replaceState(
+          undefined,
+          "",
+          new URL(`./virtual-page${window.location.search ? `${window.location.search}` : ""}`, window.location.href)
+        );
+      }
+
+      function onGo() {
+        history.go(-1);
+      }
+
+      function onBack() {
+        history.back();
+      }
+
+      function onForward() {
+        history.forward();
+      }
+
+      function onChangeQuery() {
+        const target = new URL(window.location.href);
+        target.searchParams.append("ice-cream", "true");
+        history.pushState(undefined, "", target);
+      }
+
+      function onChangeFragment() {
+        const target = new URL(window.location.href);
+        target.hash = "someNewFragment";
+        history.pushState(undefined, "", target);
+      }
+
+      function onChangeState() {
+        history.pushState({ foo: "bar" }, "", window.location.href);
+      }
     </script>
     <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
   </head>
   <body>
     <button onclick="doATransition()">Do a transition</button>
+    <button onclick="onReplaceState()">Call history.replaceState</button>
+    <button onclick="onGo()">Call history.go</button>
+    <button onclick="onBack()">Call history.back</button>
+    <button onclick="onForward()">Call history.forward</button>
+    <button onclick="onChangeQuery()">Change url.search</button>
+    <button onclick="onChangeFragment()">Change url.fragment</button>
+    <button onclick="onChangeState()">Change history.state</button>
   </body>
 </html>

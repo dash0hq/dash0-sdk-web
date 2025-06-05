@@ -1,6 +1,6 @@
 // TODO use OTel types here?
 
-import { InstrumentationScope, KeyValue, Resource } from "../types/otlp";
+import { AnyValue, InstrumentationScope, KeyValue, Resource } from "../types/otlp";
 import { AttributeValueType } from "./utils/otel";
 
 export type Endpoint = {
@@ -27,7 +27,7 @@ export type PageViewMeta = {
    * Defaults to document.title
    */
   title?: string;
-  attributes?: Record<string, AttributeValueType>;
+  attributes?: Record<string, AttributeValueType | AnyValue>;
 };
 
 export type PageViewInstrumentationSettings = {

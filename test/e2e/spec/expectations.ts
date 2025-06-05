@@ -59,24 +59,32 @@ export async function expectSpanCount(n: number) {
   expect(requests.filter((r) => r.path === "/v1/traces")).toHaveLength(n);
 }
 
+function getLogMatcher(matcher: ExpectWebdriverIO.PartialMatcher) {
+  return expect.arrayContaining([
+    expect.objectContaining({
+      body: expect.objectContaining({
+        resourceLogs: expect.arrayContaining([
+          expect.objectContaining({
+            scopeLogs: expect.arrayContaining([
+              expect.objectContaining({ logRecords: expect.arrayContaining([matcher]) }),
+            ]),
+          }),
+        ]),
+      }),
+    }),
+  ]);
+}
+
 export async function expectLogMatching(matcher: ExpectWebdriverIO.PartialMatcher) {
   const requests = await getOTLPRequests();
 
-  expect(requests.filter((r) => r.path === "/v1/logs")).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        body: expect.objectContaining({
-          resourceLogs: expect.arrayContaining([
-            expect.objectContaining({
-              scopeLogs: expect.arrayContaining([
-                expect.objectContaining({ logRecords: expect.arrayContaining([matcher]) }),
-              ]),
-            }),
-          ]),
-        }),
-      }),
-    ])
-  );
+  expect(requests.filter((r) => r.path === "/v1/logs")).toEqual(getLogMatcher(matcher));
+}
+
+export async function expectNoLogMatching(matcher: ExpectWebdriverIO.PartialMatcher) {
+  const requests = await getOTLPRequests();
+
+  expect(requests.filter((r) => r.path === "/v1/logs")).not.toEqual(getLogMatcher(matcher));
 }
 
 export function expectNoBrowserErrors() {
