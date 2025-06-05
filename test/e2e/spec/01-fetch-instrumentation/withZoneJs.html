@@ -22,12 +22,12 @@
         environment: "prod",
         endpoint: [
           {
-            url: `http://${window.location.hostname}:5001?cors=true`,
+            url: `http://${window.location.hostname}:8011?cors=true`,
             authToken: "auth_abc123",
             dataset: "production",
           },
         ],
-        propagateTraceHeadersCorsURLs: [new RegExp(`http:\/\/${window.location.hostname.replace(".", "\.")}:5002`)],
+        propagateTraceHeadersCorsURLs: [new RegExp(`http:\/\/${window.location.hostname.replace(".", "\.")}:8012`)],
       });
     </script>
     <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>

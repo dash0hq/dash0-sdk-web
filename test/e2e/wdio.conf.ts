@@ -125,7 +125,7 @@ export const config: WebdriverIO.Config = {
 
   logLevel: "info",
   bail: 0,
-  baseUrl: "http://localhost.lambdatest.com:5001",
+  baseUrl: "http://localhost.lambdatest.com:8011",
   waitforTimeout: 10000,
   connectionRetryTimeout: 120000,
   connectionRetryCount: 3,
@@ -151,7 +151,7 @@ export const config: WebdriverIO.Config = {
         stdio: "inherit",
         env: {
           ...process.env,
-          SERVER_PORTS: "5000,5001,5002",
+          SERVER_PORTS: "8010,8011,8012",
           SERVER_BASE_URL: config.baseUrl,
         },
       });
