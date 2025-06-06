@@ -64,6 +64,19 @@ export const LOG_SEVERITIES = {
 export type LOG_SEVERITY_TEXT = keyof typeof LOG_SEVERITIES;
 export type LOG_SEVERITY_NUMBER = (typeof LOG_SEVERITIES)[LOG_SEVERITY_TEXT];
 
+// Page View Event Attributes
+// SEE: https://github.com/open-telemetry/semantic-conventions/pull/1910/files
+export const PAGE_VIEW_TYPE = "type";
+export const PAGE_VIEW_TYPE_VALUES = {
+  INITIAL: 0,
+  VIRTUAL: 1,
+};
+export const PAGE_VIEW_CHANGE_STATE = "change_state";
+export const PAGE_VIEW_CHANGE_STATE_VALUES = {
+  PUSH: "pushState",
+  REPLACE: "replaceState",
+};
+
 // Span Status
 export const SPAN_STATUS_UNSET = 0;
 export const SPAN_STATUS_OK = 1; // This is here for completion, status ok is reserved for use by application developers

@@ -4,6 +4,7 @@ import { expectLogMatching, expectNoBrowserErrors } from "../expectations";
 import { browser } from "@wdio/globals";
 import { generateUniqueId } from "../../../../src/utils";
 import { supportsNavTimingResponseStatus } from "../browser-compat";
+import { PAGE_VIEW_TYPE_VALUES } from "../../../../src/semantic-conventions";
 
 describe("Page Load", () => {
   beforeEach(sharedBeforeEach);
@@ -39,12 +40,13 @@ describe("Page Load", () => {
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
               { key: "browser.window.height", value: { doubleValue: expect.any(Number) } },
               { key: "the_answer", value: { doubleValue: 42 } },
+              { key: "url_meta", value: { stringValue: "this is an url meta attribute" } },
               { key: "browser.tab.id", value: { stringValue: expect.any(String) } },
             ]),
             body: {
               kvlistValue: {
                 values: expect.arrayContaining([
-                  { key: "type", value: { doubleValue: 0 } },
+                  { key: "type", value: { doubleValue: PAGE_VIEW_TYPE_VALUES.INITIAL } },
                   { key: "title", value: { stringValue: expect.stringContaining("empty page load test") } },
                 ]),
               },
@@ -52,6 +54,27 @@ describe("Page Load", () => {
             severityNumber: 9,
             severityText: "INFO",
             timeUnixNano: expect.any(String),
+          })
+        );
+      });
+
+      expectNoBrowserErrors();
+    });
+
+    it("uses custom page titles if provided", async () => {
+      const testId = generateUniqueId(16);
+      await browser.url(`/e2e/spec/00-page-load/empty.html?testId=${testId}&useCustomTitle=true#someFragment`);
+      await expect(await browser.getTitle()).toMatch(/empty page load test/);
+
+      await retry(async () => {
+        await expectLogMatching(
+          expect.objectContaining({
+            attributes: expect.arrayContaining([{ key: "event.name", value: { stringValue: "browser.page_view" } }]),
+            body: {
+              kvlistValue: {
+                values: expect.arrayContaining([{ key: "title", value: { stringValue: "this is a custom title" } }]),
+              },
+            },
           })
         );
       });

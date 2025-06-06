@@ -1,4 +1,4 @@
-import { Endpoint, vars } from "../vars";
+import { Endpoint, Vars, vars } from "../vars";
 import {
   DEPLOYMENT_ENVIRONMENT_NAME,
   DEPLOYMENT_ID,
@@ -10,12 +10,14 @@ import {
 } from "../semantic-conventions";
 import { fetch, generateUniqueId, PAGE_LOAD_ID_BYTES, warn, debug, perf, nav, win, NO_VALUE_FALLBACK } from "../utils";
 import { trackSessions } from "./session";
-import { startPageLoadInstrumentation } from "../instrumentations/page-load";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { startErrorInstrumentation } from "../instrumentations/errors";
 import { addAttribute } from "../utils/otel";
 import { instrumentFetch } from "../instrumentations/http/fetch";
 import { AnyValue } from "../../types/otlp";
+import { startNavigationInstrumentation } from "../instrumentations/navigation";
+import { pick } from "../utils/pick";
+import { merge } from "ts-deepmerge";
 import { initializeTabId } from "../utils/tab-id";
 
 export type InitOptions = {
@@ -48,70 +50,20 @@ export type InitOptions = {
    * to be expired. Also think of cache time-to-live configuration options.
    */
   sessionTerminationTimeoutMillis?: number;
-
-  /**
-   * An array of URL regular expression for which no data should be
-   * collected. These regular expressions are evaluated against
-   * the document, XMLHttpRequest, fetch and resource URLs.
-   */
-  ignoreUrls?: RegExp[];
-
-  /**
-   * An array of error message regular expressions for which no data
-   * should be collected.
-   */
-  ignoreErrorMessages?: RegExp[];
-
-  /**
-   * Whether we should automatically wrap DOM event handlers
-   * added via addEventListener for improved uncaught error tracking.
-   * This results in improved uncaught error tracking for cross-origin
-   * errors, but may have adverse effects on website performance and
-   * stability.
-   *
-   * @default true
-   */
-  wrapEventHandlers?: boolean;
-
-  /**
-   * Whether we should automatically wrap timers
-   * added via setTimeout / setInterval for improved uncaught error tracking.
-   * This results in improved uncaught error tracking for cross-origin
-   * errors, but may have adverse effects on website performance and
-   * stability.
-   *
-   * @default true
-   */
-  wrapTimers?: boolean;
-
-  /**
-   * An array of URL regular expressions
-   * for which trace context headers should be sent across origins by http client instrumentations.
-   */
-  propagateTraceHeadersCorsURLs?: RegExp[];
-
-  /**
-   * How long to wait after an XMLHttpRequest or fetch request has finished
-   * for the retrieval of resource timing data. Performance timeline events
-   * are placed on the low priority task queue and therefore high values
-   * might be necessary.
-   */
-  maxWaitForResourceTimingsMillis?: number;
-
-  /**
-   * The number of milliseconds added to endTime so that performanceEntry is
-   * available before endTime and backendTraceId does not become undefined for
-   * xhr beacons
-   */
-  maxToleranceForResourceTimingsMillis?: number;
-
-  /**
-   * A set of regular expressions that will be matched against HTTP headers to be
-   * captured in `XMLHttpRequest` and `fetch` Instrumentations.
-   * These headers will be transferred as span attributes
-   */
-  headersToCapture?: RegExp[];
-};
+} & Partial<
+  Pick<
+    Vars,
+    | "ignoreUrls"
+    | "ignoreErrorMessages"
+    | "wrapEventHandlers"
+    | "wrapTimers"
+    | "propagateTraceHeadersCorsURLs"
+    | "maxWaitForResourceTimingsMillis"
+    | "maxToleranceForResourceTimingsMillis"
+    | "headersToCapture"
+    | "pageViewInstrumentation"
+  >
+>;
 
 let hasBeenInitialised: boolean = false;
 
@@ -137,21 +89,29 @@ export function init(opts: InitOptions) {
     return;
   }
 
-  vars.ignoreUrls = opts.ignoreUrls ?? vars.ignoreUrls;
-  vars.ignoreErrorMessages = opts.ignoreErrorMessages ?? vars.ignoreErrorMessages;
-  vars.wrapEventHandlers = opts.wrapEventHandlers ?? vars.wrapEventHandlers;
-  vars.wrapTimers = opts.wrapTimers ?? vars.wrapTimers;
-  vars.propagateTraceHeadersCorsURLs = opts.propagateTraceHeadersCorsURLs ?? vars.propagateTraceHeadersCorsURLs;
-  vars.maxWaitForResourceTimingsMillis = opts.maxWaitForResourceTimingsMillis ?? vars.maxWaitForResourceTimingsMillis;
-  vars.maxToleranceForResourceTimingsMillis =
-    opts.maxToleranceForResourceTimingsMillis ?? vars.maxToleranceForResourceTimingsMillis;
-  vars.headersToCapture = opts.headersToCapture ?? vars.headersToCapture;
+  Object.assign(
+    vars,
+    merge(
+      vars,
+      pick(opts, [
+        "ignoreUrls",
+        "ignoreErrorMessages",
+        "wrapEventHandlers",
+        "wrapTimers",
+        "propagateTraceHeadersCorsURLs",
+        "maxWaitForResourceTimingsMillis",
+        "maxToleranceForResourceTimingsMillis",
+        "headersToCapture",
+        "pageViewInstrumentation",
+      ])
+    )
+  );
 
   initializeResourceAttributes(opts);
   initializeSignalAttributes(opts);
   initializeTabId();
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
-  startPageLoadInstrumentation();
+  startNavigationInstrumentation();
   startWebVitalsInstrumentation();
   startErrorInstrumentation();
   instrumentFetch();

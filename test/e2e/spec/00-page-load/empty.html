@@ -27,6 +27,16 @@
           authToken: "auth_abc123",
           dataset: "production",
         },
+        pageViewInstrumentation: {
+          generateMetadata: (url) => {
+            return {
+              title: url.search.includes("useCustomTitle") ? "this is a custom title" : undefined,
+              attributes: {
+                url_meta: "this is an url meta attribute",
+              },
+            };
+          },
+        },
       });
     </script>
     <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
