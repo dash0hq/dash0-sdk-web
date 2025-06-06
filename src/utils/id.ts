@@ -2,6 +2,7 @@ export const SPAN_ID_BYTES = 8;
 export const TRACE_ID_BYTES = 16;
 export const PAGE_LOAD_ID_BYTES = TRACE_ID_BYTES;
 export const SESSION_ID_BYTES = TRACE_ID_BYTES;
+export const TAB_ID_BYTES = SPAN_ID_BYTES;
 
 const SHARED_CHAR_CODES_ARRAY = Array(32);
 export function generateUniqueId(byteCount: number): string {

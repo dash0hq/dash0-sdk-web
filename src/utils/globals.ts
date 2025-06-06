@@ -22,6 +22,15 @@ export const localStorage: Storage | null = (function () {
     return null;
   }
 })();
+export const sessionStorage: Storage | null = (function () {
+  try {
+    return win?.sessionStorage ?? null;
+  } catch {
+    // sessionStorage access is not permitted in certain security modes, e.g.
+    // when cookies are completely disabled in web browsers.
+    return null;
+  }
+})();
 
 /**
  * Exposed via this module to enable testing.
