@@ -1,10 +1,17 @@
 import { KeyValue } from "../../types/otlp";
 import { nav, NO_VALUE_FALLBACK, win } from "../utils";
-import { NETWORK_CONNECTION_TYPE, SESSION_ID, WINDOW_HEIGHT, WINDOW_WIDTH } from "../semantic-conventions";
+import {
+  BROWSER_TAB_ID,
+  NETWORK_CONNECTION_TYPE,
+  SESSION_ID,
+  WINDOW_HEIGHT,
+  WINDOW_WIDTH,
+} from "../semantic-conventions";
 import { sessionId } from "../api/session";
 import { vars } from "../vars";
 import { addAttribute } from "../utils/otel";
 import { addUrlAttributes } from "./url";
+import { tabId } from "../utils/tab-id";
 
 type Options = {
   omitURLNamespace?: boolean;
@@ -21,6 +28,9 @@ export function addCommonAttributes(attributes: KeyValue[], options?: Options): 
 
   if (sessionId) {
     addAttribute(attributes, SESSION_ID, sessionId);
+  }
+  if (tabId) {
+    addAttribute(attributes, BROWSER_TAB_ID, tabId);
   }
 
   addAttribute(attributes, WINDOW_WIDTH, win?.innerWidth ?? NO_VALUE_FALLBACK);

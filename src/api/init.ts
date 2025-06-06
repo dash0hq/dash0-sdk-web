@@ -16,6 +16,7 @@ import { startErrorInstrumentation } from "../instrumentations/errors";
 import { addAttribute } from "../utils/otel";
 import { instrumentFetch } from "../instrumentations/http/fetch";
 import { AnyValue } from "../../types/otlp";
+import { initializeTabId } from "../utils/tab-id";
 
 export type InitOptions = {
   serviceName: string;
@@ -148,6 +149,7 @@ export function init(opts: InitOptions) {
 
   initializeResourceAttributes(opts);
   initializeSignalAttributes(opts);
+  initializeTabId();
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
   startPageLoadInstrumentation();
   startWebVitalsInstrumentation();

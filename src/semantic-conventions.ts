@@ -10,6 +10,7 @@ export const EVENT_NAME = "event.name";
 export const PAGE_LOAD_ID = "page.load.id";
 export const SESSION_ID = "session.id";
 export const USER_AGENT = "user_agent.original";
+export const BROWSER_TAB_ID = "browser.tab.id";
 export const WINDOW_WIDTH = "browser.window.width";
 export const WINDOW_HEIGHT = "browser.window.height";
 export const NETWORK_CONNECTION_TYPE = "network.connection.subtype";
