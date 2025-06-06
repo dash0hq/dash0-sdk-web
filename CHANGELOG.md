@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.4.6...0.5.0) (2025-06-06)
+
+### Features
+
+- virtual page change support ([#23](https://github.com/dash0hq/dash0-sdk-web/issues/23)) ([e151832](https://github.com/dash0hq/dash0-sdk-web/commit/e15183298d7f0dcd06f76af72d27dbfee6b23830))
+
 ## [0.4.6](https://github.com/dash0hq/dash0-sdk-web/compare/0.4.5...0.4.6) (2025-06-06)
 
 ## [0.4.5](https://github.com/dash0hq/dash0-sdk-web/compare/0.4.4...0.4.5) (2025-06-05)
