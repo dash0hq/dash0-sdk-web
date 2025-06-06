@@ -59,7 +59,7 @@ export function startPageTransitionInstrumentation() {
 
   try {
     updateCurrentLocation(new URL(win.location.href));
-  } catch (_e) {}
+  } catch {}
 }
 
 function onPopState() {
