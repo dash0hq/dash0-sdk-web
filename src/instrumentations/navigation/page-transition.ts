@@ -1,4 +1,4 @@
-import { debug, win, wrap } from "../../utils";
+import { debug, nowNanos, win, wrap } from "../../utils";
 import { vars } from "../../vars";
 import { transmitPageViewEvent } from "./event";
 
@@ -78,7 +78,7 @@ function onUrlChange(url?: string, replaced?: boolean) {
     const parsedUrl = new URL(url, win?.location.href);
     if (isLocationChange(parsedUrl)) {
       updateCurrentLocation(parsedUrl);
-      transmitPageViewEvent(parsedUrl, true, Boolean(replaced));
+      transmitPageViewEvent(nowNanos(), parsedUrl, true, Boolean(replaced));
     }
   } catch (e) {
     debug("Failed to handle url change", e);

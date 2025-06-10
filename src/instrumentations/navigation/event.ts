@@ -9,7 +9,7 @@ import {
   PAGE_VIEW_TYPE,
   PAGE_VIEW_TYPE_VALUES,
 } from "../../semantic-conventions";
-import { doc, NO_VALUE_FALLBACK, nowNanos } from "../../utils";
+import { doc, NO_VALUE_FALLBACK } from "../../utils";
 import { addCommonAttributes } from "../../attributes";
 import { sendLog } from "../../transport";
 import { PageViewMeta, vars } from "../../vars";
@@ -20,7 +20,7 @@ function getPageViewMeta(url?: URL): PageViewMeta {
   return vars.pageViewInstrumentation.generateMetadata?.(url) ?? {};
 }
 
-export function transmitPageViewEvent(url?: URL, virtual?: boolean, replaced?: boolean) {
+export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?: boolean, replaced?: boolean) {
   const meta = getPageViewMeta(url);
 
   const attributes: KeyValue[] = [];
@@ -45,7 +45,7 @@ export function transmitPageViewEvent(url?: URL, virtual?: boolean, replaced?: b
   );
 
   const log: LogRecord = {
-    timeUnixNano: nowNanos(),
+    timeUnixNano: timeUnixNano,
     attributes: attributes,
     severityNumber: LOG_SEVERITIES.INFO,
     severityText: "INFO",

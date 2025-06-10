@@ -1,4 +1,4 @@
-import { addEventListener, debug, doc, nowNanos, win, roundToTwoDecimals, error } from "../../utils";
+import { addEventListener, debug, doc, win, roundToTwoDecimals, error, toNanosTs, getTimeOrigin } from "../../utils";
 import { KeyValue, LogRecord } from "../../../types/otlp";
 import { EVENT_NAME, LOG_SEVERITIES, NAVIGATION_TIMING } from "../../semantic-conventions";
 import { sendLog } from "../../transport";
@@ -14,7 +14,7 @@ import { transmitPageViewEvent } from "./event";
  */
 export function startPageLoadInstrumentation() {
   try {
-    transmitPageViewEvent(win?.location.href ? new URL(win?.location.href) : undefined);
+    transmitPageViewEvent(getStartTimeUnixNanos(), win?.location.href ? new URL(win?.location.href) : undefined);
   } catch (e) {
     error("Failed to transmit initial page view event", e);
   }
@@ -62,7 +62,7 @@ function onLoaded() {
   addNavigationTiming(bodyAttributes, nt, "decodedBodySize");
 
   const log: LogRecord = {
-    timeUnixNano: nowNanos(),
+    timeUnixNano: getStartTimeUnixNanos(),
     attributes: attributes,
     severityNumber: LOG_SEVERITIES.INFO,
     severityText: "INFO",
@@ -89,4 +89,8 @@ function addNavigationTiming(attributes: KeyValue[], nt: PerformanceNavigationTi
   if (typeof value === "number" && !isNaN(value)) {
     addAttribute(attributes, field, Number.isInteger(value) ? value : roundToTwoDecimals(value));
   }
+}
+
+function getStartTimeUnixNanos(): string {
+  return toNanosTs(Math.round(getTimeOrigin()));
 }
