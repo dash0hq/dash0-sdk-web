@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.5.0...0.5.1) (2025-06-10)
+
+### Bug Fixes
+
+- page load timestamps ([#25](https://github.com/dash0hq/dash0-sdk-web/issues/25)) ([ce220ae](https://github.com/dash0hq/dash0-sdk-web/commit/ce220aec15f3af7d97a718699c7a88724aba6012))
+
 ## [0.5.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.4.6...0.5.0) (2025-06-06)
 
 ### Features
