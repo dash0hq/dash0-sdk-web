@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.5.2...0.5.3) (2025-06-13)
+
+### Bug Fixes
+
+- use session storage for tab tracking ([#27](https://github.com/dash0hq/dash0-sdk-web/issues/27)) ([86ec6d4](https://github.com/dash0hq/dash0-sdk-web/commit/86ec6d4d7adfe134bc9a9ada579cd061b93bbc88))
+
 ## [0.5.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.5.1...0.5.2) (2025-06-13)
 
 ### Bug Fixes
