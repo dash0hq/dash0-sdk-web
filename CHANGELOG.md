@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.5.1...0.5.2) (2025-06-13)
+
+### Bug Fixes
+
+- include event name attribute in error events ([#26](https://github.com/dash0hq/dash0-sdk-web/issues/26)) ([d6b9c07](https://github.com/dash0hq/dash0-sdk-web/commit/d6b9c07f72eb184adf6e5af0966c108d68354d57))
+
 ## [0.5.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.5.0...0.5.1) (2025-06-10)
 
 ### Bug Fixes
