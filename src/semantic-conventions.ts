@@ -49,7 +49,8 @@ export const HTTP_RESPONSE_BODY_SIZE = "http.response.body.size";
 export const PAGE_VIEW = "browser.page_view";
 export const NAVIGATION_TIMING = "browser.navigation_timing";
 export const WEB_VITAL = "browser.web_vital";
-export const EVENT_NAME_EXCEPTION = "exception";
+export const ERROR = "browser.error";
+export const SPAN_EVENT_NAME_EXCEPTION = "exception";
 
 // Log Severities
 export const LOG_SEVERITIES = {
