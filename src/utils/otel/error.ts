@@ -2,7 +2,7 @@ import { addSpanEvent, InProgressSpan } from "./span";
 import { KeyValue, SpanStatus } from "../../../types/otlp";
 import { addAttribute } from "./attributes";
 import {
-  EVENT_NAME_EXCEPTION,
+  SPAN_EVENT_NAME_EXCEPTION,
   EXCEPTION_MESSAGE,
   EXCEPTION_STACKTRACE,
   EXCEPTION_TYPE,
@@ -51,7 +51,7 @@ export function recordException(span: InProgressSpan, exception: Exception) {
       addAttribute(attributes, EXCEPTION_STACKTRACE, exception.stack);
     }
 
-    addSpanEvent(span, EVENT_NAME_EXCEPTION, attributes);
+    addSpanEvent(span, SPAN_EVENT_NAME_EXCEPTION, attributes);
   }
 }
 
