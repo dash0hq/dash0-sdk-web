@@ -1,4 +1,4 @@
-import { getItem, isSupported, setItem } from "./local-storage";
+import { getItem, isSupported, setItem } from "./session-storage";
 import { debug, warn } from "./debug";
 import { generateUniqueId, TAB_ID_BYTES } from "./id";
 
