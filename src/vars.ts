@@ -164,5 +164,6 @@ export const vars: Vars = {
   headersToCapture: [],
   pageViewInstrumentation: {
     trackVirtualPageViews: true,
+    ignoreParts: ["SEARCH", "HASH"],
   },
 };
