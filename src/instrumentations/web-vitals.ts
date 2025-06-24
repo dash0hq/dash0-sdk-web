@@ -1,6 +1,6 @@
 import { onLCP, onINP, onCLS, Metric } from "web-vitals";
 import { KeyValue, LogRecord } from "../../types/otlp";
-import { EVENT_NAME, LOG_SEVERITIES, WEB_VITAL } from "../semantic-conventions";
+import { EVENT_NAME, EVENT_NAMES, LOG_SEVERITIES } from "../semantic-conventions";
 import { nowNanos, roundToTwoDecimals } from "../utils";
 import { sendLog } from "../transport";
 import { addAttribute } from "../utils/otel";
@@ -14,7 +14,7 @@ export function startWebVitalsInstrumentation() {
 
 function onWebVital(metric: Metric) {
   const attributes: KeyValue[] = [];
-  addAttribute(attributes, EVENT_NAME, WEB_VITAL);
+  addAttribute(attributes, EVENT_NAME, EVENT_NAMES.WEB_VITAL);
 
   const bodyAttributes: KeyValue[] = [];
   addAttribute(bodyAttributes, "name", metric.name);

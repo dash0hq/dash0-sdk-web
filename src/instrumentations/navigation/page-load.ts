@@ -1,6 +1,6 @@
 import { addEventListener, debug, doc, win, roundToTwoDecimals, error, toNanosTs, getTimeOrigin } from "../../utils";
 import { KeyValue, LogRecord } from "../../../types/otlp";
-import { EVENT_NAME, LOG_SEVERITIES, NAVIGATION_TIMING } from "../../semantic-conventions";
+import { EVENT_NAME, EVENT_NAMES, LOG_SEVERITIES } from "../../semantic-conventions";
 import { sendLog } from "../../transport";
 import { getTraceContextForPageLoad, addAttribute } from "../../utils/otel";
 import { addCommonAttributes } from "../../attributes";
@@ -43,7 +43,7 @@ function onLoaded() {
   }
 
   const attributes: KeyValue[] = [];
-  addAttribute(attributes, EVENT_NAME, NAVIGATION_TIMING);
+  addAttribute(attributes, EVENT_NAME, EVENT_NAMES.NAVIGATION_TIMING);
 
   const bodyAttributes: KeyValue[] = [];
   addAttribute(bodyAttributes, "name", nt.name);
