@@ -125,16 +125,16 @@ export type Vars = {
   maxWaitForResourceTimingsMillis: number;
 
   /**
-   * The number of milliseconds added to endTime so that performanceEntry is
-   * available before endTime and backendTraceId does not become undefined for
-   * xhr beacons
+   * The number of milliseconds of tolerance between resolution of a http request promise and the end time of performanceEntries
+   * applied when matching a request to its respective performance entry. A higher value might increase match frequency at
+   * the cost of potential incorrect matches. Matching is performed based on request timing and url.
    *
    * @default 3000
    */
   maxToleranceForResourceTimingsMillis: number;
 
   /**
-   * A set of regular expressions that will be matched against HTTP headers to be
+   * A set of regular expressions that will be matched against HTTP request headers to be
    * captured in `XMLHttpRequest` and `fetch` Instrumentations.
    * These headers will be transferred as span attributes
    */
