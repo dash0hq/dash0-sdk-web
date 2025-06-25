@@ -223,9 +223,9 @@ describe("Page Transition", () => {
       expectNoBrowserErrors();
     });
 
-    it("transmits events on query changes", async () => {
+    it("transmits events on query changes if enabled", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
+      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}&include-parts=SEARCH`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       const btn = await $("button=Change url.search");
@@ -240,11 +240,11 @@ describe("Page Transition", () => {
                 key: "url.full",
                 value: {
                   stringValue: expect.stringContaining(
-                    `/e2e/spec/05-page-transition/page.html?testId=${testId}&ice-cream=true`
+                    `/e2e/spec/05-page-transition/page.html?testId=${testId}&include-parts=SEARCH&ice-cream=true`
                   ),
                 },
               },
-              { key: "url.query", value: { stringValue: `testId=${testId}&ice-cream=true` } },
+              { key: "url.query", value: { stringValue: `testId=${testId}&include-parts=SEARCH&ice-cream=true` } },
             ]),
             body: {
               kvlistValue: {
@@ -263,9 +263,9 @@ describe("Page Transition", () => {
       expectNoBrowserErrors();
     });
 
-    it("transmits events on fragment changes", async () => {
+    it("transmits events on fragment changes if enabled", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
+      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}&include-parts=HASH`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       const btn = await $("button=Change url.fragment");
@@ -280,7 +280,7 @@ describe("Page Transition", () => {
                 key: "url.full",
                 value: {
                   stringValue: expect.stringContaining(
-                    `/e2e/spec/05-page-transition/page.html?testId=${testId}#someNewFragment`
+                    `/e2e/spec/05-page-transition/page.html?testId=${testId}&include-parts=HASH#someNewFragment`
                   ),
                 },
               },
@@ -359,9 +359,9 @@ describe("Page Transition", () => {
       expectNoBrowserErrors();
     });
 
-    it("ignores fragment changes if ignoreParts includes HASH", async () => {
+    it("ignores fragment changes if not enabled", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}&ignore-parts=HASH`);
+      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       await delay(1000);
@@ -387,9 +387,9 @@ describe("Page Transition", () => {
       expectNoBrowserErrors();
     });
 
-    it("ignores query changes if ignoreParts includes SEARCH", async () => {
+    it("ignores query changes if not enabled", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}&ignore-parts=SEARCH`);
+      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       await delay(1000);

@@ -9,8 +9,8 @@ type LocationState = Partial<{
 }>;
 
 let currentLocation: LocationState = {};
-let shouldIgnoreHashChanges = false;
-let shouldIgnoreSearchChanges = false;
+let shouldIncludeHashChanges = false;
+let shouldIncludeSearchChanges = false;
 
 /**
  * Tracks page transitions (virtual page views) as per this OTel spec:
@@ -28,8 +28,8 @@ export function startPageTransitionInstrumentation() {
     return;
   }
 
-  shouldIgnoreSearchChanges = vars.pageViewInstrumentation.ignoreParts?.includes("SEARCH") ?? false;
-  shouldIgnoreHashChanges = vars.pageViewInstrumentation.ignoreParts?.includes("HASH") ?? false;
+  shouldIncludeSearchChanges = vars.pageViewInstrumentation.includeParts?.includes("SEARCH") ?? false;
+  shouldIncludeHashChanges = vars.pageViewInstrumentation.includeParts?.includes("HASH") ?? false;
 
   /**
    * Not wrapping history.go, history.backward and history.forward here, because their call signatures don't receive
@@ -94,7 +94,7 @@ function updateCurrentLocation(url: URL) {
 function isLocationChange(newUrl: URL) {
   return (
     newUrl.pathname !== currentLocation.path ||
-    (!shouldIgnoreSearchChanges && newUrl.search !== currentLocation.search) ||
-    (!shouldIgnoreHashChanges && newUrl.hash !== currentLocation.hash)
+    (shouldIncludeSearchChanges && newUrl.search !== currentLocation.search) ||
+    (shouldIncludeHashChanges && newUrl.hash !== currentLocation.hash)
   );
 }
