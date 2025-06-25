@@ -1,18 +1,18 @@
 # Dash0 Web SDK
 
-This sdk enables users of dash0's web monitoring features to instrument a website or single-page-application to capture
+This SDK enables users of dash0's web monitoring features to instrument a website or single-page-application to capture
 and transmit telemetry to dash0.
 
 Features include:
 
-- Page View Instrumentation
-- Navigation Timing Instrumentation
-- Http Request Instrumentation
-- Error Tracking
+- Page view instrumentation
+- Navigation timing instrumentation
+- HTTP request instrumentation
+- Error tracking
 
 ## Getting Started
 
-The sdk is currently only distributed as an npm package, additional distribution formats will be added in the future.
+The SDK is currently only distributed as an npm package, additional distribution formats will be added in the future.
 Should you need a currently unavailable format, let us know by creating a github issue or via [support@dash0.com](mailto:support@dash0.com).
 
 ### Before you begin
@@ -31,7 +31,7 @@ You'll need a couple of prequesites before you can start:
 
 #### Via package
 
-- Add the sdk to your dependencies
+- Add the SDK to your dependencies
   ```
   # npm
   npm install @dash0hq/sdk-web
@@ -59,12 +59,12 @@ You'll need a couple of prequesites before you can start:
 
 ## Configuration
 
-The following configuration options are available, in order to customize the sdk's behaviour to your specific website.
+The following configuration options are available, in order to customize the behaviour of the sdk.
 These can all be passed via the sdk's `init` call.
 
 ### Backend Correlation
 
-Backend Correlation for Http Requests is by default only enabled for endpoints that share the same origin as the website.
+Backend Correlation for HTTP requests is by default only enabled for endpoints that share the same origin as the website.
 
 > [!NOTE]
 > Misconfiguration of cross origin trace correlation can lead to request failures. Please make sure to carefully validate
@@ -78,11 +78,11 @@ If you want to enable correlation for cross-origin requests you have to follow t
 
 ### Configuration auto detection
 
-Certain configuration values can be auto-detected if using the module version of the sdk in combination with certain cloud providers.
+Certain configuration values can be auto-detected if using the module version of the SDK in combination with certain cloud providers.
 
 #### Vercel
 
-This currently also requires the use of nextJs
+This currently also requires the use of Next.js
 
 | Configuration Key | Source                                                                                                                                       |
 | :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -184,7 +184,7 @@ This currently also requires the use of nextJs
   The default session termination timeout. Session termination is the maximum allowed time to pass since session start
   before the session is considered to be expired.
 
-#### Error Tracking
+#### Error tracking
 
 - **Ignore Error Messages**<br>
   key: `ignoreErrorMessages`<br>
@@ -209,7 +209,7 @@ This currently also requires the use of nextJs
   This results in improved uncaught error tracking for cross-origin errors,
   but may have adverse effects on website performance and stability.
 
-#### Http Request Instrumentation
+#### HTTP request instrumentation
 
 - **Propagate Trace Header Cors URLs**<br>
   key: `propagateTraceHeadersCorsURLs`<br>
@@ -242,7 +242,7 @@ This currently also requires the use of nextJs
   A set of regular expressions that will be matched against HTTP request headers,
   to be captured in `XMLHttpRequest` and `fetch` Instrumentations. These headers will be transferred as span attributes.
 
-#### Page View Instrumentation
+#### Page view instrumentation
 
 - **Provide Page Metadata**<br>
   key: `pageViewInstrumentation.generateMetadata`<br>
@@ -272,7 +272,7 @@ This currently also requires the use of nextJs
 
 The SDK provides several API functions to help you customize telemetry collection and add contextual information to your signals.
 
-### Signal Attributes
+### Signal attributes
 
 Functions for managing custom attributes that are included with all signals.
 
@@ -312,7 +312,7 @@ import { removeSignalAttribute } from "@dash0hq/sdk-web";
 removeSignalAttribute("environment");
 ```
 
-### User Identification
+### User identification
 
 #### `identify(id, opts)`
 
