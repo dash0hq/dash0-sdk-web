@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.6.0...0.6.1) (2025-06-26)
+
+### Bug Fixes
+
+- set sampled bit in traceparent header ([ec78007](https://github.com/dash0hq/dash0-sdk-web/commit/ec78007def816dacc2d330abebacb03ada388830))
+
 ## [0.6.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.5.5...0.6.0) (2025-06-26)
 
 ### Features
