@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.5](https://github.com/dash0hq/dash0-sdk-web/compare/0.5.4...0.5.5) (2025-06-26)
+
+### Bug Fixes
+
+- use correct parentid in traceparent header ([775842d](https://github.com/dash0hq/dash0-sdk-web/commit/775842d043368c674dece23850ec693255306e65))
+
 ## [0.5.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.5.3...0.5.4) (2025-06-25)
 
 ## [0.5.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.5.2...0.5.3) (2025-06-13)
