@@ -42,7 +42,9 @@ type EventOptions = {
  */
 export function sendEvent(name: string, opts?: EventOptions) {
   if (Object.values(EVENT_NAMES).includes(name)) {
-    warn(`Unable to send custom event for internal event name ${name}. Dropping event...`);
+    warn(
+      `Unable to send custom event ${name}. You are not allowed to use an internal event name while sending a custom event. Dropping event...`
+    );
     return;
   }
 

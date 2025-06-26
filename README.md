@@ -347,6 +347,7 @@ identify("user123", {
 #### `sendEvent(name, opts)`
 
 Sends a custom event with optional data and attributes.
+Event name cannot be one of the event names internally used by the SDK. See [Event Names](https://github.com/dash0hq/dash0-sdk-web/blob/main/src/semantic-conventions.ts#L50)
 
 **Parameters:**
 
