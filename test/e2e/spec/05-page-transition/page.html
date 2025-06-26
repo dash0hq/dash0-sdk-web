@@ -17,7 +17,7 @@
       })(window, "dash0");
 
       const url = new URL(window.location.href);
-      const ignoreParts = url.searchParams.get("ignore-parts")?.split(",");
+      const includeParts = url.searchParams.get("include-parts")?.split(",");
       const disablePageViewTracking = Boolean(url.searchParams.get("disable-page-view-tracking"));
 
       dash0("init", {
@@ -33,7 +33,7 @@
           dataset: "production",
         },
         pageViewInstrumentation: {
-          ignoreParts,
+          includeParts,
           trackVirtualPageViews: !disablePageViewTracking,
           generateMetadata: (url) => {
             return {

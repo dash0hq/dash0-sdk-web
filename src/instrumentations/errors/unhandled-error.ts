@@ -4,8 +4,8 @@ import { ErrorLike, ReportErrorOpts } from "../../../types/errors";
 import { isErrorMessageIgnored } from "../../utils/ignore-rules";
 import { sendLog } from "../../transport";
 import {
-  ERROR,
   EVENT_NAME,
+  EVENT_NAMES,
   EXCEPTION_COMPONENT_STACK,
   EXCEPTION_MESSAGE,
   EXCEPTION_STACKTRACE,
@@ -118,7 +118,7 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
     trackedError.seenCount++;
   } else {
     const attributes: KeyValue[] = [];
-    addAttribute(attributes, EVENT_NAME, ERROR);
+    addAttribute(attributes, EVENT_NAME, EVENT_NAMES.ERROR);
     addAttribute(attributes, EXCEPTION_MESSAGE, message);
     if (type) {
       addAttribute(attributes, EXCEPTION_TYPE, type);

@@ -2,8 +2,8 @@ import { KeyValue, LogRecord } from "../../../types/otlp";
 import { addAttribute, getTraceContextForPageLoad } from "../../utils/otel";
 import {
   EVENT_NAME,
+  EVENT_NAMES,
   LOG_SEVERITIES,
-  PAGE_VIEW,
   PAGE_VIEW_CHANGE_STATE,
   PAGE_VIEW_CHANGE_STATE_VALUES,
   PAGE_VIEW_TYPE,
@@ -24,7 +24,7 @@ export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?:
   const meta = getPageViewMeta(url);
 
   const attributes: KeyValue[] = [];
-  addAttribute(attributes, EVENT_NAME, PAGE_VIEW);
+  addAttribute(attributes, EVENT_NAME, EVENT_NAMES.PAGE_VIEW);
 
   if (meta.attributes) {
     Object.entries(meta.attributes).forEach(([key, value]) => addAttribute(attributes, key, value));

@@ -44,11 +44,11 @@ export type PageViewInstrumentationSettings = {
   trackVirtualPageViews?: boolean;
 
   /**
-   * Do not generate virtual page views when these url parts change.
-   * - "HASH" ignore changes to the urls hash / fragment
-   * - "SEARCH" ignore changes to the urls search / query parameters
+   * Additionally generate virtual page views when these url parts change.
+   * - "HASH" include changes to the urls hash / fragment
+   * - "SEARCH" include changes to the urls search / query parameters
    */
-  ignoreParts?: Array<"HASH" | "SEARCH">;
+  includeParts?: Array<"HASH" | "SEARCH">;
 };
 
 export type Vars = {
@@ -164,5 +164,6 @@ export const vars: Vars = {
   headersToCapture: [],
   pageViewInstrumentation: {
     trackVirtualPageViews: true,
+    includeParts: [],
   },
 };

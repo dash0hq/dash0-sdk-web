@@ -7,6 +7,7 @@ export const DEPLOYMENT_ID = "deployment.id";
 
 // Misc Signal Attribute Keys
 export const EVENT_NAME = "event.name";
+export const EVENT_TITLE = "dash0.event.title";
 export const PAGE_LOAD_ID = "page.load.id";
 export const SESSION_ID = "session.id";
 export const USER_AGENT = "user_agent.original";
@@ -46,10 +47,12 @@ export const HTTP_RESPONSE_HEADER = "http.response.header";
 export const HTTP_RESPONSE_BODY_SIZE = "http.response.body.size";
 
 // Event Names
-export const PAGE_VIEW = "browser.page_view";
-export const NAVIGATION_TIMING = "browser.navigation_timing";
-export const WEB_VITAL = "browser.web_vital";
-export const ERROR = "browser.error";
+export const EVENT_NAMES = {
+  PAGE_VIEW: "browser.page_view",
+  NAVIGATION_TIMING: "browser.navigation_timing",
+  WEB_VITAL: "browser.web_vital",
+  ERROR: "browser.error",
+};
 export const SPAN_EVENT_NAME_EXCEPTION = "exception";
 
 // Log Severities

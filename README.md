@@ -259,14 +259,14 @@ This currently also requires the use of Next.js
   default: `true`<br>
   Whether the sdk should track virtual page views by instrumenting the history api.
   Only relevant for websites utilizing virtual navigation.
-- **Ignore Url Part Changes**<br>
-  key: `pageViewInstrumentation.ignoreParts`<br>
+- **Track Url Part Changes**<br>
+  key: `pageViewInstrumentation.includeParts`<br>
   type: `Array<"HASH" | "SEARCH">`<br>
   optional: `true`<br>
-  default: `["HASH", "SEARCH"]`<br>
-  Do not generate virtual page views when these url parts change.
-  - "HASH" ignore changes to the urls hash / fragment
-  - "SEARCH" ignore changes to the urls search / query parameters
+  default: `[]`<br>
+  Additionally generate virtual page views when these url parts change.
+  - "HASH" changes to the urls hash / fragment
+  - "SEARCH" changes to the urls search / query parameters
 
 ## API
 
@@ -347,11 +347,13 @@ identify("user123", {
 #### `sendEvent(name, opts)`
 
 Sends a custom event with optional data and attributes.
+Event name cannot be one of the event names internally used by the SDK. See [Event Names](https://github.com/dash0hq/dash0-sdk-web/blob/main/src/semantic-conventions.ts#L50)
 
 **Parameters:**
 
 - `name` (string): Event name
 - `opts` (object, optional): Event options
+  - `title` (string, optional): Human readable title for the event. Should summarize the event in a single short sentence.
   - `timestamp` (number | Date, optional): Event timestamp
   - `data` (AttributeValueType | AnyValue, optional): Event data
   - `attributes` (Record<string, AttributeValueType | AnyValue>, optional): Event attributes

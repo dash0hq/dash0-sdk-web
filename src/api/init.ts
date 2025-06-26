@@ -8,15 +8,25 @@ import {
   SERVICE_VERSION,
   USER_AGENT,
 } from "../semantic-conventions";
-import { fetch, generateUniqueId, PAGE_LOAD_ID_BYTES, warn, debug, perf, nav, win, NO_VALUE_FALLBACK } from "../utils";
+import {
+  fetch,
+  generateUniqueId,
+  PAGE_LOAD_ID_BYTES,
+  warn,
+  debug,
+  perf,
+  nav,
+  win,
+  NO_VALUE_FALLBACK,
+  pick,
+} from "../utils";
 import { trackSessions } from "./session";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { startErrorInstrumentation } from "../instrumentations/errors";
-import { addAttribute } from "../utils/otel";
+import { addAttribute, AttributeValueType } from "../utils/otel";
 import { instrumentFetch } from "../instrumentations/http/fetch";
 import { AnyValue } from "../../types/otlp";
 import { startNavigationInstrumentation } from "../instrumentations/navigation";
-import { pick } from "../utils/pick";
 import { merge } from "ts-deepmerge";
 import { initializeTabId } from "../utils/tab-id";
 
@@ -30,7 +40,7 @@ export type InitOptions = {
   /**
    * Additional attributes to include with transmitted signals
    */
-  additionalSignalAttributes?: Record<string, string | number | AnyValue>;
+  additionalSignalAttributes?: Record<string, AttributeValueType | AnyValue>;
 
   /**
    * OTLP endpoints to which the generated telemetry should be sent to.
