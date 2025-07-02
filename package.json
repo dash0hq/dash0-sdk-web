@@ -1,5 +1,5 @@
 {
-  "name": "@dash0hq/sdk-web",
+  "name": "@dash0/sdk-web",
   "version": "0.6.1",
   "description": "Dash0's Web SDK to collect telemetry from end-users' web browsers",
   "type": "module",
