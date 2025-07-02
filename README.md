@@ -34,16 +34,16 @@ You'll need a couple of prequesites before you can start:
 - Add the SDK to your dependencies
   ```
   # npm
-  npm install @dash0hq/sdk-web
+  npm install @dash0/sdk-web
   # yarn
-  yarn add @dash0hq/sdk-web
+  yarn add @dash0/sdk-web
   ```
 - Initialize the sdk
   In order to initialize the sdk you'll need to call the `init` function at a convenient time in your applications lifecycle.
   Ideally this should happen as early as possible, as most instrumentations can only observe events after init has been called.
 
   ```js
-  import { init } from "@dash0hq/sdk-web";
+  import { init } from "@dash0/sdk-web";
 
   init({
     serviceName: "my-website",
@@ -288,7 +288,7 @@ Adds a signal attribute to be transmitted with every signal.
 **Example:**
 
 ```js
-import { addSignalAttribute } from "@dash0hq/sdk-web";
+import { addSignalAttribute } from "@dash0/sdk-web";
 
 addSignalAttribute("environment", "production");
 addSignalAttribute("version", "1.2.3");
@@ -307,7 +307,7 @@ Removes a previously added signal attribute.
 **Example:**
 
 ```js
-import { removeSignalAttribute } from "@dash0hq/sdk-web";
+import { removeSignalAttribute } from "@dash0/sdk-web";
 
 removeSignalAttribute("environment");
 ```
@@ -332,7 +332,7 @@ See [OTEL User Attributes](https://opentelemetry.io/docs/specs/semconv/registry/
 **Example:**
 
 ```js
-import { identify } from "@dash0hq/sdk-web";
+import { identify } from "@dash0/sdk-web";
 
 identify("user123", {
   name: "johndoe",
@@ -362,7 +362,7 @@ Event name cannot be one of the event names internally used by the SDK. See [Eve
 **Example:**
 
 ```js
-import { sendEvent } from "@dash0hq/sdk-web";
+import { sendEvent } from "@dash0/sdk-web";
 
 sendEvent("user_action", {
   data: "button_clicked",
@@ -389,7 +389,7 @@ Manually reports an error to be tracked in telemetry.
 **Example:**
 
 ```js
-import { reportError } from "@dash0hq/sdk-web";
+import { reportError } from "@dash0/sdk-web";
 
 // Report a string error
 reportError("Something went wrong in user flow");
@@ -416,7 +416,7 @@ Manually terminates the current user session.
 **Example:**
 
 ```js
-import { terminateSession } from "@dash0hq/sdk-web";
+import { terminateSession } from "@dash0/sdk-web";
 
 // Terminate session on user logout
 function handleLogout() {
