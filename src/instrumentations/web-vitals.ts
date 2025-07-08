@@ -7,9 +7,9 @@ import { addAttribute } from "../utils/otel";
 import { addCommonAttributes } from "../attributes";
 
 export function startWebVitalsInstrumentation() {
-  onLCP(onWebVital);
-  onINP(onWebVital);
-  onCLS(onWebVital);
+  onLCP(onWebVital, { reportAllChanges: true });
+  onINP(onWebVital, { reportAllChanges: true });
+  onCLS(onWebVital, { reportAllChanges: true });
 }
 
 function onWebVital(metric: Metric) {
