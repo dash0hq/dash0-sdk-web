@@ -75,10 +75,12 @@ export function addTraceContextHttpHeaders(
    * Random Trace ID: 00000010 - IF set the component guarantees that the seven right most bytes of the trace-id
    * are randomly generated. Downstream processors are then able to rely on this for technical things like shard keys.
    *
+   * NOTE: For now we just send the "sampled" flag because not all components support the random trace ID flag.
+   *
    * References:
    * https://www.w3.org/TR/trace-context-2/#traceparent-header
    * https://www.w3.org/TR/trace-context-2/#trace-flags
    * https://www.w3.org/TR/trace-context-2/#random-trace-id-flag
    */
-  fn.call(ctx, "traceparent", `00-${span.traceId}-${span.spanId}-03`);
+  fn.call(ctx, "traceparent", `00-${span.traceId}-${span.spanId}-01`);
 }
