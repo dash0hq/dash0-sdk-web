@@ -26,7 +26,7 @@ export function generateSessionId(): string {
 
 export function generateTraceId(sessionId: string | null): string {
   if (!sessionId) {
-    return `D04200${generateUniqueId(TRACE_ID_BYTES - 3)}`;
+    return `d04201${generateUniqueId(TRACE_ID_BYTES - 3)}`;
   }
-  return `D04200${sessionId}${generateUniqueId(TRACE_ID_BYTES - SESSION_ID_BYTES - 3)}`;
+  return `d04200${sessionId}${generateUniqueId(TRACE_ID_BYTES - SESSION_ID_BYTES - 3)}`;
 }

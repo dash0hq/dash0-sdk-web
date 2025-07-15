@@ -77,10 +77,16 @@ describe("id", () => {
       expect(traceId).toHaveLength(32);
     });
 
-    it("returns a trace ID with correct prefix", () => {
+    it("returns a trace ID with correct prefix when a session id is set", () => {
       const traceId = generateTraceId("abcdef1234567890");
 
-      expect(traceId.substring(0, 6)).toEqual("D04200");
+      expect(traceId.substring(0, 6)).toEqual("d04200");
+    });
+
+    it("returns a trace ID with correct prefix when NOT session is set", () => {
+      const traceId = generateTraceId(null);
+
+      expect(traceId.substring(0, 6)).toEqual("d04201");
     });
 
     it("returns a unique trace ID on each call", () => {
