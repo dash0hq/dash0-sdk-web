@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.10.1...0.11.0) (2025-07-16)
+
+### Features
+
+- adapt session-id, trace-id and traceparent header ([#39](https://github.com/dash0hq/dash0-sdk-web/issues/39)) ([c8479b0](https://github.com/dash0hq/dash0-sdk-web/commit/c8479b035582bd3cdbbf4d1a6acc72973fff3efa))
+
 ## [0.10.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.10.0...0.10.1) (2025-07-08)
 
 ### Bug Fixes
