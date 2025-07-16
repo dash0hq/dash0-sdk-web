@@ -1,8 +1,9 @@
 import { KeyValue, Span, SpanStatus } from "../../../types/otlp";
 import { nowNanos } from "../time";
-import { generateTraceId, generateUniqueId, SPAN_ID_BYTES } from "../id";
+import { generateUniqueId, SPAN_ID_BYTES } from "../id";
 import { SPAN_KIND_CLIENT, SPAN_STATUS_UNSET } from "../../semantic-conventions";
 import { sessionId } from "../../api/session";
+import { generateTraceId } from "../trace-id";
 
 export type InProgressSpan = Omit<Span, "endTimeUnixNano">;
 

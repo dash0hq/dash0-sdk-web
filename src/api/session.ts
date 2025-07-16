@@ -1,6 +1,7 @@
-import { isSupported, getItem, setItem, removeItem, generateSessionId } from "../utils";
+import { isSupported, getItem, setItem, removeItem } from "../utils";
 import { debug, now } from "../utils";
 import { info, warn } from "../utils";
+import { generateSessionId } from "../utils/session-id";
 
 interface Session {
   id: string;
