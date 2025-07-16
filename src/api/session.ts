@@ -1,6 +1,7 @@
-import { isSupported, getItem, setItem, removeItem, SESSION_ID_BYTES } from "../utils";
-import { debug, generateUniqueId, now } from "../utils";
+import { isSupported, getItem, setItem, removeItem } from "../utils";
+import { debug, now } from "../utils";
 import { info, warn } from "../utils";
+import { generateSessionId } from "../utils/session-id";
 
 interface Session {
   id: string;
@@ -19,6 +20,9 @@ export let sessionId: string | null = null;
 export function trackSessions(sessionInactivityTimeoutMillis?: number, sessionTerminationTimeoutMillis?: number): void {
   if (!isSupported) {
     debug("Storage API is not available and session tracking is therefore not supported.");
+
+    // we still generate a session ID to ensure that the session ID is always available
+    sessionId = generateSessionId();
     return;
   }
 
@@ -43,7 +47,7 @@ export function trackSessions(sessionInactivityTimeoutMillis?: number, sessionTe
       session.lastActivityTime = now();
     } else {
       session = {
-        id: generateUniqueId(SESSION_ID_BYTES),
+        id: generateSessionId(),
         startTime: now(),
         lastActivityTime: now(),
       };
@@ -56,9 +60,10 @@ export function trackSessions(sessionInactivityTimeoutMillis?: number, sessionTe
   }
 }
 
+/**
+ * The session will be terminated. This only takes effect on the next physical page load.
+ */
 export function terminateSession() {
-  sessionId = null;
-
   if (!isSupported) {
     return;
   }

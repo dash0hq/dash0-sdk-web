@@ -1,13 +1,15 @@
 import { KeyValue, Span, SpanStatus } from "../../../types/otlp";
 import { nowNanos } from "../time";
-import { generateUniqueId, SPAN_ID_BYTES, TRACE_ID_BYTES } from "../id";
+import { generateUniqueId, SPAN_ID_BYTES } from "../id";
 import { SPAN_KIND_CLIENT, SPAN_STATUS_UNSET } from "../../semantic-conventions";
+import { sessionId } from "../../api/session";
+import { generateTraceId } from "../trace-id";
 
 export type InProgressSpan = Omit<Span, "endTimeUnixNano">;
 
 export function startSpan(name: string): InProgressSpan {
   return {
-    traceId: generateUniqueId(TRACE_ID_BYTES),
+    traceId: generateTraceId(sessionId),
     spanId: generateUniqueId(SPAN_ID_BYTES),
     name,
     // Always CLIENT for now https://github.com/open-telemetry/opentelemetry-proto/blob/ac3242b03157295e4ee9e616af53b81517b06559/opentelemetry/proto/trace/v1/trace.proto#L143-L169

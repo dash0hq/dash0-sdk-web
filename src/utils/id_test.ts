@@ -14,7 +14,7 @@ function generateId(length: number): string {
   return generateUniqueId(Math.ceil(length / 2)).substring(0, length);
 }
 
-describe("generateId", () => {
+describe("generateUniqueId", () => {
   it("returns a string of the expected length", () => {
     const id = generateId(10);
     expect(id).toHaveLength(10);
