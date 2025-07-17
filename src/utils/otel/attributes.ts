@@ -56,6 +56,8 @@ export function toKeyValue(key: string, value: AttributeValueType | AnyValue): K
 }
 
 export function addAttribute(attributes: KeyValue[], key: string, value: AttributeValueType | AnyValue) {
+  if (!key) return;
+
   attributes.push(toKeyValue(key, value));
 }
 
