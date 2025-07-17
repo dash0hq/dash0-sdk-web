@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.11.0...0.11.1) (2025-07-17)
+
+### Bug Fixes
+
+- rename event title attribute to avoid conflicts ([#40](https://github.com/dash0hq/dash0-sdk-web/issues/40)) ([b2e219e](https://github.com/dash0hq/dash0-sdk-web/commit/b2e219e076cd64d8f0e73ccf866c1de3d5dd403b))
+
 ## [0.11.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.10.1...0.11.0) (2025-07-16)
 
 ### Features
