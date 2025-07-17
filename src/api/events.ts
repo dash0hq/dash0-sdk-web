@@ -1,5 +1,5 @@
 import { AnyValue, KeyValue } from "../../types/otlp";
-import { EVENT_NAME, EVENT_NAMES, EVENT_TITLE, LOG_SEVERITIES, LOG_SEVERITY_TEXT } from "../semantic-conventions";
+import { EVENT_NAME, EVENT_NAMES, WEB_EVENT_TITLE, LOG_SEVERITIES, LOG_SEVERITY_TEXT } from "../semantic-conventions";
 import { sendLog } from "../transport";
 import { addCommonAttributes } from "../attributes";
 import { addAttribute, AttributeValueType, toAnyValue } from "../utils/otel";
@@ -9,7 +9,7 @@ type EventOptions = {
   /**
    * Human readable title for the event.
    * Should summarize the event in a single short sentence.
-   * Transmitted via the `dash0.event.title` attribute.
+   * Transmitted via the `dash0.web.event.title` attribute.
    */
   title?: string;
 
@@ -54,7 +54,7 @@ export function sendEvent(name: string, opts?: EventOptions) {
 
   addAttribute(attributes, EVENT_NAME, name);
   if (opts?.title) {
-    addAttribute(attributes, EVENT_TITLE, opts.title);
+    addAttribute(attributes, WEB_EVENT_TITLE, opts.title);
   }
 
   sendLog({
