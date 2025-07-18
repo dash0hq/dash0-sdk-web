@@ -1,4 +1,4 @@
-const POLYNOMIAL = 0xedb88320; // Polynomial used in CRC32 calculation
+const POLYNOMIAL = 0xedb88320; // This is the standard polynomial used in IEEE 802.3 and must be in sync with the one we are using in the backend.
 
 const TABLE = new Uint32Array(256);
 for (let i = 0; i < 256; i++) {
