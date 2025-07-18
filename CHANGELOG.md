@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.12.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.11.2...0.12.0) (2025-07-18)
+
+### Features
+
+- update span-id generation ([#42](https://github.com/dash0hq/dash0-sdk-web/issues/42)) ([6c0bcb6](https://github.com/dash0hq/dash0-sdk-web/commit/6c0bcb69817b6a1f1852d0f26c15d2815c9a4e1c))
+
 ## [0.11.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.11.1...0.11.2) (2025-07-18)
 
 ### Bug Fixes
