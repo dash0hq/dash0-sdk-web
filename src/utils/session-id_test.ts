@@ -12,7 +12,6 @@ describe("generateSessionId", () => {
     vi.spyOn(localStorage, "isSupported", "get").mockReturnValue(true);
 
     const sessionId = generateSessionId();
-    console.log(sessionId);
     expect(sessionId.startsWith("00")).toBe(true);
   });
 
@@ -20,7 +19,6 @@ describe("generateSessionId", () => {
     vi.spyOn(localStorage, "isSupported", "get").mockReturnValue(false);
 
     const sessionId = generateSessionId();
-    console.log(sessionId);
     expect(sessionId.startsWith("01")).toBe(true);
   });
 
