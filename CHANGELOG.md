@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.11.1...0.11.2) (2025-07-18)
+
+### Bug Fixes
+
+- ignore attributes with empty keys ([#41](https://github.com/dash0hq/dash0-sdk-web/issues/41)) ([6e4f688](https://github.com/dash0hq/dash0-sdk-web/commit/6e4f68803d6648e51b01a6899b50da1a0709def5))
+
 ## [0.11.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.11.0...0.11.1) (2025-07-17)
 
 ### Bug Fixes

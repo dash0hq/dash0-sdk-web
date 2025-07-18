@@ -1,6 +1,6 @@
 import { expect, describe, it } from "vitest";
-import { toAnyValue } from "./attributes";
-import { AnyValue } from "../../../types/otlp";
+import { addAttribute, toAnyValue } from "./attributes";
+import { AnyValue, KeyValue } from "../../../types/otlp";
 
 describe("toAnyValue", () => {
   describe("primitive values", () => {
@@ -176,6 +176,24 @@ describe("toAnyValue", () => {
     it("returns undefined for null", () => {
       const result = toAnyValue(null as any);
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe("addAttribute", () => {
+    it("adds attributes to attribute set", () => {
+      const attributes: KeyValue[] = [];
+
+      addAttribute(attributes, "some.attribute", { stringValue: "a value" });
+
+      expect(attributes).toEqual(expect.arrayContaining([expect.objectContaining({ key: "some.attribute" })]));
+    });
+
+    it("ignores attributes without key", () => {
+      const attributes: KeyValue[] = [];
+
+      addAttribute(attributes, "", { stringValue: "a value" });
+
+      expect(attributes).toHaveLength(0);
     });
   });
 });
