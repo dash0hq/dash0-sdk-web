@@ -24,7 +24,8 @@ describe("generateSpanId", () => {
   });
 
   it("return a span id with the correct prefix", () => {
-    expect(generateSpanId("abcdef1234567890abcdef1234567890").substring(0, 8)).toEqual("3d5a507a");
-    expect(generateSpanId("1234567890abcdef1234567890abcdef").substring(0, 8)).toEqual("c24261eb");
+    expect(generateSpanId("abcdef1234567890abcdef1234567890").substring(0, 8)).toEqual("07d06023");
+    expect(generateSpanId("1234567890abcdef1234567890abcdef").substring(0, 8)).toEqual("75df3ddf");
+    expect(generateSpanId("d0420000a7a996090df1cac9a99d3cb7").substring(0, 8)).toEqual("120e82be");
   });
 });
