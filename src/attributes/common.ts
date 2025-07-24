@@ -1,9 +1,10 @@
 import { KeyValue } from "../../types/otlp";
-import { nav, NO_VALUE_FALLBACK, win } from "../utils";
+import { generateUniqueId, nav, NO_VALUE_FALLBACK, WEB_EVENT_ID_BYTES, win } from "../utils";
 import {
   BROWSER_TAB_ID,
   NETWORK_CONNECTION_TYPE,
   SESSION_ID,
+  WEB_EVENT_ID,
   WINDOW_HEIGHT,
   WINDOW_WIDTH,
 } from "../semantic-conventions";
@@ -18,6 +19,10 @@ type Options = {
 };
 
 export function addCommonAttributes(attributes: KeyValue[], options?: Options): void {
+  if (attributes.find((attribute) => attribute.key === WEB_EVENT_ID) === undefined) {
+    addAttribute(attributes, WEB_EVENT_ID, generateUniqueId(WEB_EVENT_ID_BYTES));
+  }
+
   for (let i = 0; i < vars.signalAttributes.length; i++) {
     attributes.push(vars.signalAttributes[i]!);
   }
