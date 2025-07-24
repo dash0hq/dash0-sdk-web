@@ -15,5 +15,5 @@ declare global {
     [key: string]: number | string | null | undefined;
   };
 
-  const __sdkVersion: string;
+  let __sdkVersion: string;
 }
