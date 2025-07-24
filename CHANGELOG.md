@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.13.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.12.1...0.13.0) (2025-07-24)
+
+### Features
+
+- send the "dash0.web.event.id" attribute ([#44](https://github.com/dash0hq/dash0-sdk-web/issues/44)) ([70e9b8e](https://github.com/dash0hq/dash0-sdk-web/commit/70e9b8e19c5fc84dbb8b24c37979e94ded4324bd))
+
 ## [0.12.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.12.0...0.12.1) (2025-07-23)
 
 ## [0.12.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.11.2...0.12.0) (2025-07-18)
