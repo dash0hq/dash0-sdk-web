@@ -8,6 +8,7 @@ export const DEPLOYMENT_ID = "deployment.id";
 // Misc Signal Attribute Keys
 export const EVENT_NAME = "event.name";
 export const WEB_EVENT_TITLE = "dash0.web.event.title";
+export const WEB_EVENT_ID = "dash0.web.event.id";
 export const PAGE_LOAD_ID = "page.load.id";
 export const SESSION_ID = "session.id";
 export const USER_AGENT = "user_agent.original";
