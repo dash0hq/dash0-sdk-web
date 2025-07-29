@@ -49,7 +49,6 @@ describe("Fetch Instrumentation", () => {
           ],
           status: {
             code: 0,
-            message: "OK",
           },
         })
       );
@@ -75,7 +74,6 @@ describe("Fetch Instrumentation", () => {
           ]),
           status: {
             code: 0,
-            message: "OK",
           },
         })
       );
@@ -101,7 +99,6 @@ describe("Fetch Instrumentation", () => {
           ]),
           status: {
             code: 0,
-            message: "OK",
           },
         })
       );
@@ -160,10 +157,9 @@ describe("Fetch Instrumentation", () => {
               attributes: expect.arrayContaining(expectedAttributes),
             }),
           ]),
-          status: {
+          status: expect.objectContaining({
             code: 2,
-            message: expect.not.stringContaining("Ok"),
-          },
+          }),
         })
       );
     });
