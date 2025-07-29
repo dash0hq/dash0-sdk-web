@@ -17,7 +17,7 @@ Should you need a currently unavailable format, let us know by creating a github
 
 ### Before you begin
 
-You'll need a couple of prequesites before you can start:
+You'll need a couple of prerequisites before you can start:
 
 - An active dash0 account. [Sign Up](https://www.dash0.com/sign-up)
 - An [Auth Token](https://www.dash0.com/documentation/dash0/key-concepts/auth-tokens)
@@ -52,7 +52,7 @@ You'll need a couple of prequesites before you can start:
       url: "http://example.com",
       // Replace this with your auth token you created earlier
       // Ideally inject the value at build time to not commit the token to git, even if its effectively public
-      authToken: "you-auth-token-goes-here",
+      authToken: "your-auth-token-goes-here",
     },
   });
   ```
@@ -134,7 +134,7 @@ This currently also requires the use of Next.js
   type: `string`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  Id of the deployment, aps to the [deployment.id](https://opentelemetry.io/docs/specs/semconv/registry/attributes/deployment/#deployment-id) otel attribute.
+  Id of the deployment, maps to the [deployment.id](https://opentelemetry.io/docs/specs/semconv/registry/attributes/deployment/#deployment-id) otel attribute.
   This value is [auto detected](#configuration-auto-detection) in certain build environments.
 - **Additional Signal Attributes**<br>
   key: `additionalSignalAttributes`<br>
@@ -150,7 +150,7 @@ This currently also requires the use of Next.js
   key: `endpoint`<br>
   type: `Endpoint | Endpoint[]`<br>
   optional: `false`<br>
-  The OTLP to which the generated telemtetry should be sent. Supports multiple endpoints in parallel if an array is provided.
+  The OTLP to which the generated telemetry should be sent. Supports multiple endpoints in parallel if an array is provided.
 - **Endpoint URL**<br>
   key: `endpoint.url`<br>
   type: `string`<br>
@@ -197,7 +197,7 @@ This currently also requires the use of Next.js
   type: `boolean`<br>
   optional: `true`<br>
   default: `true`<br>
-  Whether we should automatically wrap DOM event handlers added via addEventlistener for improved uncaught error tracking.
+  Whether we should automatically wrap DOM event handlers added via addEventListener for improved uncaught error tracking.
   This results in improved uncaught error tracking for cross-origin errors,
   but may have adverse effects on website performance and stability.
 - **Wrap Timers**<br>
@@ -438,10 +438,10 @@ In this means:
 - `MINOR` versions add functionality in a backward compatible manner.
 - `PATCH` versions include bug and security fixes which do not break backward compatibility.
 
-We automatically release new versions of this package whenever a PR is merged to main and the ci is able to detect a
+We automatically release new versions of this package whenever a PR is merged to main and the CI is able to detect a
 valid version increase from the merge commit. It uses [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
 to calculate the version increase and to generate additional messaging such as changelogs.
-Please make sure PR merge commits are formatted accordingly, not matching messages will create a PATCH release, but no
+Please make sure PR merge commits are formatted accordingly, non matching messages will create a PATCH release, but no
 changelog entry.
 Examples:
 
@@ -487,7 +487,7 @@ They currently don't have a fully local setup, but tests can be executed locally
 
 #### Setup
 
-- Get a labmda test account
+- Get a lambda test account
 - Create a `.env` file based on `.env.example` and provide your lambda test credentials.
 - Run the tests via `pnpm run test:e2e`
 
