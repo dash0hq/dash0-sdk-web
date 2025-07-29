@@ -1,6 +1,6 @@
 {
   "name": "@dash0/sdk-web",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "description": "Dash0's Web SDK to collect telemetry from end-users' web browsers",
   "type": "module",
   "main": "dist/dash0.umd.cjs",
