@@ -230,7 +230,7 @@ This currently also requires the use of Next.js
   key: `maxToleranceForResourceTimingsMillis`<br>
   type: `number`<br>
   optional: `true`<br>
-  default: `3000`<br>
+  default: `50`<br>
   The number of milliseconds of tolerance between resolution of a http request promise and the end time of performanceEntries
   applied when matching a request to its respective performance entry. A higher value might increase match frequency at
   the cost of potential incorrect matches. Matching is performed based on request timing and url.

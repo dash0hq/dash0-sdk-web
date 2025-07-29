@@ -129,7 +129,7 @@ export type Vars = {
    * applied when matching a request to its respective performance entry. A higher value might increase match frequency at
    * the cost of potential incorrect matches. Matching is performed based on request timing and url.
    *
-   * @default 3000
+   * @default 50
    */
   maxToleranceForResourceTimingsMillis: number;
 
@@ -160,7 +160,7 @@ export const vars: Vars = {
   wrapTimers: true,
   propagateTraceHeadersCorsURLs: [],
   maxWaitForResourceTimingsMillis: 10000,
-  maxToleranceForResourceTimingsMillis: 3000,
+  maxToleranceForResourceTimingsMillis: 50,
   headersToCapture: [],
   pageViewInstrumentation: {
     trackVirtualPageViews: true,

@@ -6,6 +6,7 @@ import { addEventListener, removeEventListener } from "./listeners";
 
 const TEN_MINUTES_IN_MILLIS = 1000 * 60 * 10;
 const ONE_DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
+const OBSERVER_WAIT_TIME_MS = 300;
 
 export const isResourceTimingAvailable = !!(perf && perf.getEntriesByType);
 export const isPerformanceObserverAvailable =
@@ -57,6 +58,8 @@ type PerformanceObservationContoller = {
   cancel: () => void;
 };
 
+const usedResources = new WeakSet<PerformanceResourceTiming>();
+
 export function observeResourcePerformance(opts: ObserveResourcePerformanceOptions): PerformanceObservationContoller {
   if (!isPerformanceObserverAvailable) return observeWithoutPerformanceObserverSupport(opts.onEnd);
 
@@ -64,7 +67,7 @@ export function observeResourcePerformance(opts: ObserveResourcePerformanceOptio
   let startTime: number;
   let endTime: number;
 
-  let resource: PerformanceResourceTiming | undefined;
+  const resources: PerformanceResourceTiming[] = [];
 
   // Global resources that will need to be disposed
   let observer: PerformanceObserver | undefined;
@@ -100,43 +103,40 @@ export function observeResourcePerformance(opts: ObserveResourcePerformanceOptio
     endTime = perf.now();
     cancelFallbackEndNeverCalledTimer();
 
-    if (resource || !isWaitingAcceptable()) {
-      end();
-    } else {
-      addEventListener(doc!, "visibilitychange", onVisibilityChanged);
-      fallbackNoResourceFoundTimerHandle = setTimeout(end, opts.maxWaitForResourceMillis);
+    if (!isWaitingAcceptable()) {
+      return end();
     }
+
+    setTimeout(() => end(), Math.min(OBSERVER_WAIT_TIME_MS, opts.maxWaitForResourceMillis));
+    addEventListener(doc!, "visibilitychange", onVisibilityChanged);
+    fallbackNoResourceFoundTimerHandle = setTimeout(end, opts.maxWaitForResourceMillis);
   }
 
   function end() {
     disposeGlobalResources();
+
+    const resource = findBestMatchingResource();
 
     // In some old web browsers, e.g. Chrome 31, the value provided as the duration
     // can be very wrong. We have seen cases where this value is measured in years.
     // If this does seem be the case, then we will ignore the duration property and
     // instead prefer our approximation.
     if (resource?.duration && resource.duration < ONE_DAY_IN_MILLIS) {
-      opts.onEnd({ resource, duration: Math.round(resource.duration) });
+      opts.onEnd({ resource, duration: resource.duration });
     } else {
-      opts.onEnd({ resource, duration: Math.round(endTime - startTime) });
+      opts.onEnd({ resource, duration: endTime - startTime });
     }
   }
 
   function onResourceFound(list: PerformanceObserverEntryList) {
-    const r = list.getEntriesByType("resource").find((e) => {
-      // This polymorphism is not properly represented in the api types. The cast is safe since we're only accessing the resource timings.
-      const entry = e as PerformanceResourceTiming;
-      return (
-        entry.startTime >= startTime &&
-        (!endTime || endTime + opts.maxToleranceForResourceTimingsMillis >= entry.responseEnd) &&
-        opts.resourceMatcher(entry)
-      );
-    });
-
-    if (!r) return;
-
-    resource = r as PerformanceResourceTiming;
-    if (endTime) end();
+    list
+      .getEntriesByType("resource")
+      .filter((e) => {
+        // This polymorphism is not properly represented in the api types. The cast is safe since we're only accessing the resource timings.
+        const entry = e as PerformanceResourceTiming;
+        return entry.startTime >= startTime && opts.resourceMatcher(entry);
+      })
+      .forEach((entry) => resources.push(entry as PerformanceResourceTiming));
   }
 
   function onVisibilityChanged() {
@@ -178,6 +178,39 @@ export function observeResourcePerformance(opts: ObserveResourcePerformanceOptio
   function stopVisibilityObservation() {
     if (!doc) return;
     removeEventListener(doc, "visibilitychange", onVisibilityChanged);
+  }
+
+  function findBestMatchingResource(): PerformanceResourceTiming | undefined {
+    if (!resources.length) return undefined;
+
+    let bestMatch: PerformanceResourceTiming | undefined;
+    const matchingResources = resources.filter(
+      (res) => res.responseEnd <= endTime + opts.maxToleranceForResourceTimingsMillis && !usedResources.has(res)
+    );
+
+    if (!matchingResources.length) {
+      return undefined;
+    }
+
+    if (matchingResources.length === 1) {
+      bestMatch = matchingResources[0];
+    }
+
+    let bestScore: number | undefined;
+    if (!bestMatch) {
+      for (const res of matchingResources) {
+        const score = Math.abs(endTime - startTime - res.duration) + Math.abs(res.responseEnd - endTime);
+        if (bestScore === undefined || score < bestScore) {
+          bestScore = score;
+          bestMatch = res;
+        }
+      }
+    }
+
+    if (!bestMatch) return;
+
+    usedResources.add(bestMatch);
+    return bestMatch;
   }
 }
 

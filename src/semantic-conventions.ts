@@ -31,6 +31,9 @@ export const EXCEPTION_MESSAGE = "exception.message";
 export const EXCEPTION_TYPE = "exception.type";
 export const EXCEPTION_STACKTRACE = "exception.stacktrace";
 
+// Error Attribute Keys
+export const ERROR_TYPE = "error.type";
+
 // URL Attribute Keys
 export const URL_DOMAIN = "url.domain";
 export const URL_FRAGMENT = "url.fragment";

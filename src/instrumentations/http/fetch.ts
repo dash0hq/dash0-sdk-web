@@ -12,6 +12,7 @@ import {
   startSpan,
 } from "../../utils/otel";
 import {
+  ERROR_TYPE,
   HTTP_REQUEST_METHOD,
   HTTP_REQUEST_METHOD_ORIGINAL,
   HTTP_RESPONSE_STATUS_CODE,
@@ -166,7 +167,10 @@ function tryCaptureHttpHeaders(headers: Headers, span: InProgressSpan, getAttrib
 
 function addResponseData(span: InProgressSpan, response: Response) {
   const status = response.status;
-  setSpanStatus(span, status >= 200 && status < 400 ? SPAN_STATUS_UNSET : SPAN_STATUS_ERROR, response.statusText);
+  setSpanStatus(span, status >= 200 && status < 400 ? SPAN_STATUS_UNSET : SPAN_STATUS_ERROR);
+  if (status === 0) {
+    addAttribute(span.attributes, ERROR_TYPE, response.type);
+  }
   addAttribute(span.attributes, HTTP_RESPONSE_STATUS_CODE, String(status));
   tryCaptureHttpHeaders(response.headers, span, (k) => httpResponseHeaderKey(k));
 }
