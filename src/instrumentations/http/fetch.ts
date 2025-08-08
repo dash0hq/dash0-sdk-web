@@ -24,7 +24,7 @@ import { vars } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
 import { sendSpan } from "../../transport";
 import { addResourceNetworkEvents, addResourceSize, HTTP_METHOD_OTHER, isWellKnownHttpMethod } from "./utils";
-import { addCommonAttributes } from "../../attributes";
+import { addCommonAttributes, addUrlAttributes } from "../../attributes";
 
 export function instrumentFetch() {
   if (!win || !win.fetch || !win.Request) {
@@ -64,8 +64,8 @@ function wrapFetch(original: typeof fetch) {
     const method = isWellKnownMethodMatchingLeniently ? originalMethod.toUpperCase() : HTTP_METHOD_OTHER;
 
     const span = startSpan(`HTTP ${method}`);
-    // The url namespace of a http span has a different meaning than for common rum signals.
-    addCommonAttributes(span.attributes, { url });
+    addCommonAttributes(span.attributes);
+    addUrlAttributes(span.attributes, url);
     addGraphQlProperties(input, init, span);
     addAttribute(span.attributes, HTTP_REQUEST_METHOD, method);
     if (!isWellKnownMethod) {

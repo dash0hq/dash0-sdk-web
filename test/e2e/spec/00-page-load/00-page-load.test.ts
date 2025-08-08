@@ -25,18 +25,18 @@ describe("Page Load", () => {
               { key: "session.id", value: { stringValue: expect.any(String) } },
               { key: "user_agent.original", value: { stringValue: expect.any(String) } },
               {
-                key: "url.full",
+                key: "page.url.full",
                 value: {
                   stringValue: expect.stringContaining(
                     `/e2e/spec/00-page-load/empty.html?testId=${testId}#someFragment`
                   ),
                 },
               },
-              { key: "url.path", value: { stringValue: "/e2e/spec/00-page-load/empty.html" } },
-              { key: "url.fragment", value: { stringValue: "someFragment" } },
-              { key: "url.query", value: { stringValue: `testId=${testId}` } },
-              { key: "url.scheme", value: { stringValue: expect.any(String) } },
-              { key: "url.domain", value: { stringValue: expect.any(String) } },
+              { key: "page.url.path", value: { stringValue: "/e2e/spec/00-page-load/empty.html" } },
+              { key: "page.url.fragment", value: { stringValue: "someFragment" } },
+              { key: "page.url.query", value: { stringValue: `testId=${testId}` } },
+              { key: "page.url.scheme", value: { stringValue: expect.any(String) } },
+              { key: "page.url.domain", value: { stringValue: expect.any(String) } },
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
               { key: "browser.window.height", value: { doubleValue: expect.any(Number) } },
               { key: "the_answer", value: { doubleValue: 42 } },
@@ -98,18 +98,18 @@ describe("Page Load", () => {
               { key: "session.id", value: { stringValue: expect.any(String) } },
               { key: "user_agent.original", value: { stringValue: expect.any(String) } },
               {
-                key: "url.full",
+                key: "page.url.full",
                 value: {
                   stringValue: expect.stringContaining(
                     `/e2e/spec/00-page-load/empty.html?testId=${testId}#someFragment`
                   ),
                 },
               },
-              { key: "url.path", value: { stringValue: "/e2e/spec/00-page-load/empty.html" } },
-              { key: "url.fragment", value: { stringValue: "someFragment" } },
-              { key: "url.query", value: { stringValue: `testId=${testId}` } },
-              { key: "url.scheme", value: { stringValue: expect.any(String) } },
-              { key: "url.domain", value: { stringValue: expect.any(String) } },
+              { key: "page.url.path", value: { stringValue: "/e2e/spec/00-page-load/empty.html" } },
+              { key: "page.url.fragment", value: { stringValue: "someFragment" } },
+              { key: "page.url.query", value: { stringValue: `testId=${testId}` } },
+              { key: "page.url.scheme", value: { stringValue: expect.any(String) } },
+              { key: "page.url.domain", value: { stringValue: expect.any(String) } },
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
               { key: "browser.window.height", value: { doubleValue: expect.any(Number) } },
               { key: "the_answer", value: { doubleValue: 42 } },

@@ -35,6 +35,7 @@ export const EXCEPTION_STACKTRACE = "exception.stacktrace";
 export const ERROR_TYPE = "error.type";
 
 // URL Attribute Keys
+export const PAGE_URL_ATTR_PREFIX = "page";
 export const URL_DOMAIN = "url.domain";
 export const URL_FRAGMENT = "url.fragment";
 export const URL_FULL = "url.full";

@@ -3,6 +3,7 @@ import { generateUniqueId, nav, NO_VALUE_FALLBACK, WEB_EVENT_ID_BYTES, win } fro
 import {
   BROWSER_TAB_ID,
   NETWORK_CONNECTION_TYPE,
+  PAGE_URL_ATTR_PREFIX,
   SESSION_ID,
   WEB_EVENT_ID,
   WINDOW_HEIGHT,
@@ -15,6 +16,9 @@ import { addUrlAttributes } from "./url";
 import { tabId } from "../utils/tab-id";
 
 type Options = {
+  /**
+   * Override url to be used instead of window.location.href
+   */
   url?: string | URL;
 };
 
@@ -27,7 +31,7 @@ export function addCommonAttributes(attributes: KeyValue[], options?: Options): 
     attributes.push(vars.signalAttributes[i]!);
   }
 
-  addUrlAttributes(attributes, options?.url ?? win?.location.href ?? NO_VALUE_FALLBACK);
+  addUrlAttributes(attributes, options?.url ?? win?.location.href ?? NO_VALUE_FALLBACK, PAGE_URL_ATTR_PREFIX);
 
   if (sessionId) {
     addAttribute(attributes, SESSION_ID, sessionId);
