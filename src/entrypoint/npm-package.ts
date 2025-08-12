@@ -5,6 +5,7 @@ export * from "../api/identify";
 export * from "../api/debug";
 export * from "../api/attributes";
 export * from "../api/events";
+export * from "../api/log-level";
 export { terminateSession } from "../api/session";
 export { reportError } from "../api/report-error";
 
