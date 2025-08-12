@@ -7,6 +7,7 @@ import { init as initApi } from "../api/init";
 import { terminateSession } from "../api/session";
 import { addSignalAttribute, removeSignalAttribute } from "../api/attributes";
 import { sendEvent } from "../api/events";
+import { setActiveLogLevel } from "../api/log-level";
 
 /**
  * All the APIs exposed through the script tag via `dash0('{{api name}}')`
@@ -19,6 +20,7 @@ const scriptApis = {
   reportError,
   addSignalAttribute,
   removeSignalAttribute,
+  setActiveLogLevel,
   sendEvent,
 } as const;
 

@@ -427,6 +427,20 @@ function handleLogout() {
 
 **Note:** Sessions are automatically managed by the SDK based on inactivity and termination timeouts configured during initialization. Manual termination is typically only needed for explicit user logout scenarios.
 
+### Internal Telemetry
+
+#### `setActiveLogLevel(logLevel)`
+
+Changes the active log level of this SDK. Defaults to `warn`.
+
+**Example:**
+
+```js
+import { setActiveLogLevel } from "@dash0/sdk-web";
+
+setActiveLogLevel("debug");
+```
+
 ## Development
 
 ### Releases

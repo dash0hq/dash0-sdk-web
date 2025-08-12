@@ -1,9 +1,11 @@
 import { vars } from "../vars";
-import { noop, warn, fetch } from "../utils";
+import { noop, warn, fetch, debug } from "../utils";
 
 const BEACON_BODY_SIZE_LIMIT = 60000;
 
 export async function send(path: string, body: unknown): Promise<void> {
+  debug("Transmitting telemetry to endpoints", body);
+
   const jsonString = JSON.stringify(body);
   let requestBody: ArrayBuffer | string = jsonString;
   let byteLength = jsonString.length;
