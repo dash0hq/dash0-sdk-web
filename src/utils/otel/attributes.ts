@@ -67,3 +67,14 @@ export function removeAttribute(attributes: KeyValue[], key: string) {
     attributes.splice(index, 1);
   }
 }
+
+export type AttrPrefix = string | string[];
+export function withPrefix(prefix?: AttrPrefix): (attr: string) => string {
+  if (!prefix) return (attr) => attr;
+
+  if (Array.isArray(prefix)) {
+    return (attr) => [...prefix, attr].join(".");
+  }
+
+  return (attr) => `${prefix}.${attr}`;
+}

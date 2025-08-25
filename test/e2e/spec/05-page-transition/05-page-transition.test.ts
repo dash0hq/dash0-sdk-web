@@ -27,15 +27,15 @@ describe("Page Transition", () => {
               { key: "session.id", value: { stringValue: expect.any(String) } },
               { key: "user_agent.original", value: { stringValue: expect.any(String) } },
               {
-                key: "url.full",
+                key: "page.url.full",
                 value: {
                   stringValue: expect.stringContaining(`/e2e/spec/05-page-transition/virtual-page?testId=${testId}`),
                 },
               },
-              { key: "url.path", value: { stringValue: "/e2e/spec/05-page-transition/virtual-page" } },
-              { key: "url.query", value: { stringValue: `testId=${testId}` } },
-              { key: "url.scheme", value: { stringValue: expect.any(String) } },
-              { key: "url.domain", value: { stringValue: expect.any(String) } },
+              { key: "page.url.path", value: { stringValue: "/e2e/spec/05-page-transition/virtual-page" } },
+              { key: "page.url.query", value: { stringValue: `testId=${testId}` } },
+              { key: "page.url.scheme", value: { stringValue: expect.any(String) } },
+              { key: "page.url.domain", value: { stringValue: expect.any(String) } },
               { key: "browser.window.width", value: { doubleValue: expect.any(Number) } },
               { key: "browser.window.height", value: { doubleValue: expect.any(Number) } },
               { key: "the_answer", value: { doubleValue: 42 } },
@@ -74,7 +74,7 @@ describe("Page Transition", () => {
             attributes: expect.arrayContaining([
               { key: "event.name", value: { stringValue: "browser.page_view" } },
               {
-                key: "url.full",
+                key: "page.url.full",
                 value: {
                   stringValue: expect.stringContaining(`/e2e/spec/05-page-transition/virtual-page?testId=${testId}`),
                 },
@@ -116,7 +116,7 @@ describe("Page Transition", () => {
             attributes: expect.arrayContaining([
               { key: "event.name", value: { stringValue: "browser.page_view" } },
               {
-                key: "url.full",
+                key: "page.url.full",
                 value: {
                   stringValue: expect.stringContaining(`/e2e/spec/05-page-transition/page.html?testId=${testId}`),
                 },
@@ -157,7 +157,7 @@ describe("Page Transition", () => {
             attributes: expect.arrayContaining([
               { key: "event.name", value: { stringValue: "browser.page_view" } },
               {
-                key: "url.full",
+                key: "page.url.full",
                 value: {
                   stringValue: expect.stringContaining(`/e2e/spec/05-page-transition/page.html?testId=${testId}`),
                 },
@@ -200,7 +200,7 @@ describe("Page Transition", () => {
             attributes: expect.arrayContaining([
               { key: "event.name", value: { stringValue: "browser.page_view" } },
               {
-                key: "url.full",
+                key: "page.url.full",
                 value: {
                   stringValue: expect.stringContaining(`/e2e/spec/05-page-transition/virtual-page?testId=${testId}`),
                 },
@@ -237,14 +237,14 @@ describe("Page Transition", () => {
             attributes: expect.arrayContaining([
               { key: "event.name", value: { stringValue: "browser.page_view" } },
               {
-                key: "url.full",
+                key: "page.url.full",
                 value: {
                   stringValue: expect.stringContaining(
                     `/e2e/spec/05-page-transition/page.html?testId=${testId}&include-parts=SEARCH&ice-cream=true`
                   ),
                 },
               },
-              { key: "url.query", value: { stringValue: `testId=${testId}&include-parts=SEARCH&ice-cream=true` } },
+              { key: "page.url.query", value: { stringValue: `testId=${testId}&include-parts=SEARCH&ice-cream=true` } },
             ]),
             body: {
               kvlistValue: {
@@ -277,14 +277,14 @@ describe("Page Transition", () => {
             attributes: expect.arrayContaining([
               { key: "event.name", value: { stringValue: "browser.page_view" } },
               {
-                key: "url.full",
+                key: "page.url.full",
                 value: {
                   stringValue: expect.stringContaining(
                     `/e2e/spec/05-page-transition/page.html?testId=${testId}&include-parts=HASH#someNewFragment`
                   ),
                 },
               },
-              { key: "url.fragment", value: { stringValue: "someNewFragment" } },
+              { key: "page.url.fragment", value: { stringValue: "someNewFragment" } },
             ]),
             body: {
               kvlistValue: {

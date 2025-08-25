@@ -24,6 +24,7 @@ describe("Fetch Instrumentation", () => {
           kind: SPAN_KIND_CLIENT,
           attributes: expect.arrayContaining([
             { key: "http.request.method", value: { stringValue: "GET" } },
+            { key: "page.url.path", value: { stringValue: "/e2e/spec/01-fetch-instrumentation/page.html" } },
             { key: "url.full", value: { stringValue: expect.stringContaining("/ajax") } },
             { key: "url.path", value: { stringValue: "/ajax" } },
             { key: "url.scheme", value: { stringValue: "http" } },
