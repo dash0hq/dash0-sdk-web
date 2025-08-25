@@ -94,6 +94,15 @@ This currently also requires the use of Next.js
 
 #### General
 
+- **Enabled Instrumentations**<br>
+  key: `enabledInstrumentations`<br>
+  type: `InstrumentationName[]`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
+  Supported values: `'navigation' | 'web-vitals' | 'error' | 'fetch'`
+  Please note that some dash0 features might not work as expected if instrumentations are disabled.
+
 - **Ignore URLs**<br>
   key: `ignoreUrls`<br>
   type: `Array<RegExp>`<br>
