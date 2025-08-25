@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.13.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.13.3...0.13.4) (2025-08-25)
+
+### Bug Fixes
+
+- prefix url attributes for current page ([#47](https://github.com/dash0hq/dash0-sdk-web/issues/47)) ([6a36700](https://github.com/dash0hq/dash0-sdk-web/commit/6a367008b26614bfe02a666c66975241e5800648))
+
 ## [0.13.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.13.2...0.13.3) (2025-08-12)
 
 ## [0.13.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.13.1...0.13.2) (2025-07-29)
