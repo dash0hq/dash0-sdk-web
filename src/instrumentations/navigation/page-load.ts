@@ -1,10 +1,10 @@
 import { addEventListener, debug, doc, win, roundToTwoDecimals, error, toNanosTs, getTimeOrigin } from "../../utils";
-import { KeyValue, LogRecord } from "../../../types/otlp";
 import { EVENT_NAME, EVENT_NAMES, LOG_SEVERITIES } from "../../semantic-conventions";
 import { sendLog } from "../../transport";
 import { getTraceContextForPageLoad, addAttribute } from "../../utils/otel";
 import { addCommonAttributes } from "../../attributes";
 import { transmitPageViewEvent } from "./event";
+import { KeyValue, LogRecord } from "../../types/otlp";
 
 /**
  * Tracks page loads as per this OTel spec:

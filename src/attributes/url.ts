@@ -1,7 +1,7 @@
-import { KeyValue } from "../../types/otlp";
 import { addAttribute, AttrPrefix, withPrefix } from "../utils/otel";
 import { URL_DOMAIN, URL_FRAGMENT, URL_FULL, URL_PATH, URL_QUERY, URL_SCHEME } from "../semantic-conventions";
 import { parseUrl } from "../utils";
+import { KeyValue } from "../types/otlp";
 
 export function addUrlAttributes(attributes: KeyValue[], url: string | URL, prefix?: AttrPrefix) {
   const applyPrefix = withPrefix(prefix);

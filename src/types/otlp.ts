@@ -1,4 +1,4 @@
-import { LOG_SEVERITY_NUMBER, LOG_SEVERITY_TEXT } from "../src/semantic-conventions";
+import { LOG_SEVERITY_NUMBER, LOG_SEVERITY_TEXT } from "../semantic-conventions";
 
 export type AnyValue = {
   ["stringValue"]?: string;
@@ -87,6 +87,17 @@ export type SpanEvent = {
   timeUnixNano: string;
   name: string;
   attributes: KeyValue[];
+};
+
+export type SpanLink = {
+  /** Format: byte */
+  traceId: string;
+  /** Format: byte */
+  spanId: string;
+  traceState?: string;
+  attributes: KeyValue[];
+  droppedAttributesCount: number;
+  flags?: number;
 };
 
 export type Span = {

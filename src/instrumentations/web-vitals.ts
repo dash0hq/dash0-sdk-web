@@ -1,5 +1,5 @@
 import { onLCP, onINP, onCLS, Metric } from "web-vitals";
-import { KeyValue, LogRecord } from "../../types/otlp";
+import { KeyValue, LogRecord } from "../types/otlp";
 import { EVENT_NAME, EVENT_NAMES, LOG_SEVERITIES } from "../semantic-conventions";
 import { nowNanos, roundToTwoDecimals } from "../utils";
 import { sendLog } from "../transport";

@@ -1,6 +1,6 @@
 import { expect, describe, it } from "vitest";
 import { addAttribute, toAnyValue } from "./attributes";
-import { AnyValue, KeyValue } from "../../../types/otlp";
+import { AnyValue, KeyValue } from "../../types/otlp";
 
 describe("toAnyValue", () => {
   describe("primitive values", () => {

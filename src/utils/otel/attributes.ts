@@ -1,4 +1,4 @@
-import { AnyValue, KeyValue } from "../../../types/otlp";
+import { AnyValue, KeyValue } from "../../types/otlp";
 
 type PrimitiveAttributeValue = string | number | boolean;
 export type AttributeValueType =
