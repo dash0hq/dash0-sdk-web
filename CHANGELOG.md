@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.13.5](https://github.com/dash0hq/dash0-sdk-web/compare/0.13.4...0.13.5) (2025-08-25)
+
+### Bug Fixes
+
+- properly include missing type definitions ([#49](https://github.com/dash0hq/dash0-sdk-web/issues/49)) ([1eee7a2](https://github.com/dash0hq/dash0-sdk-web/commit/1eee7a2df78bbab705ef2d582b0a1ffaeddbc105))
+
 ## [0.13.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.13.3...0.13.4) (2025-08-25)
 
 ### Bug Fixes
