@@ -50,6 +50,7 @@ export type InitOptions = {
     | "maxWaitForResourceTimingsMillis"
     | "maxToleranceForResourceTimingsMillis"
     | "headersToCapture"
+    | "urlAttributeScrubber"
     | "pageViewInstrumentation"
   >
 >;

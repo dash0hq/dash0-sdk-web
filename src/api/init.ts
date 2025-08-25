@@ -67,6 +67,7 @@ export function init(opts: InitOptions) {
         "maxWaitForResourceTimingsMillis",
         "maxToleranceForResourceTimingsMillis",
         "headersToCapture",
+        "urlAttributeScrubber",
         "pageViewInstrumentation",
       ])
     )

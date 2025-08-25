@@ -111,6 +111,18 @@ This currently also requires the use of Next.js
   An array of URL regular expression for which no data should be collected.
   These regular expressions are evaluated against the document, XMLHttpRequest, fetch and resource URLs.
 
+- ** URL Attribute Scrubber**<br>
+  key: `urlAttributeScrubber`<br>
+  type: `UrlAttributeScrubber`<br>
+  optional: `true`<br>
+  default: `(attributes) => attributes`
+  Allows the application of a custom scrubbing function to url attributes before they are applied to signals.
+  This is invoked for each url processed for inclusion in signal attributes. For example this applies both to `page.url.*`
+  and `url.*` attribute namespaces.
+  Sensitive parts of the url attributes should be replaced with `REDACTED`,
+  avoid partially or fully dropping attributes to preserve telemetry quality.
+  Note: basic auth credentials in urls are automatically redacted before this is invoked.
+
 #### Website Details and Attributes
 
 - **Service Name**<br>
