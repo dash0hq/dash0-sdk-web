@@ -1,7 +1,5 @@
-// TODO use OTel types here?
-
-import { AnyValue, InstrumentationScope, KeyValue, Resource } from "../types/otlp";
 import { AttributeValueType } from "./utils/otel";
+import { AnyValue, InstrumentationScope, KeyValue, Resource } from "./types/otlp";
 
 export type Endpoint = {
   /**

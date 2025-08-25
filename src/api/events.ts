@@ -1,9 +1,9 @@
-import { AnyValue, KeyValue } from "../../types/otlp";
 import { EVENT_NAME, EVENT_NAMES, WEB_EVENT_TITLE, LOG_SEVERITIES, LOG_SEVERITY_TEXT } from "../semantic-conventions";
 import { sendLog } from "../transport";
 import { addCommonAttributes } from "../attributes";
 import { addAttribute, AttributeValueType, toAnyValue } from "../utils/otel";
 import { nowNanos, TimeInput, toNanosTs, warn } from "../utils";
+import { AnyValue, KeyValue } from "../types/otlp";
 
 type EventOptions = {
   /**

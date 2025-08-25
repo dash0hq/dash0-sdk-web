@@ -1,4 +1,3 @@
-import { KeyValue } from "../../types/otlp";
 import { generateUniqueId, nav, NO_VALUE_FALLBACK, WEB_EVENT_ID_BYTES, win } from "../utils";
 import {
   BROWSER_TAB_ID,
@@ -14,6 +13,7 @@ import { vars } from "../vars";
 import { addAttribute } from "../utils/otel";
 import { addUrlAttributes } from "./url";
 import { tabId } from "../utils/tab-id";
+import { KeyValue } from "../types/otlp";
 
 type Options = {
   /**

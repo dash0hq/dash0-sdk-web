@@ -1,9 +1,9 @@
-import { ExportLogsServiceRequest, ExportTraceServiceRequest, LogRecord, Span } from "../../types/otlp";
 import { newBatcher } from "./batcher";
 import { send } from "./fetch";
 import { vars } from "../vars";
 import { createRateLimiter } from "../utils/rate-limit";
 import { debug, error } from "../utils";
+import { ExportLogsServiceRequest, ExportTraceServiceRequest, LogRecord, Span } from "../types/otlp";
 
 const logBatcher = newBatcher<LogRecord>(sendLogs);
 const spanBatcher = newBatcher<Span>(sendSpans);

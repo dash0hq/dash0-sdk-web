@@ -1,6 +1,6 @@
-import { AnyValue } from "../../types/otlp";
 import { addAttribute, AttributeValueType, removeAttribute } from "../utils/otel";
 import { vars } from "../vars";
+import { AnyValue } from "../types/otlp";
 
 /**
  * Adds a signal attribute to be transmitted with every signal.

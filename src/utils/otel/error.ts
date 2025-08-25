@@ -1,5 +1,4 @@
 import { addSpanEvent, InProgressSpan } from "./span";
-import { KeyValue, SpanStatus } from "../../../types/otlp";
 import { addAttribute } from "./attributes";
 import {
   SPAN_EVENT_NAME_EXCEPTION,
@@ -8,6 +7,7 @@ import {
   EXCEPTION_TYPE,
   SPAN_STATUS_ERROR,
 } from "../../semantic-conventions";
+import { KeyValue, SpanStatus } from "../../types/otlp";
 
 interface ExceptionWithCode {
   code: string | number;

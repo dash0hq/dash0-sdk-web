@@ -1,6 +1,4 @@
-import { KeyValue, LogRecord } from "../../../types/otlp";
 import { hasOwnProperty, nowNanos, win } from "../../utils";
-import { ErrorLike, ReportErrorOpts } from "../../../types/errors";
 import { isErrorMessageIgnored } from "../../utils/ignore-rules";
 import { sendLog } from "../../transport";
 import {
@@ -14,6 +12,8 @@ import {
 } from "../../semantic-conventions";
 import { addAttribute } from "../../utils/otel";
 import { addCommonAttributes } from "../../attributes";
+import { KeyValue, LogRecord } from "../../types/otlp";
+import { ReportErrorOpts, ErrorLike } from "../../types/errors";
 
 type TrackedError = {
   seenCount: number;

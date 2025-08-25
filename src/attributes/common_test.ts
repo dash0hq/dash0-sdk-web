@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { addCommonAttributes } from "./common";
-import { KeyValue } from "../../types/otlp";
 import * as utils from "../utils";
 import * as varsModule from "../vars";
 import * as urlModule from "./url";
 import * as sessionApi from "../api/session";
 import * as tabIdModule from "../utils/tab-id";
+import { KeyValue } from "../types/otlp";
 
 describe("addCommonAttributes", () => {
   beforeEach(() => {

@@ -25,10 +25,10 @@ import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { startErrorInstrumentation } from "../instrumentations/errors";
 import { addAttribute, AttributeValueType } from "../utils/otel";
 import { instrumentFetch } from "../instrumentations/http/fetch";
-import { AnyValue } from "../../types/otlp";
 import { startNavigationInstrumentation } from "../instrumentations/navigation";
 import { merge } from "ts-deepmerge";
 import { initializeTabId } from "../utils/tab-id";
+import { AnyValue } from "../types/otlp";
 
 export type InitOptions = {
   serviceName: string;
