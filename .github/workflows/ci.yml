@@ -108,11 +108,6 @@ jobs:
           persist-credentials: true
           fetch-depth: 0
 
-      - name: Setup git for writing
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
       - name: Install pnpm
         uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
 
@@ -126,8 +121,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run release-it
-        run: pnpm run release
+      - name: Release
+        with:
+          git-user-name: "github-actions[bot]"
+          git-user-email: "41898282+github-actions[bot]@users.noreply.github.com"
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.DASH0_NPMJS_PUBLISH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.REPOSITORY_FULL_ACCESS_GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.DASH0_NPMJS_PUBLISH_TOKEN }}
+        uses: JoshuaKGoldberg/release-it-action@dc71f396c291f62f9a17701cfc4d4a3e7c263020 #0.3.2
