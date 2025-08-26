@@ -1,5 +1,7 @@
 import { AttributeValueType } from "./utils/otel";
 import { AnyValue, InstrumentationScope, KeyValue, Resource } from "./types/otlp";
+import { UrlAttributeScrubber } from "./attributes";
+import { identity } from "./utils";
 
 export type Endpoint = {
   /**
@@ -138,6 +140,16 @@ export type Vars = {
    */
   headersToCapture: RegExp[];
 
+  /**
+   * Allows the application of a custom scrubbing function to url attributes before they are applied to signals.
+   * This is invoked for each url processed for inclusion in signal attributes. For example this applies both to `page.url.*`
+   * and `url.*` attribute namespaces.
+   * Sensitive parts of the url attributes should be replaced with `REDACTED`,
+   * avoid partially or fully dropping attributes to preserve telemetry quality.
+   * Note: basic auth credentials in urls are automatically redacted before this is invoked.
+   */
+  urlAttributeScrubber: UrlAttributeScrubber;
+
   pageViewInstrumentation: PageViewInstrumentationSettings;
 };
 
@@ -160,6 +172,7 @@ export const vars: Vars = {
   maxWaitForResourceTimingsMillis: 10000,
   maxToleranceForResourceTimingsMillis: 50,
   headersToCapture: [],
+  urlAttributeScrubber: identity,
   pageViewInstrumentation: {
     trackVirtualPageViews: true,
     includeParts: [],

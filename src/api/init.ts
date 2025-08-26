@@ -1,4 +1,4 @@
-import { Endpoint, Vars, vars } from "../vars";
+import { vars } from "../vars";
 import {
   DEPLOYMENT_ENVIRONMENT_NAME,
   DEPLOYMENT_ID,
@@ -23,57 +23,12 @@ import {
 import { trackSessions } from "./session";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { startErrorInstrumentation } from "../instrumentations/errors";
-import { addAttribute, AttributeValueType } from "../utils/otel";
+import { addAttribute } from "../utils/otel";
 import { instrumentFetch } from "../instrumentations/http/fetch";
 import { startNavigationInstrumentation } from "../instrumentations/navigation";
 import { merge } from "ts-deepmerge";
 import { initializeTabId } from "../utils/tab-id";
-import { AnyValue } from "../types/otlp";
-
-export type InitOptions = {
-  serviceName: string;
-  serviceVersion?: string;
-  environment?: string;
-  deploymentName?: string;
-  deploymentId?: string;
-
-  /**
-   * Additional attributes to include with transmitted signals
-   */
-  additionalSignalAttributes?: Record<string, AttributeValueType | AnyValue>;
-
-  /**
-   * OTLP endpoints to which the generated telemetry should be sent to.
-   */
-  endpoint: Endpoint | Endpoint[];
-
-  /**
-   * The  session inactivity timeout. Session inactivity is the maximum
-   * allowed time to pass between two page loads before the session is considered
-   * to be expired. Also think of cache time-to-idle configuration options.
-   */
-  sessionInactivityTimeoutMillis?: number;
-
-  /**
-   * The default session termination timeout. Session termination is the maximum
-   * allowed time to pass since session start before the session is considered
-   * to be expired. Also think of cache time-to-live configuration options.
-   */
-  sessionTerminationTimeoutMillis?: number;
-} & Partial<
-  Pick<
-    Vars,
-    | "ignoreUrls"
-    | "ignoreErrorMessages"
-    | "wrapEventHandlers"
-    | "wrapTimers"
-    | "propagateTraceHeadersCorsURLs"
-    | "maxWaitForResourceTimingsMillis"
-    | "maxToleranceForResourceTimingsMillis"
-    | "headersToCapture"
-    | "pageViewInstrumentation"
-  >
->;
+import { InitOptions, InstrumentationName } from "../types/options";
 
 let hasBeenInitialised: boolean = false;
 
@@ -112,6 +67,7 @@ export function init(opts: InitOptions) {
         "maxWaitForResourceTimingsMillis",
         "maxToleranceForResourceTimingsMillis",
         "headersToCapture",
+        "urlAttributeScrubber",
         "pageViewInstrumentation",
       ])
     )
@@ -121,10 +77,19 @@ export function init(opts: InitOptions) {
   initializeSignalAttributes(opts);
   initializeTabId();
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
-  startNavigationInstrumentation();
-  startWebVitalsInstrumentation();
-  startErrorInstrumentation();
-  instrumentFetch();
+
+  if (isInstrumentationEnabled("@dash0/navigation", opts)) {
+    startNavigationInstrumentation();
+  }
+  if (isInstrumentationEnabled("@dash0/web-vitals", opts)) {
+    startWebVitalsInstrumentation();
+  }
+  if (isInstrumentationEnabled("@dash0/error", opts)) {
+    startErrorInstrumentation();
+  }
+  if (isInstrumentationEnabled("@dash0/fetch", opts)) {
+    instrumentFetch();
+  }
 
   hasBeenInitialised = true;
 }
@@ -218,4 +183,12 @@ function detectDeploymentId(opts: InitOptions): string | undefined {
   } catch (_ignored) {
     return undefined;
   }
+}
+
+function isInstrumentationEnabled(name: InstrumentationName, opts: InitOptions): boolean {
+  const instrumentations = opts.enabledInstrumentations;
+
+  if (!instrumentations) return true;
+
+  return instrumentations.includes(name);
 }

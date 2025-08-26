@@ -1,5 +1,6 @@
 import { debug, INIT_MESSAGE } from "../utils";
-import { init as initApi, InitOptions } from "../api/init";
+import { init as initApi } from "../api/init";
+import { InitOptions } from "../types/options";
 
 export * from "../api/identify";
 export * from "../api/debug";

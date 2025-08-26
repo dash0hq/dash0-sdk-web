@@ -94,6 +94,15 @@ This currently also requires the use of Next.js
 
 #### General
 
+- **Enabled Instrumentations**<br>
+  key: `enabledInstrumentations`<br>
+  type: `InstrumentationName[]`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
+  Supported values: `'navigation' | 'web-vitals' | 'error' | 'fetch'`
+  Please note that some dash0 features might not work as expected if instrumentations are disabled.
+
 - **Ignore URLs**<br>
   key: `ignoreUrls`<br>
   type: `Array<RegExp>`<br>
@@ -101,6 +110,18 @@ This currently also requires the use of Next.js
   default: `undefined`<br>
   An array of URL regular expression for which no data should be collected.
   These regular expressions are evaluated against the document, XMLHttpRequest, fetch and resource URLs.
+
+- ** URL Attribute Scrubber**<br>
+  key: `urlAttributeScrubber`<br>
+  type: `UrlAttributeScrubber`<br>
+  optional: `true`<br>
+  default: `(attributes) => attributes`
+  Allows the application of a custom scrubbing function to url attributes before they are applied to signals.
+  This is invoked for each url processed for inclusion in signal attributes. For example this applies both to `page.url.*`
+  and `url.*` attribute namespaces.
+  Sensitive parts of the url attributes should be replaced with `REDACTED`,
+  avoid partially or fully dropping attributes to preserve telemetry quality.
+  Note: basic auth credentials in urls are automatically redacted before this is invoked.
 
 #### Website Details and Attributes
 
