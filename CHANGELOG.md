@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.13.5...0.14.0) (2025-08-26)
+
+### Features
+
+- allow instrumentation selection and url scrubbing ([#50](https://github.com/dash0hq/dash0-sdk-web/issues/50)) ([17ccd4a](https://github.com/dash0hq/dash0-sdk-web/commit/17ccd4a678112bb9afbc2263aa84c316d7a8f1cb))
+
 ## [0.13.5](https://github.com/dash0hq/dash0-sdk-web/compare/0.13.4...0.13.5) (2025-08-25)
 
 ### Bug Fixes
