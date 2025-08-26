@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.14.0...0.14.1) (2025-08-26)
+
+### Bug Fixes
+
+- add missing exports for utility types ([#51](https://github.com/dash0hq/dash0-sdk-web/issues/51)) ([7449306](https://github.com/dash0hq/dash0-sdk-web/commit/744930681e2f928410b5c736a70639dbbc6f4121))
+
 ## [0.14.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.13.5...0.14.0) (2025-08-26)
 
 ### Features
