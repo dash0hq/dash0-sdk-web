@@ -6,6 +6,7 @@ export default {
     tag: true,
     push: true,
     requireCommits: true,
+    commitMessage: "chore: release ${version} [skip ci]",
   },
   github: {
     release: true,
