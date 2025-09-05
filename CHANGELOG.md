@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.15.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.14.1...0.15.0) (2025-09-05)
+
+### Features
+
+- remove rate limit on total event count ([#53](https://github.com/dash0hq/dash0-sdk-web/issues/53)) ([a0a24bf](https://github.com/dash0hq/dash0-sdk-web/commit/a0a24bf05b3474e965a378e2f3e7b3668d80c493))
+
 ## [0.14.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.14.0...0.14.1) (2025-08-26)
 
 ### Bug Fixes
