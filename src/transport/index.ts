@@ -1,8 +1,7 @@
 import { newBatcher } from "./batcher";
 import { send } from "./fetch";
 import { vars } from "../vars";
-import { createRateLimiter } from "../utils/rate-limit";
-import { debug, error } from "../utils";
+import { debug, error, createRateLimiter } from "../utils";
 import { ExportLogsServiceRequest, ExportTraceServiceRequest, LogRecord, Span } from "../types/otlp";
 
 const logBatcher = newBatcher<LogRecord>(sendLogs);
@@ -13,7 +12,6 @@ let rateLimiter: (() => boolean) | undefined;
 function isRateLimited() {
   if (!rateLimiter) {
     rateLimiter = createRateLimiter({
-      maxCalls: 8096,
       maxCallsPerTenMinutes: 4096,
       maxCallsPerTenSeconds: 128,
     });
