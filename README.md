@@ -64,7 +64,7 @@ These can all be passed via the sdk's `init` call.
 
 ### Backend Correlation
 
-The SDK supports trace context propagation to correlate frontend requests with backend services. You can configure different header types for different endpoints using the new `propagators` configuration.
+The SDK supports trace context propagation to correlate frontend requests with backend services. You can configure different header types (`traceparent`, `X-Amzn-Trace-Id`) for different endpoints using the `propagators` configuration.
 
 > [!NOTE]
 > Misconfiguration of cross origin trace correlation can lead to request failures. Please make sure to carefully validate
@@ -102,13 +102,16 @@ init({
 
 **Multiple Headers**: When multiple propagators match the same URL, both headers will be added to the request. This is useful when you need to support multiple tracing systems simultaneously.
 
-#### Legacy Configuration (Deprecated)
-
-The legacy `propagateTraceHeadersCorsURLs` configuration is still supported but deprecated:
+**Backend setup**
 
 - Make sure the endpoints respond to `OPTIONS` requests and include the appropriate headers in their `Access-Control-Allow-Headers` response header:
   - `traceparent` for W3C trace context
   - `X-Amzn-Trace-Id` for AWS X-Ray
+
+#### Legacy Configuration (Deprecated)
+
+The legacy `propagateTraceHeadersCorsURLs` configuration is still supported but deprecated:
+
 - Include a regex matching the endpoint you want to enable in the [propagateTraceHeadersCorsURLs](#http-request-instrumentation) configuration option.
 
 ### Configuration auto detection
