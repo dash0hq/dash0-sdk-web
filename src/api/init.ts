@@ -188,7 +188,6 @@ function detectDeploymentId(opts: InitOptions): string | undefined {
 }
 
 function initializePropagators(opts: InitOptions) {
-  // Handle new propagators configuration
   if (opts.propagators) {
     if (opts.propagateTraceHeadersCorsURLs) {
       warn(
@@ -204,13 +203,18 @@ function initializePropagators(opts: InitOptions) {
     vars.propagators = [
       {
         type: "traceparent",
-        match: opts.propagateTraceHeadersCorsURLs,
+        match: ["sameorigin", ...opts.propagateTraceHeadersCorsURLs],
       },
     ];
   }
   // Default configuration - keep existing behavior
   else {
-    vars.propagators = undefined;
+    vars.propagators = [
+      {
+        type: "traceparent",
+        match: ["sameorigin"],
+      },
+    ];
   }
 }
 
