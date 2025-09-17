@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>X-Ray propagation test</title>
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+      dash0("init", {
+        serviceName: "xray-test",
+        serviceVersion: "1.0.0",
+        environment: "test",
+        endpoint: [
+          {
+            url: `http://${window.location.hostname}:8011?cors=true`,
+            authToken: "auth_xray123",
+            dataset: "xray-testing",
+          },
+        ],
+        propagators: [
+          // X-Ray headers for AWS-like endpoints
+          {
+            type: "xray",
+            match: [
+              new RegExp(`http:\/\/${window.location.hostname.replace(".", "\.")}:8012\/aws`),
+              new RegExp(`http:\/\/${window.location.hostname.replace(".", "\.")}:8012\/aws/both`),
+            ],
+          },
+          // W3C headers for regular endpoints
+          {
+            type: "traceparent",
+            match: [
+              "sameorigin",
+              new RegExp(`http:\/\/${window.location.hostname.replace(".", "\.")}:8012\/ajax`),
+              new RegExp(`http:\/\/${window.location.hostname.replace(".", "\.")}:8012\/aws/both`),
+            ],
+          },
+        ],
+        headersToCapture: [/x-test-header/],
+      });
+      dash0("addSignalAttribute", "xray_test", true);
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+    <script>
+      const deepFreeze = (obj) => {
+        if (obj && typeof obj === "object" && !Object.isFrozen(obj)) {
+          Object.freeze(obj);
+          Object.getOwnPropertyNames(obj).forEach((prop) => deepFreeze(obj[prop]));
+        }
+        return obj;
+      };
+
+      function onXRayFetch() {
+        // Should get X-Ray headers
+        return fetch(`http://${window.location.hostname}:8012/aws?test=xray&cors=true`, {
+          method: "GET",
+        });
+      }
+
+      function onTraceparentFetch() {
+        // Should get W3C traceparent headers
+        return fetch(`http://${window.location.hostname}:8012/ajax?test=traceparent&cors=true`, {
+          method: "GET",
+        });
+      }
+
+      function onNoHeadersFetch() {
+        // Should get W3C traceparent headers
+        return fetch(`http://${window.location.hostname}:8012/other?test=other`, {
+          method: "GET",
+        });
+      }
+
+      function onTraceparentAndXrayFetch() {
+        // Should get W3C traceparent headers
+        return fetch(`http://${window.location.hostname}:8012/aws/both?test=traceparentAndXray&cors=true`, {
+          method: "GET",
+        });
+      }
+
+      function onSameOriginFetch() {
+        // Same-origin request should still work with legacy behavior
+        return fetch("/ajax?test=same-origin", {
+          method: "GET",
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <button onclick="onXRayFetch()">Fetch with X-Ray Headers</button>
+    <button onclick="onTraceparentFetch()">Fetch with Traceparent Headers</button>
+    <button onclick="onNoHeadersFetch()">Fetch with No Headers</button>
+    <button onclick="onTraceparentAndXrayFetch()">Fetch with traceparent and xray Headers</button>
+    <button onclick="onSameOriginFetch()">Same Origin Fetch</button>
+  </body>
+</html>

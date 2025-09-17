@@ -73,6 +73,8 @@ export function init(opts: InitOptions) {
     )
   );
 
+  initializePropagators(opts);
+
   initializeResourceAttributes(opts);
   initializeSignalAttributes(opts);
   initializeTabId();
@@ -182,6 +184,33 @@ function detectDeploymentId(opts: InitOptions): string | undefined {
     return process?.env?.NEXT_PUBLIC_VERCEL_BRANCH_URL;
   } catch (_ignored) {
     return undefined;
+  }
+}
+
+function initializePropagators(opts: InitOptions) {
+  // Handle new propagators configuration
+  if (opts.propagators) {
+    if (opts.propagateTraceHeadersCorsURLs) {
+      warn(
+        "Both 'propagators' and deprecated 'propagateTraceHeadersCorsURLs' were provided. Using 'propagators' configuration. Please migrate to the new 'propagators' config."
+      );
+    }
+    vars.propagators = opts.propagators;
+  }
+  // Handle legacy configuration
+  else if (opts.propagateTraceHeadersCorsURLs && opts.propagateTraceHeadersCorsURLs.length > 0) {
+    warn("'propagateTraceHeadersCorsURLs' is deprecated. Please use the new 'propagators' configuration.");
+    // Convert legacy config to new format
+    vars.propagators = [
+      {
+        type: "traceparent",
+        match: opts.propagateTraceHeadersCorsURLs,
+      },
+    ];
+  }
+  // Default configuration - keep existing behavior
+  else {
+    vars.propagators = undefined;
   }
 }
 

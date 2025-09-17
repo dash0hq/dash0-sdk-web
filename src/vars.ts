@@ -3,6 +3,13 @@ import { AnyValue, InstrumentationScope, KeyValue, Resource } from "./types/otlp
 import { UrlAttributeScrubber } from "./attributes";
 import { identity } from "./utils";
 
+export type PropagatorType = "traceparent" | "xray";
+
+export type PropagatorConfig = {
+  type: PropagatorType;
+  match: (RegExp | "sameorigin")[];
+};
+
 export type Endpoint = {
   /**
    * OTLP HTTP URL excluding the /v1/* prefix
@@ -109,8 +116,15 @@ export type Vars = {
   wrapTimers: boolean;
 
   /**
+   * Configure trace context propagators for different URL patterns.
+   * Each propagator defines which header type to send for matching URLs.
+   */
+  propagators?: PropagatorConfig[];
+
+  /**
    * An array of URL regular expressions
    * for which trace context headers should be sent across origins by http client instrumentations.
+   * @deprecated Use propagators instead
    */
   propagateTraceHeadersCorsURLs: RegExp[];
 

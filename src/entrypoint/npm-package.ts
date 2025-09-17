@@ -13,7 +13,7 @@ export { reportError } from "../api/report-error";
 // Additional utility types
 export type { AttributeValueType } from "../utils/otel";
 export type { AnyValue } from "../types/otlp";
-export type { PageViewMeta } from "../vars";
+export type { PageViewMeta, PropagatorConfig, PropagatorType } from "../vars";
 export type { UrlAttributeScrubber, UrlAttributeRecord } from "../attributes/url";
 
 export function init(opts: InitOptions): void {

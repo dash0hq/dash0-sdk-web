@@ -1,6 +1,6 @@
 import { AttributeValueType } from "../utils/otel";
 import { AnyValue } from "./otlp";
-import { Endpoint, Vars } from "../vars";
+import { Endpoint, Vars, PropagatorConfig } from "../vars";
 
 export type InstrumentationName = "@dash0/navigation" | "@dash0/web-vitals" | "@dash0/error" | "@dash0/fetch";
 
@@ -39,6 +39,12 @@ export type InitOptions = {
    * to be expired. Also think of cache time-to-live configuration options.
    */
   sessionTerminationTimeoutMillis?: number;
+
+  /**
+   * Configure trace context propagators for different URL patterns.
+   * Each propagator defines which header type to send for matching URLs.
+   */
+  propagators?: PropagatorConfig[];
 } & Partial<
   Pick<
     Vars,
