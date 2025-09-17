@@ -59,7 +59,7 @@ function getTraceparentFromServerTiming(serverTimings: readonly PerformanceServe
   return "";
 }
 
-export function addTraceContextHttpHeaders(
+export function addW3CTraceContextHttpHeaders(
   fn: (name: string, value: string) => void,
   ctx: unknown,
   span: InProgressSpan

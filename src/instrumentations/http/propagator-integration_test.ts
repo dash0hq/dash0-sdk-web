@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { addTraceContextHttpHeaders, addXRayTraceContextHttpHeaders } from "../../utils/otel/trace-context";
+import { addW3CTraceContextHttpHeaders, addXRayTraceContextHttpHeaders } from "../../utils/otel/trace-context";
 import { InProgressSpan } from "../../utils/otel/span";
 
 describe("Multiple propagator integration", () => {
@@ -28,7 +28,7 @@ describe("Multiple propagator integration", () => {
       if (type === "xray") {
         addXRayTraceContextHttpHeaders(mockAppend, {}, mockSpan);
       } else if (type === "traceparent") {
-        addTraceContextHttpHeaders(mockAppend, {}, mockSpan);
+        addW3CTraceContextHttpHeaders(mockAppend, {}, mockSpan);
       }
     }
 
@@ -50,7 +50,7 @@ describe("Multiple propagator integration", () => {
       if (type === "xray") {
         addXRayTraceContextHttpHeaders(mockAppend, {}, mockSpan);
       } else if (type === "traceparent") {
-        addTraceContextHttpHeaders(mockAppend, {}, mockSpan);
+        addW3CTraceContextHttpHeaders(mockAppend, {}, mockSpan);
       }
     }
 
@@ -65,7 +65,7 @@ describe("Multiple propagator integration", () => {
       if (type === "xray") {
         addXRayTraceContextHttpHeaders(mockAppend, {}, mockSpan);
       } else if (type === "traceparent") {
-        addTraceContextHttpHeaders(mockAppend, {}, mockSpan);
+        addW3CTraceContextHttpHeaders(mockAppend, {}, mockSpan);
       }
     }
 
@@ -81,7 +81,7 @@ describe("Multiple propagator integration", () => {
       if (type === "xray") {
         addXRayTraceContextHttpHeaders(headersObj.append.bind(headersObj), headersObj, mockSpan);
       } else if (type === "traceparent") {
-        addTraceContextHttpHeaders(headersObj.append.bind(headersObj), headersObj, mockSpan);
+        addW3CTraceContextHttpHeaders(headersObj.append.bind(headersObj), headersObj, mockSpan);
       }
     }
 

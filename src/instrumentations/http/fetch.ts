@@ -3,7 +3,7 @@ import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
 import {
   addAttribute,
   setSpanStatus,
-  addTraceContextHttpHeaders,
+  addW3CTraceContextHttpHeaders,
   addXRayTraceContextHttpHeaders,
   endSpan,
   errorToSpanStatus,
@@ -254,7 +254,7 @@ function addHeadersBasedOnTypes(
     if (type === "xray") {
       addXRayTraceContextHttpHeaders(fn, ctx, span);
     } else {
-      addTraceContextHttpHeaders(fn, ctx, span);
+      addW3CTraceContextHttpHeaders(fn, ctx, span);
     }
   }
 }
