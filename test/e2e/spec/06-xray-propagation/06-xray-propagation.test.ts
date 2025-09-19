@@ -33,10 +33,8 @@ describe("X-Ray Propagation", () => {
     // we need to wait for all browaser calls are done (options + get)
     await sleep(500);
 
-    const ajaxResponse = await browser.url("http://localhost.lambdatest.com:8012/ajax-requests");
-    const ajaxRequests = await browser.execute(() => {
-      return JSON.parse(document.body.textContent);
-    });
+    const ajaxResponse = await fetch("http://localhost.lambdatest.com:8012/ajax-requests");
+    const ajaxRequests = await ajaxResponse.json();
     const getRequest = ajaxRequests.find((req: any) => req.method == "GET");
     expect(getRequest.headers).toHaveProperty("x-amzn-trace-id");
     expect(getRequest.headers["x-amzn-trace-id"]).toMatch(
@@ -73,10 +71,8 @@ describe("X-Ray Propagation", () => {
     // we need to wait for all browaser calls are done (options + get)
     await sleep(500);
 
-    const ajaxResponse = await browser.url("http://localhost.lambdatest.com:8012/ajax-requests");
-    const ajaxRequests = await browser.execute(() => {
-      return JSON.parse(document.body.textContent);
-    });
+    const ajaxResponse = await fetch("http://localhost.lambdatest.com:8012/ajax-requests");
+    const ajaxRequests = await ajaxResponse.json();
     const getRequest = ajaxRequests.find((req: any) => req.method == "GET");
     expect(getRequest.headers).toHaveProperty("traceparent");
     expect(getRequest.headers["traceparent"]).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
@@ -111,10 +107,8 @@ describe("X-Ray Propagation", () => {
     // we need to wait for all browaser calls are done (options + get)
     await sleep(500);
 
-    const ajaxResponse = await browser.url("http://localhost.lambdatest.com:8012/ajax-requests");
-    const ajaxRequests = await browser.execute(() => {
-      return JSON.parse(document.body.textContent);
-    });
+    const ajaxResponse = await fetch("http://localhost.lambdatest.com:8012/ajax-requests");
+    const ajaxRequests = await ajaxResponse.json();
 
     const getRequest = ajaxRequests.find((req: any) => req.method == "GET");
 
@@ -148,10 +142,8 @@ describe("X-Ray Propagation", () => {
     // we need to wait for all browaser calls are done (options + get)
     await sleep(500);
 
-    const ajaxResponse = await browser.url("http://localhost.lambdatest.com:8012/ajax-requests");
-    const ajaxRequests = await browser.execute(() => {
-      return JSON.parse(document.body.textContent);
-    });
+    const ajaxResponse = await fetch("http://localhost.lambdatest.com:8012/ajax-requests");
+    const ajaxRequests = await ajaxResponse.json();
 
     const getRequest = ajaxRequests.find((req: any) => req.method == "GET");
 
@@ -178,10 +170,8 @@ describe("X-Ray Propagation", () => {
     // we need to wait for all browaser calls are done (options + get)
     await sleep(500);
 
-    const ajaxResponse = await browser.url("http://localhost.lambdatest.com:8012/ajax-requests");
-    const ajaxRequests = await browser.execute(() => {
-      return JSON.parse(document.body.textContent);
-    });
+    const ajaxResponse = await fetch("http://localhost.lambdatest.com:8012/ajax-requests");
+    const ajaxRequests = await ajaxResponse.json();
     const getRequest = ajaxRequests.find((req: any) => req.method == "GET");
 
     // Both headers should be present
