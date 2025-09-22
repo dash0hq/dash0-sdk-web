@@ -222,7 +222,7 @@ function determinePropagatorTypes(url: string): PropagatorType[] {
   // For cross-origin requests, use new propagators config if available
   if (vars.propagators) {
     for (const propagator of vars.propagators) {
-      if (matchesPropagator(propagator.match, url)) {
+      if (matchesAny(propagator.match, url)) {
         // Avoid duplicates
         if (!matchingTypes.includes(propagator.type)) {
           matchingTypes.push(propagator.type);
@@ -232,21 +232,7 @@ function determinePropagatorTypes(url: string): PropagatorType[] {
     return matchingTypes;
   }
 
-  // Backward compatibility: if old config exists and URL matches, use traceparent
-  if (matchesAny(vars.propagateTraceHeadersCorsURLs, url)) {
-    return ["traceparent"];
-  }
-
   return [];
-}
-
-function matchesPropagator(patterns: RegExp[], url: string): boolean {
-  for (const pattern of patterns) {
-    if (pattern.test(url)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 function addTraceContextHttpHeaders(
