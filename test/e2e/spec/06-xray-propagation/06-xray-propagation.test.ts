@@ -118,7 +118,7 @@ describe("X-Ray Propagation", () => {
     expectNoBrowserErrors();
   });
 
-  it("must send traceparent headers for same-origin requests (legacy behavior)", async () => {
+  it("must send both headers for same-origin requests when multiple propagators configured", async () => {
     await browser.url("/e2e/spec/06-xray-propagation/page.html");
     await expect(browser).toHaveTitle("X-Ray propagation test");
 
@@ -138,7 +138,7 @@ describe("X-Ray Propagation", () => {
     const btn = await $("button=Same Origin Fetch");
     await btn.click();
 
-    // For same-origin, headers should still be added (legacy behavior)
+    // Same-origin requests now get ALL configured propagator types
     // we need to wait for all browaser calls are done (options + get)
     await sleep(500);
 
@@ -147,8 +147,15 @@ describe("X-Ray Propagation", () => {
 
     const getRequest = ajaxRequests.find((req: any) => req.method == "GET");
 
+    // Both headers should be present since both propagators are configured
     expect(getRequest.headers).toHaveProperty("traceparent");
-    expect(getRequest.headers).not.toHaveProperty("x-amzn-trace-id");
+    expect(getRequest.headers).toHaveProperty("x-amzn-trace-id");
+
+    // Verify header formats
+    expect(getRequest.headers["traceparent"]).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+    expect(getRequest.headers["x-amzn-trace-id"]).toMatch(
+      /^Root=1-[0-9a-f]{8}-[0-9a-f]{24};Parent=[0-9a-f]{16};Sampled=1$/
+    );
 
     expectNoBrowserErrors();
   });

@@ -34,11 +34,11 @@
               new RegExp(`http:\/\/${window.location.hostname.replace(".", "\.")}:8012\/aws/both`),
             ],
           },
-          // W3C headers for regular endpoints
+          // W3C headers for regular endpoints and cross-origin requests
+          // Note: Same-origin requests automatically get ALL configured propagator types
           {
             type: "traceparent",
             match: [
-              "sameorigin",
               new RegExp(`http:\/\/${window.location.hostname.replace(".", "\.")}:8012\/ajax`),
               new RegExp(`http:\/\/${window.location.hostname.replace(".", "\.")}:8012\/aws/both`),
             ],

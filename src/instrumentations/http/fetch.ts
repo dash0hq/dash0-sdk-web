@@ -200,11 +200,27 @@ function endSpanOnError(span: InProgressSpan, error: Exception) {
 }
 
 function determinePropagatorTypes(url: string): PropagatorType[] {
-  // Check new propagators config
-  if (vars.propagators) {
-    const matchingTypes: PropagatorType[] = [];
-    const isUrlSameOrigin = isSameOrigin(url);
+  const matchingTypes: PropagatorType[] = [];
+  const isUrlSameOrigin = isSameOrigin(url);
 
+  // For same-origin requests, always include traceparent + all configured propagators
+  if (isUrlSameOrigin) {
+    // Always add traceparent for same-origin requests
+    matchingTypes.push("traceparent");
+
+    // Add all other configured propagator types for same-origin requests
+    if (vars.propagators) {
+      for (const propagator of vars.propagators) {
+        if (!matchingTypes.includes(propagator.type)) {
+          matchingTypes.push(propagator.type);
+        }
+      }
+    }
+    return matchingTypes;
+  }
+
+  // For cross-origin requests, use new propagators config if available
+  if (vars.propagators) {
     for (const propagator of vars.propagators) {
       if (matchesPropagator(propagator.match, url, isUrlSameOrigin)) {
         // Avoid duplicates
@@ -218,11 +234,6 @@ function determinePropagatorTypes(url: string): PropagatorType[] {
 
   // Backward compatibility: if old config exists and URL matches, use traceparent
   if (matchesAny(vars.propagateTraceHeadersCorsURLs, url)) {
-    return ["traceparent"];
-  }
-
-  // Legacy same-origin behavior for backward compatibility when no new config
-  if (isSameOrigin(url)) {
     return ["traceparent"];
   }
 

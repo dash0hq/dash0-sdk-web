@@ -77,11 +77,9 @@ Configure trace context propagators for different URL patterns:
 ```js
 init({
   propagators: [
-    // Send W3C traceparent headers to same-origin requests
-    { type: "traceparent", match: ["sameorigin"] },
-    // Send W3C traceparent headers to internal APIs
+    // W3C traceparent headers for internal APIs
     { type: "traceparent", match: [/.*\/api\/internal.*/] },
-    // Send AWS X-Ray headers to AWS services
+    // AWS X-Ray headers for AWS services
     { type: "xray", match: [/.*\.amazonaws\.com.*/] },
     // Send both headers to specific endpoints
     { type: "traceparent", match: [/.*\/api\/special.*/] },
@@ -95,10 +93,11 @@ init({
 - `"traceparent"`: W3C Trace Context headers for OpenTelemetry-compatible services
 - `"xray"`: AWS X-Ray trace headers for AWS services
 
-**Match patterns:**
+**Same-origin requests**: All same-origin requests automatically receive `traceparent` headers plus headers for ALL other configured propagator types, regardless of match patterns. This ensures consistent trace correlation within your application.
+
+**Match patterns for cross-origin requests:**
 
 - `RegExp`: Regular expressions to match against full URLs
-- `"sameorigin"`: Special string that matches all same-origin requests
 
 **Multiple Headers**: When multiple propagators match the same URL, both headers will be added to the request. This is useful when you need to support multiple tracing systems simultaneously.
 
@@ -288,9 +287,7 @@ This currently also requires the use of Next.js
 
   ```js
   propagators: [
-    // Use "sameorigin" for same-origin requests
-    { type: "traceparent", match: ["sameorigin"] },
-    // Use RegExp for specific URL patterns
+    // Use RegExp for specific cross-origin URL patterns
     { type: "traceparent", match: [/.*\/api\/internal.*/] },
     { type: "xray", match: [/.*\.amazonaws\.com.*/] },
     // Multiple propagators can match the same URL to send both headers
@@ -299,7 +296,10 @@ This currently also requires the use of Next.js
   ];
   ```
 
-  When multiple propagators match the same URL, both headers will be sent. Duplicate propagator types for the same URL are automatically deduplicated.
+  **Same-origin behavior**: All same-origin requests automatically get `traceparent` headers plus headers for ALL other configured propagator types, regardless of match patterns.
+
+  **Cross-origin behavior**: When multiple propagators match the same cross-origin URL, both headers will be sent. Duplicate propagator types for the same URL are automatically deduplicated.
+
   NOTE: Any cross origin endpoints allowed via this option need to include the appropriate headers in the `Access-Control-Allow-Headers`
   response header (`traceparent` for W3C, `X-Amzn-Trace-Id` for X-Ray). Misconfiguration will cause request failures!
 
