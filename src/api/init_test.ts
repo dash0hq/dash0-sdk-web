@@ -214,7 +214,7 @@ describe("init", () => {
       expect(spyOnWarn).not.toHaveBeenCalled();
     });
 
-    it("should handle empty propagators array (disable propagation)", async () => {
+    it("should handle empty propagators array", async () => {
       const spyOnWarn = vi.spyOn(console, "warn");
 
       init({

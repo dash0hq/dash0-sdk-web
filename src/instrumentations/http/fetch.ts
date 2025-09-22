@@ -79,15 +79,15 @@ function wrapFetch(original: typeof fetch) {
       if (copyOfInit?.headers) {
         // ensure we have a unified container for the headers
         copyOfInit.headers = new Headers(copyOfInit.headers);
-        addHeadersBasedOnTypes(copyOfInit.headers.append, copyOfInit.headers, span, propagatorTypes);
+        addTraceContextHttpHeaders(copyOfInit.headers.append, copyOfInit.headers, span, propagatorTypes);
       } else if (input instanceof Request) {
-        addHeadersBasedOnTypes(request.headers.append, request.headers, span, propagatorTypes);
+        addTraceContextHttpHeaders(request.headers.append, request.headers, span, propagatorTypes);
       } else {
         if (!copyOfInit) {
           copyOfInit = {};
         }
         copyOfInit.headers = new Headers();
-        addHeadersBasedOnTypes(copyOfInit.headers.append, copyOfInit.headers, span, propagatorTypes);
+        addTraceContextHttpHeaders(copyOfInit.headers.append, copyOfInit.headers, span, propagatorTypes);
       }
     }
 
@@ -249,7 +249,7 @@ function matchesPropagator(patterns: RegExp[], url: string): boolean {
   return false;
 }
 
-function addHeadersBasedOnTypes(
+function addTraceContextHttpHeaders(
   fn: (name: string, value: string) => void,
   ctx: unknown,
   span: InProgressSpan,
