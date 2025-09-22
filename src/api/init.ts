@@ -199,20 +199,21 @@ function initializePropagators(opts: InitOptions) {
   // Handle legacy configuration
   else if (opts.propagateTraceHeadersCorsURLs && opts.propagateTraceHeadersCorsURLs.length > 0) {
     warn("'propagateTraceHeadersCorsURLs' is deprecated. Please use the new 'propagators' configuration.");
-    // Convert legacy config to new format
+    // Convert legacy config to new format - only include cross-origin URLs since same-origin is automatic
     vars.propagators = [
       {
         type: "traceparent",
-        match: ["sameorigin", ...opts.propagateTraceHeadersCorsURLs],
+        match: [...opts.propagateTraceHeadersCorsURLs],
       },
     ];
   }
-  // Default configuration - keep existing behavior
+  // Default configuration - traceparent with empty match array
+  // Same-origin requests get ALL configured propagators, so this ensures traceparent for same-origin
   else {
     vars.propagators = [
       {
         type: "traceparent",
-        match: ["sameorigin"],
+        match: [],
       },
     ];
   }

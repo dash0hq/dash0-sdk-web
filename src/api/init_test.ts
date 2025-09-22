@@ -114,7 +114,7 @@ describe("init", () => {
   describe("propagator configuration", () => {
     it("should set propagators configuration when provided", async () => {
       const propagators: PropagatorConfig[] = [
-        { type: "traceparent" as const, match: ["sameorigin"] },
+        { type: "traceparent" as const, match: [/.*\/api\/.*/] },
         { type: "xray" as const, match: [/.*\.amazonaws\.com.*/] },
       ];
 
@@ -128,7 +128,7 @@ describe("init", () => {
 
     it("should warn when both propagators and legacy config are provided", async () => {
       const spyOnWarn = vi.spyOn(console, "warn");
-      const propagators: PropagatorConfig[] = [{ type: "traceparent" as const, match: ["sameorigin"] }];
+      const propagators: PropagatorConfig[] = [{ type: "traceparent" as const, match: [/.*\/api\/.*/] }];
 
       init({
         ...baseOptions,
@@ -158,7 +158,7 @@ describe("init", () => {
       expect(vars.propagators).toEqual([
         {
           type: "traceparent",
-          match: ["sameorigin", ...legacyConfig],
+          match: [...legacyConfig],
         },
       ]);
     });
@@ -169,7 +169,7 @@ describe("init", () => {
       expect(vars.propagators).toEqual([
         {
           type: "traceparent",
-          match: ["sameorigin"],
+          match: [],
         },
       ]);
     });
@@ -186,7 +186,7 @@ describe("init", () => {
       expect(vars.propagators).toEqual([
         {
           type: "traceparent",
-          match: ["sameorigin"],
+          match: [],
         },
       ]);
     });
@@ -197,7 +197,7 @@ describe("init", () => {
       const propagators: PropagatorConfig[] = [
         {
           type: "traceparent" as const,
-          match: ["sameorigin", /.*\/api\/.*/],
+          match: [/.*\/api\/.*/],
         },
         {
           type: "xray" as const,

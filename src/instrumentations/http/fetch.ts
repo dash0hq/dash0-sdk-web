@@ -211,7 +211,7 @@ function determinePropagatorTypes(url: string): PropagatorType[] {
     // Add all other configured propagator types for same-origin requests
     if (vars.propagators) {
       for (const propagator of vars.propagators) {
-        if (!matchingTypes.includes(propagator.type)) {
+        if (propagator.type !== "traceparent" && !matchingTypes.includes(propagator.type)) {
           matchingTypes.push(propagator.type);
         }
       }
@@ -222,7 +222,7 @@ function determinePropagatorTypes(url: string): PropagatorType[] {
   // For cross-origin requests, use new propagators config if available
   if (vars.propagators) {
     for (const propagator of vars.propagators) {
-      if (matchesPropagator(propagator.match, url, isUrlSameOrigin)) {
+      if (matchesPropagator(propagator.match, url)) {
         // Avoid duplicates
         if (!matchingTypes.includes(propagator.type)) {
           matchingTypes.push(propagator.type);
@@ -240,16 +240,10 @@ function determinePropagatorTypes(url: string): PropagatorType[] {
   return [];
 }
 
-function matchesPropagator(patterns: (RegExp | "sameorigin")[], url: string, isUrlSameOrigin: boolean): boolean {
+function matchesPropagator(patterns: RegExp[], url: string): boolean {
   for (const pattern of patterns) {
-    if (pattern === "sameorigin") {
-      if (isUrlSameOrigin) {
-        return true;
-      }
-    } else if (pattern instanceof RegExp) {
-      if (pattern.test(url)) {
-        return true;
-      }
+    if (pattern.test(url)) {
+      return true;
     }
   }
   return false;

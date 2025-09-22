@@ -7,7 +7,7 @@ export type PropagatorType = "traceparent" | "xray";
 
 export type PropagatorConfig = {
   type: PropagatorType;
-  match: (RegExp | "sameorigin")[];
+  match: RegExp[];
 };
 
 export type Endpoint = {

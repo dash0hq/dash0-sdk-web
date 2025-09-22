@@ -148,8 +148,13 @@ describe("fetch test", () => {
     expect(fetchHeaders.get("X-Amzn-Trace-Id")).not.toBeNull();
   });
 
-  it("should inject traceparent for same-origin when no other propagators configured", async () => {
-    vars.propagators = [];
+  it("should inject traceparent for same-origin when default traceparent propagator configured", async () => {
+    vars.propagators = [
+      {
+        type: "traceparent",
+        match: [], // Empty match array - matches no cross-origin URLs but same-origin gets all propagators
+      },
+    ];
     instrumentFetch();
     // Same-origin request
     // eslint-disable-next-line no-restricted-globals
@@ -157,7 +162,7 @@ describe("fetch test", () => {
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const fetchHeaders = (fetchMock.mock.calls[0]!.at(1)! as { headers: Headers }).headers;
-    // Same-origin always gets traceparent, even with no propagators configured
+    // Same-origin gets all configured propagator types
     expect(fetchHeaders.get("traceparent")).not.toBeNull();
     expect(fetchHeaders.get("X-Amzn-Trace-Id")).toBeNull();
   });

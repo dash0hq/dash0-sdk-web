@@ -279,7 +279,7 @@ This currently also requires the use of Next.js
   ```typescript
   type PropagatorConfig = {
     type: "traceparent" | "xray";
-    match: (RegExp | "sameorigin")[];
+    match: RegExp[];
   };
   ```
 
