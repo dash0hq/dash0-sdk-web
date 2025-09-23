@@ -73,6 +73,8 @@ export function init(opts: InitOptions) {
     )
   );
 
+  initializePropagators(opts);
+
   initializeResourceAttributes(opts);
   initializeSignalAttributes(opts);
   initializeTabId();
@@ -182,6 +184,38 @@ function detectDeploymentId(opts: InitOptions): string | undefined {
     return process?.env?.NEXT_PUBLIC_VERCEL_BRANCH_URL;
   } catch (_ignored) {
     return undefined;
+  }
+}
+
+function initializePropagators(opts: InitOptions) {
+  if (opts.propagators) {
+    if (opts.propagateTraceHeadersCorsURLs) {
+      warn(
+        "Both 'propagators' and deprecated 'propagateTraceHeadersCorsURLs' were provided. Using 'propagators' configuration. Please migrate to the new 'propagators' config."
+      );
+    }
+    vars.propagators = opts.propagators;
+  }
+  // Handle legacy configuration
+  else if (opts.propagateTraceHeadersCorsURLs && opts.propagateTraceHeadersCorsURLs.length > 0) {
+    warn("'propagateTraceHeadersCorsURLs' is deprecated. Please use the new 'propagators' configuration.");
+    // Convert legacy config to new format - only include cross-origin URLs since same-origin is automatic
+    vars.propagators = [
+      {
+        type: "traceparent",
+        match: [...opts.propagateTraceHeadersCorsURLs],
+      },
+    ];
+  }
+  // Default configuration - traceparent with empty match array
+  // Same-origin requests get ALL configured propagators, so this ensures traceparent for same-origin
+  else {
+    vars.propagators = [
+      {
+        type: "traceparent",
+        match: [],
+      },
+    ];
   }
 }
 

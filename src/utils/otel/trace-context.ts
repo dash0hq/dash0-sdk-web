@@ -59,7 +59,7 @@ function getTraceparentFromServerTiming(serverTimings: readonly PerformanceServe
   return "";
 }
 
-export function addTraceContextHttpHeaders(
+export function addW3CTraceContextHttpHeaders(
   fn: (name: string, value: string) => void,
   ctx: unknown,
   span: InProgressSpan
@@ -83,4 +83,33 @@ export function addTraceContextHttpHeaders(
    * https://www.w3.org/TR/trace-context-2/#random-trace-id-flag
    */
   fn.call(ctx, "traceparent", `00-${span.traceId}-${span.spanId}-01`);
+}
+
+export function addXRayTraceContextHttpHeaders(
+  fn: (name: string, value: string) => void,
+  ctx: unknown,
+  span: InProgressSpan
+) {
+  /**
+   * AWS X-Ray trace header.
+   * General format is Root=${trace-id};Parent=${span-id};Sampled=${sampling-flag}
+   *
+   * Converts W3C trace ID format to X-Ray format:
+   * W3C: 4efaaf4d1e8720b39541901950019ee5 (32 hex chars)
+   * X-Ray: 1-4efaaf4d-1e8720b39541901950019ee5 (1-{8chars}-{24chars})
+   *
+   * References:
+   * https://docs.aws.amazon.com/xray/latest/devguide/xray-concepts.html#xray-concepts-tracingheader
+   */
+  const xrayTraceId = convertW3CTraceIdToXRay(span.traceId);
+  const xrayHeader = `Root=${xrayTraceId};Parent=${span.spanId};Sampled=1`;
+  fn.call(ctx, "X-Amzn-Trace-Id", xrayHeader);
+}
+
+function convertW3CTraceIdToXRay(w3cTraceId: string): string {
+  // X-Ray trace ID format: 1-{timestamp}-{unique-id}
+  // Split the 32-char W3C trace ID into 8-char timestamp and 24-char unique ID
+  const timestamp = w3cTraceId.substring(0, 8);
+  const uniqueId = w3cTraceId.substring(8, 32);
+  return `1-${timestamp}-${uniqueId}`;
 }

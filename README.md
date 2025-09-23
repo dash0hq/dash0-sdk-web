@@ -64,16 +64,53 @@ These can all be passed via the sdk's `init` call.
 
 ### Backend Correlation
 
-Backend Correlation for HTTP requests is by default only enabled for endpoints that share the same origin as the website.
+The SDK supports trace context propagation to correlate frontend requests with backend services. You can configure different header types (`traceparent`, `X-Amzn-Trace-Id`) for different endpoints using the `propagators` configuration.
 
 > [!NOTE]
 > Misconfiguration of cross origin trace correlation can lead to request failures. Please make sure to carefully validate
 > the configuration provided in the next steps
 
-If you want to enable correlation for cross-origin requests you have to follow these steps:
+#### Propagators Configuration (Recommended)
 
-- Make sure the endpoints respond to `OPTIONS` requests and include `traceparent` in their `Access-Control-Allow-Headers`
-  response header.
+Configure trace context propagators for different URL patterns:
+
+```js
+init({
+  propagators: [
+    // W3C traceparent headers for internal APIs
+    { type: "traceparent", match: [/.*\/api\/internal.*/] },
+    // AWS X-Ray headers for AWS services
+    { type: "xray", match: [/.*\.amazonaws\.com.*/] },
+    // Send both headers to specific endpoints
+    { type: "traceparent", match: [/.*\/api\/special.*/] },
+    { type: "xray", match: [/.*\/api\/special.*/] },
+  ],
+});
+```
+
+**Supported propagator types:**
+
+- `"traceparent"`: W3C Trace Context headers for OpenTelemetry-compatible services
+- `"xray"`: AWS X-Ray trace headers for AWS services
+
+**Same-origin requests**: All same-origin requests automatically receive `traceparent` headers plus headers for ALL other configured propagator types, regardless of match patterns. This ensures consistent trace correlation within your application.
+
+**Match patterns for cross-origin requests:**
+
+- `RegExp`: Regular expressions to match against full URLs
+
+**Multiple Headers**: When multiple propagators match the same URL, both headers will be added to the request. This is useful when you need to support multiple tracing systems simultaneously.
+
+**Backend setup**
+
+- Make sure the endpoints respond to `OPTIONS` requests and include the appropriate headers in their `Access-Control-Allow-Headers` response header:
+  - `traceparent` for W3C trace context
+  - `X-Amzn-Trace-Id` for AWS X-Ray
+
+#### Legacy Configuration (Deprecated)
+
+The legacy `propagateTraceHeadersCorsURLs` configuration is still supported but deprecated:
+
 - Include a regex matching the endpoint you want to enable in the [propagateTraceHeadersCorsURLs](#http-request-instrumentation) configuration option.
 
 ### Configuration auto detection
@@ -232,12 +269,46 @@ This currently also requires the use of Next.js
 
 #### HTTP request instrumentation
 
-- **Propagate Trace Header Cors URLs**<br>
+- **Propagators**<br>
+  key: `propagators`<br>
+  type: `PropagatorConfig[]`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  Configure trace context propagators for different URL patterns. Each propagator defines which header type to send for matching URLs.
+
+  ```typescript
+  type PropagatorConfig = {
+    type: "traceparent" | "xray";
+    match: RegExp[];
+  };
+  ```
+
+  Example:
+
+  ```js
+  propagators: [
+    // Use RegExp for specific cross-origin URL patterns
+    { type: "traceparent", match: [/.*\/api\/internal.*/] },
+    { type: "xray", match: [/.*\.amazonaws\.com.*/] },
+    // Multiple propagators can match the same URL to send both headers
+    { type: "traceparent", match: [/.*\/api\/both.*/] },
+    { type: "xray", match: [/.*\/api\/both.*/] },
+  ];
+  ```
+
+  **Same-origin behavior**: All same-origin requests automatically get `traceparent` headers plus headers for ALL other configured propagator types, regardless of match patterns.
+
+  **Cross-origin behavior**: When multiple propagators match the same cross-origin URL, both headers will be sent. Duplicate propagator types for the same URL are automatically deduplicated.
+
+  NOTE: Any cross origin endpoints allowed via this option need to include the appropriate headers in the `Access-Control-Allow-Headers`
+  response header (`traceparent` for W3C, `X-Amzn-Trace-Id` for X-Ray). Misconfiguration will cause request failures!
+
+- **Propagate Trace Header Cors URLs** ⚠️ **DEPRECATED**<br>
   key: `propagateTraceHeadersCorsURLs`<br>
   type: `Array<RegExp>`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  An array of URL regular expressions for which trace context headers should be sent across origins by http client instrumentations.
+  **DEPRECATED: Use `propagators` instead.** An array of URL regular expressions for which trace context headers should be sent across origins by http client instrumentations.
   NOTE: Any cross origin endpoints allowed via this option need to include `traceparent` in the `Access-Control-Allow-Headers`
   response header. Misconfiguration will cause request failures!
 - **Max Wait For Resource Timings**<br>

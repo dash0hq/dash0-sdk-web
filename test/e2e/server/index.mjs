@@ -20,7 +20,7 @@ app.use((req, res, next) => {
     res.set("Access-Control-Allow-Origin", "*");
     res.set(
       "Access-Control-Allow-Headers",
-      "Authorization, Content-Encoding, Dash0-Dataset, Content-Type, traceparent"
+      "Authorization, Content-Encoding, Dash0-Dataset, Content-Type, traceparent, X-Amzn-Trace-Id"
     );
   }
   next();
@@ -113,6 +113,53 @@ app.all("/ajax", (req, res) => {
   });
 
   // Delay responses to allow timeout tests.
+  setTimeout(() => {
+    res.send(response);
+  }, 100);
+});
+
+// AWS endpoints for X-Ray testing
+app.get("/aws", (req, res) => {
+  const response = uuidV4();
+  ajaxRequests.push({
+    method: req.method,
+    url: req.url,
+    params: req.params,
+    headers: req.headers,
+    response,
+  });
+
+  setTimeout(() => {
+    res.send(response);
+  }, 100);
+});
+
+// Both endpoints for multiple propagator testing
+app.all("/aws/both", (req, res) => {
+  const response = uuidV4();
+  ajaxRequests.push({
+    method: req.method,
+    url: req.url,
+    params: req.params,
+    headers: req.headers,
+    response,
+  });
+
+  setTimeout(() => {
+    res.send(response);
+  }, 100);
+});
+
+app.all("/other", (req, res) => {
+  const response = uuidV4();
+  ajaxRequests.push({
+    method: req.method,
+    url: req.url,
+    params: req.params,
+    headers: req.headers,
+    response,
+  });
+
   setTimeout(() => {
     res.send(response);
   }, 100);

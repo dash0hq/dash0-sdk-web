@@ -3,7 +3,8 @@ import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
 import {
   addAttribute,
   setSpanStatus,
-  addTraceContextHttpHeaders,
+  addW3CTraceContextHttpHeaders,
+  addXRayTraceContextHttpHeaders,
   endSpan,
   errorToSpanStatus,
   Exception,
@@ -20,7 +21,7 @@ import {
   SPAN_STATUS_UNSET,
 } from "../../semantic-conventions";
 import { isSameOrigin, wrap, parseUrl } from "../../utils";
-import { vars } from "../../vars";
+import { vars, PropagatorType } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
 import { sendSpan } from "../../transport";
 import { addResourceNetworkEvents, addResourceSize, HTTP_METHOD_OTHER, isWellKnownHttpMethod } from "./utils";
@@ -72,20 +73,21 @@ function wrapFetch(original: typeof fetch) {
       addAttribute(span.attributes, HTTP_REQUEST_METHOD_ORIGINAL, originalMethod);
     }
 
-    const shouldSetCorrelationHeaders = isSameOrigin(url) || matchesAny(vars.propagateTraceHeadersCorsURLs, url);
+    const propagatorTypes = determinePropagatorTypes(url);
+    const shouldSetCorrelationHeaders = propagatorTypes.length > 0;
     if (shouldSetCorrelationHeaders) {
       if (copyOfInit?.headers) {
         // ensure we have a unified container for the headers
         copyOfInit.headers = new Headers(copyOfInit.headers);
-        addTraceContextHttpHeaders(copyOfInit.headers.append, copyOfInit.headers, span);
+        addTraceContextHttpHeaders(copyOfInit.headers.append, copyOfInit.headers, span, propagatorTypes);
       } else if (input instanceof Request) {
-        addTraceContextHttpHeaders(request.headers.append, request.headers, span);
+        addTraceContextHttpHeaders(request.headers.append, request.headers, span, propagatorTypes);
       } else {
         if (!copyOfInit) {
           copyOfInit = {};
         }
         copyOfInit.headers = new Headers();
-        addTraceContextHttpHeaders(copyOfInit.headers.append, copyOfInit.headers, span);
+        addTraceContextHttpHeaders(copyOfInit.headers.append, copyOfInit.headers, span, propagatorTypes);
       }
     }
 
@@ -195,4 +197,55 @@ function waitForFullResponse(response: Response): Promise<void> {
 function endSpanOnError(span: InProgressSpan, error: Exception) {
   recordException(span, error);
   sendSpan(endSpan(span, errorToSpanStatus(error), undefined));
+}
+
+function determinePropagatorTypes(url: string): PropagatorType[] {
+  const matchingTypes: PropagatorType[] = [];
+  const isUrlSameOrigin = isSameOrigin(url);
+
+  // For same-origin requests, always include traceparent + all configured propagators
+  if (isUrlSameOrigin) {
+    // Always add traceparent for same-origin requests
+    matchingTypes.push("traceparent");
+
+    // Add all other configured propagator types for same-origin requests
+    if (vars.propagators) {
+      for (const propagator of vars.propagators) {
+        if (propagator.type !== "traceparent" && !matchingTypes.includes(propagator.type)) {
+          matchingTypes.push(propagator.type);
+        }
+      }
+    }
+    return matchingTypes;
+  }
+
+  // For cross-origin requests, use new propagators config if available
+  if (vars.propagators) {
+    for (const propagator of vars.propagators) {
+      if (matchesAny(propagator.match, url)) {
+        // Avoid duplicates
+        if (!matchingTypes.includes(propagator.type)) {
+          matchingTypes.push(propagator.type);
+        }
+      }
+    }
+    return matchingTypes;
+  }
+
+  return [];
+}
+
+function addTraceContextHttpHeaders(
+  fn: (name: string, value: string) => void,
+  ctx: unknown,
+  span: InProgressSpan,
+  types: PropagatorType[]
+) {
+  for (const type of types) {
+    if (type === "xray") {
+      addXRayTraceContextHttpHeaders(fn, ctx, span);
+    } else {
+      addW3CTraceContextHttpHeaders(fn, ctx, span);
+    }
+  }
 }
