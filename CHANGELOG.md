@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.16.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.15.0...0.16.0) (2025-09-23)
+
+### Features
+
+- Add xray propagator and introduce propagator config ([#54](https://github.com/dash0hq/dash0-sdk-web/issues/54)) ([2012e7e](https://github.com/dash0hq/dash0-sdk-web/commit/2012e7ec5f3def1c2aabe0ce9b3836eab3152e1e))
+
 ## [0.15.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.14.1...0.15.0) (2025-09-05)
 
 ### Features
