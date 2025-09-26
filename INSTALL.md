@@ -18,12 +18,14 @@ You'll need the following before you can start with the Dash0 Web SDK:
 ## Setup
 
 1. Add the SDK to your dependencies
-  ```sh
-  # npm
-  npm install @dash0/sdk-web
-  # yarn
-  yarn add @dash0/sdk-web
-  ```
+
+```sh
+# npm
+npm install @dash0/sdk-web
+# yarn
+yarn add @dash0/sdk-web
+```
+
 2. Initialize the SDK in your code: you'll need to call the `init` function at a convenient time in your applications lifecycle.
    Ideally this should happen as early as possible in the web page intialization, as most instrumentations shipped by the SDK can only observe events after init has been called.
 
@@ -107,7 +109,7 @@ Certain configuration values can be auto-detected if using the module version of
 
 These functionalities requires the use of Next.js:
 
-| Configuration Key | Source |
+| Configuration Key | Source                                                                                                                                       |
 | :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
 | environment       | [NEXT_PUBLIC_VERCEL_ENV](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_ENV)               |
 | deploymentName    | [NEXT_PUBLIC_VERCEL_TARGET_ENV](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_TARGET_ENV) |
