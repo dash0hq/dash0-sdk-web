@@ -4,9 +4,10 @@ import { noop } from "./fn";
 import { setTimeout } from "./timers";
 import { addEventListener, removeEventListener } from "./listeners";
 
-const TEN_MINUTES_IN_MILLIS = 1000 * 60 * 10;
+const FIVE_MINUTES_IN_MILLIS = 1000 * 60 * 5;
 const ONE_DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
 const OBSERVER_WAIT_TIME_MS = 300;
+const MAX_RESOURCES_ENTRIES = 100;
 
 export const isResourceTimingAvailable = !!(perf && perf.getEntriesByType);
 export const isPerformanceObserverAvailable =
@@ -96,7 +97,7 @@ export function observeResourcePerformance(opts: ObserveResourcePerformanceOptio
       //
       // Swallow and ignore the error. Treat it like unavailable performance observer data.
     }
-    fallbackEndNeverCalledTimerHandle = setTimeout(disposeGlobalResources, TEN_MINUTES_IN_MILLIS);
+    fallbackEndNeverCalledTimerHandle = setTimeout(disposeGlobalResources, FIVE_MINUTES_IN_MILLIS);
   }
 
   function onEnd() {
@@ -136,7 +137,13 @@ export function observeResourcePerformance(opts: ObserveResourcePerformanceOptio
         const entry = e as PerformanceResourceTiming;
         return entry.startTime >= startTime && opts.resourceMatcher(entry);
       })
-      .forEach((entry) => resources.push(entry as PerformanceResourceTiming));
+      .forEach((entry) => {
+        // Limit array size to prevent memory leaks on high-traffic pages
+        if (resources.length >= MAX_RESOURCES_ENTRIES) {
+          resources.shift(); // Remove oldest entry (FIFO)
+        }
+        resources.push(entry as PerformanceResourceTiming);
+      });
   }
 
   function onVisibilityChanged() {

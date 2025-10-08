@@ -164,6 +164,16 @@ export type Vars = {
    */
   urlAttributeScrubber: UrlAttributeScrubber;
 
+  /**
+   * Maximum response body size in bytes that will be read when instrumenting fetch requests.
+   * Responses larger than this threshold will skip body reading to avoid memory exhaustion.
+   * Set to 0 to disable body reading entirely.
+   * Set to Infinity to read all responses regardless of size (not recommended).
+   *
+   * @default 10485760 (10 MB)
+   */
+  maxResponseBodySize: number;
+
   pageViewInstrumentation: PageViewInstrumentationSettings;
 };
 
@@ -187,6 +197,7 @@ export const vars: Vars = {
   maxToleranceForResourceTimingsMillis: 50,
   headersToCapture: [],
   urlAttributeScrubber: identity,
+  maxResponseBodySize: 10 * 1024 * 1024, // 10 MB
   pageViewInstrumentation: {
     trackVirtualPageViews: true,
     includeParts: [],

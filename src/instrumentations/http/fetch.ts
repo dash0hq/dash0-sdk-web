@@ -178,20 +178,86 @@ function addResponseData(span: InProgressSpan, response: Response) {
 }
 
 function waitForFullResponse(response: Response): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    // Skip body reading if disabled
+    if (vars.maxResponseBodySize === 0) {
+      debug("Skipping response body reading (maxResponseBodySize is 0)");
+      return resolve();
+    }
+
+    // Check if response should be skipped based on size and content type
+    if (shouldSkipResponseBodyReading(response)) {
+      return resolve();
+    }
+
     const clonedResponse = response.clone();
     const body = clonedResponse.body;
 
     if (!body) return resolve();
 
+    // Set a timeout to prevent infinite reads (max 30 seconds)
+    const timeoutId = setTimeout(() => {
+      debug("Response body reading timed out after 30 seconds");
+      reader?.cancel().catch(() => {});
+      resolve();
+    }, 30000);
+
     const reader = body.getReader();
     const read = async () => {
-      const { done } = await reader.read();
-      if (done) return resolve();
-      return read();
+      try {
+        const { done } = await reader.read();
+        if (done) {
+          clearTimeout(timeoutId);
+          return resolve();
+        }
+        return read();
+      } catch (e) {
+        clearTimeout(timeoutId);
+        debug("Error reading response body", e);
+        reject(e);
+      }
     };
     return read();
   });
+}
+
+function shouldSkipResponseBodyReading(response: Response): boolean {
+  // Check Content-Length header
+  const contentLength = response.headers.get("content-length");
+  if (contentLength) {
+    const sizeInBytes = parseInt(contentLength, 10);
+    if (!isNaN(sizeInBytes) && sizeInBytes > vars.maxResponseBodySize) {
+      debug(
+        `Skipping response body reading for large response (${sizeInBytes} bytes > ${vars.maxResponseBodySize} bytes)`
+      );
+      return true;
+    }
+  } else {
+    // No Content-Length header suggests streaming response
+    debug("Skipping response body reading for streaming response (no Content-Length header)");
+    return true;
+  }
+
+  // Check Content-Type header for media types that are likely to be large
+  const contentType = response.headers.get("content-type");
+  if (contentType) {
+    const lowerContentType = contentType.toLowerCase();
+    // Skip video, audio, and binary streams
+    if (
+      lowerContentType.startsWith("video/") ||
+      lowerContentType.startsWith("audio/") ||
+      lowerContentType.includes("application/octet-stream") ||
+      lowerContentType.includes("application/zip") ||
+      lowerContentType.includes("application/x-tar") ||
+      lowerContentType.includes("application/x-gzip") ||
+      lowerContentType.includes("application/vnd.yt-ump")
+    ) {
+      debug(`Skipping response body reading for media type: ${contentType}`);
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function endSpanOnError(span: InProgressSpan, error: Exception) {

@@ -321,6 +321,32 @@ These functionalities requires the use of Next.js:
   default: `undefined`<br>
   A set of regular expressions that will be matched against HTTP request headers,
   to be captured in `XMLHttpRequest` and `fetch` Instrumentations. These headers will be transferred as span attributes.
+- **Max Response Body Size**<br>
+  key: `maxResponseBodySize`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `10485760` (10 MB)<br>
+  Maximum response body size in bytes that will be read when instrumenting fetch requests.
+  Responses larger than this threshold, streaming responses (no `Content-Length` header), and media files (video, audio, binary, YouTube videos) will automatically skip body reading to prevent memory exhaustion and browser crashes.
+  Set to `0` to disable body reading entirely.
+  Set to `Infinity` to read all responses regardless of size (not recommended).
+
+  **Why this matters**: Reading very large response bodies can cause excessive memory usage and browser tab crashes (SIGSEGV errors). The SDK needs to read response bodies to accurately measure network timing, but this is skipped for large responses to ensure stability.
+
+  **Example:**
+
+  ```js
+  init({
+    // Disable body reading for all fetch requests
+    maxResponseBodySize: 0,
+
+    // Or increase limit for specific use cases (use with caution)
+    maxResponseBodySize: 50 * 1024 * 1024, // 50 MB
+
+    // For large file downloads or streaming, consider using ignoreUrls instead
+    ignoreUrls: [/.*\/download\/.*/, /.*\/stream\/.*/],
+  });
+  ```
 
 #### Page view instrumentation
 

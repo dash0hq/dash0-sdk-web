@@ -57,6 +57,7 @@ export type InitOptions = {
     | "maxToleranceForResourceTimingsMillis"
     | "headersToCapture"
     | "urlAttributeScrubber"
+    | "maxResponseBodySize"
     | "pageViewInstrumentation"
   >
 >;

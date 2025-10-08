@@ -188,4 +188,186 @@ describe("fetch test", () => {
     expect(fetchHeaders.get("traceparent")).not.toBeNull();
     expect(fetchHeaders.get("X-Amzn-Trace-Id")).toBeNull();
   });
+
+  // Large response handling tests
+  it("should skip body reading when maxResponseBodySize is 0", async () => {
+    const originalMaxSize = vars.maxResponseBodySize;
+    vars.maxResponseBodySize = 0;
+
+    const mockHeaders = new Headers();
+    mockHeaders.set("content-length", "1000");
+    mockHeaders.set("content-type", "application/json");
+
+    fetchMock = vi.fn(() => ({
+      ok: true,
+      headers: mockHeaders,
+      status: 200,
+      clone: vi.fn(() => ({
+        body: {
+          getReader: () => ({
+            read: vi.fn(),
+          }),
+        },
+      })),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    instrumentFetch();
+    // eslint-disable-next-line no-restricted-globals
+    const response = await fetch("http://localhost:3000/api/test");
+
+    // Body should not be read (clone should not be called or getReader not called)
+    expect(response.clone).not.toHaveBeenCalled();
+
+    vars.maxResponseBodySize = originalMaxSize;
+  });
+
+  it("should skip body reading for large responses based on Content-Length", async () => {
+    const originalMaxSize = vars.maxResponseBodySize;
+    vars.maxResponseBodySize = 1000; // 1KB limit
+
+    const mockHeaders = new Headers();
+    mockHeaders.set("content-length", "2000"); // 2KB response
+    mockHeaders.set("content-type", "application/json");
+
+    fetchMock = vi.fn(() => ({
+      ok: true,
+      headers: mockHeaders,
+      status: 200,
+      clone: () => ({
+        body: null,
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    instrumentFetch();
+    // eslint-disable-next-line no-restricted-globals
+    const response = await fetch("http://localhost:3000/api/test");
+
+    // Should complete without errors
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    vars.maxResponseBodySize = originalMaxSize;
+  });
+
+  it("should skip body reading for streaming responses without Content-Length", async () => {
+    const mockHeaders = new Headers();
+    // No Content-Length header
+    mockHeaders.set("content-type", "application/json");
+
+    fetchMock = vi.fn(() => ({
+      ok: true,
+      headers: mockHeaders,
+      status: 200,
+      clone: () => ({
+        body: null,
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    instrumentFetch();
+    // eslint-disable-next-line no-restricted-globals
+    const response = await fetch("http://localhost:3000/api/test");
+
+    // Should complete without errors despite missing Content-Length
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("should skip body reading for video content type", async () => {
+    const mockHeaders = new Headers();
+    mockHeaders.set("content-length", "1000");
+    mockHeaders.set("content-type", "video/mp4");
+
+    fetchMock = vi.fn(() => ({
+      ok: true,
+      headers: mockHeaders,
+      status: 200,
+      clone: () => ({
+        body: null,
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    instrumentFetch();
+    // eslint-disable-next-line no-restricted-globals
+    const response = await fetch("http://localhost:3000/api/video.mp4");
+
+    // Should complete without errors for video content type
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("should skip body reading for audio content type", async () => {
+    const mockHeaders = new Headers();
+    mockHeaders.set("content-length", "1000");
+    mockHeaders.set("content-type", "audio/mpeg");
+
+    fetchMock = vi.fn(() => ({
+      ok: true,
+      headers: mockHeaders,
+      status: 200,
+      clone: () => ({
+        body: null,
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    instrumentFetch();
+    // eslint-disable-next-line no-restricted-globals
+    const response = await fetch("http://localhost:3000/api/audio.mp3");
+
+    // Should complete without errors for audio content type
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("should skip body reading for binary octet-stream content type", async () => {
+    const mockHeaders = new Headers();
+    mockHeaders.set("content-length", "1000");
+    mockHeaders.set("content-type", "application/octet-stream");
+
+    fetchMock = vi.fn(() => ({
+      ok: true,
+      headers: mockHeaders,
+      status: 200,
+      clone: () => ({
+        body: null,
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    instrumentFetch();
+    // eslint-disable-next-line no-restricted-globals
+    const response = await fetch("http://localhost:3000/api/file.bin");
+
+    // Should complete without errors for binary content type
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("should skip body reading for YouTube video content type", async () => {
+    const mockHeaders = new Headers();
+    mockHeaders.set("content-length", "5000000"); // 5MB
+    mockHeaders.set("content-type", "application/vnd.yt-ump");
+
+    fetchMock = vi.fn(() => ({
+      ok: true,
+      headers: mockHeaders,
+      status: 200,
+      clone: () => ({
+        body: null,
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    instrumentFetch();
+    // eslint-disable-next-line no-restricted-globals
+    const response = await fetch("http://localhost:3000/api/youtube-video");
+
+    // Should complete without errors for YouTube video content type
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
 });
