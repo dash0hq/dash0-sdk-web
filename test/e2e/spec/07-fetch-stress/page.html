@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>fetch stress test</title>
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: [
+          {
+            url: `http://${window.location.hostname}:8011?cors=true`,
+            authToken: "auth_abc123",
+            dataset: "production",
+          },
+        ],
+      });
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+    <script>
+      let activeReaders = [];
+      let responsesToFinish = [];
+
+      async function startParallelRequests() {
+        const count = 10; // Number of parallel requests
+        const size = 500_000_000_000;
+        const statusEl = document.getElementById("status");
+
+        statusEl.textContent = `Starting ${count} parallel requests...`;
+
+        // Clear previous state
+        activeReaders = [];
+        responsesToFinish = [];
+
+        const promises = [];
+        for (let i = 0; i < count; i++) {
+          const promise = fetch(`/large-body?size=${size}`)
+            .then(async (response) => {
+              // Clone the response so we can read it in chunks
+              const reader = response.body.getReader();
+              activeReaders.push(reader);
+
+              // Start reading but don't finish
+              const chunks = [];
+
+              // Read just a few chunks to start the stream
+              for (let j = 0; j < 3; j++) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+              }
+
+              // Store the reader and chunks for later completion
+              responsesToFinish.push({ reader, chunks });
+
+              return { requestIndex: i, started: true };
+            })
+            .catch((error) => {
+              console.error(`Request ${i} failed:`, error);
+              return { requestIndex: i, error };
+            });
+
+          promises.push(promise);
+        }
+
+        const results = await Promise.all(promises);
+        const successful = results.filter((r) => r.started).length;
+
+        statusEl.textContent = `Started ${successful} requests, waiting for finish signal...`;
+      }
+
+      async function finishReading() {
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = `Finishing reading ${responsesToFinish.length} responses...`;
+
+        const promises = responsesToFinish.map(async ({ reader, chunks }) => {
+          try {
+            // Continue reading until done
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+            }
+            return { success: true, totalChunks: chunks.length };
+          } catch (error) {
+            console.error("Error finishing read:", error);
+            return { success: false, error };
+          }
+        });
+
+        const results = await Promise.all(promises);
+        const successful = results.filter((r) => r.success).length;
+
+        statusEl.textContent = `Finished reading ${successful} responses successfully`;
+
+        // Clean up
+        activeReaders = [];
+        responsesToFinish = [];
+      }
+    </script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      button {
+        margin: 10px;
+        padding: 10px 20px;
+        font-size: 16px;
+      }
+      #status {
+        margin-top: 20px;
+        padding: 10px;
+        background-color: #f0f0f0;
+        border-radius: 5px;
+        min-height: 50px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Fetch Stress Test</h1>
+    <p>
+      This test creates many parallel fetch requests with large response bodies to stress test the waitForFullResponse
+      implementation.
+    </p>
+
+    <button onclick="startParallelRequests()">Start Parallel Requests</button>
+    <button onclick="finishReading()">Finish Reading Responses</button>
+
+    <div id="status">Ready</div>
+  </body>
+</html>

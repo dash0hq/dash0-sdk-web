@@ -202,6 +202,29 @@ app.delete("/ajax-requests", (_, res) => {
   res.send("OK");
 });
 
+// Endpoint that returns a large body for testing
+app.get("/large-body", (req, res) => {
+  const size = parseInt(req.query["size"] || "1000000", 10); // Default 1MB
+  const chunk = "x".repeat(1000); // 1KB chunks
+  const chunks = Math.floor(size / 1000);
+
+  res.set("Content-Type", "text/plain");
+
+  // Stream the response in chunks
+  let sent = 0;
+  const sendChunk = () => {
+    if (sent >= chunks) {
+      res.end();
+      return;
+    }
+    res.write(chunk);
+    sent++;
+    setImmediate(sendChunk);
+  };
+
+  sendChunk();
+});
+
 getServerPorts().forEach((port) =>
   servers.push(
     app.listen(port, (error) => {
