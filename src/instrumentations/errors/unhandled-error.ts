@@ -75,7 +75,7 @@ export function startOnErrorInstrumentation() {
   };
 }
 
-export function reportError(error: string | ErrorLike, opts?: ReportErrorOpts) {
+export function reportUnhandledError(error: string | ErrorLike, opts?: ReportErrorOpts) {
   if (!error) {
     return;
   }
