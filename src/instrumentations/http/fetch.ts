@@ -199,26 +199,37 @@ function wrapResponse(
     return originalResponse;
   }
 
-  let bodyNeverCompletelyReadTimeout = setTimeout(() => onDone(fallbackTs), readTimeoutMs);
+  let cbCalled: boolean = false;
+  const handleDone = (fallbackEndTs?: number) => {
+    if (cbCalled) return;
+    onDone(fallbackEndTs);
+    cbCalled = true;
+  };
+  const handleError = (e: Exception) => {
+    if (cbCalled) return;
+    onError(e);
+    cbCalled = true;
+  };
+
+  let bodyNeverCompletelyReadTimeout = setTimeout(() => handleDone(fallbackTs), readTimeoutMs);
 
   const reader = body.getReader();
   const stream = new ReadableStream({
     async pull(controller) {
       try {
+        clearTimeout(bodyNeverCompletelyReadTimeout);
         const { value, done } = await reader.read();
         if (done) {
-          clearTimeout(bodyNeverCompletelyReadTimeout);
           reader.releaseLock();
           controller.close();
-          onDone();
+          handleDone();
         } else {
-          clearTimeout(bodyNeverCompletelyReadTimeout);
           fallbackTs = perf.now();
-          bodyNeverCompletelyReadTimeout = setTimeout(() => onDone(fallbackTs), readTimeoutMs);
+          bodyNeverCompletelyReadTimeout = setTimeout(() => handleDone(fallbackTs), readTimeoutMs);
           controller.enqueue(value);
         }
       } catch (e) {
-        onError(e as Exception);
+        handleError(e as Exception);
         controller.error(e);
 
         try {
@@ -235,6 +246,8 @@ function wrapResponse(
       }
     },
     cancel(reason) {
+      clearTimeout(bodyNeverCompletelyReadTimeout);
+      handleDone();
       return reader.cancel(reason);
     },
   });

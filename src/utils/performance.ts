@@ -105,6 +105,9 @@ export function observeResourcePerformance(opts: ObserveResourcePerformanceOptio
   }
 
   function onEnd(endTs?: number) {
+    // If endTime is already set, we are already terminating and should not do so again
+    if (endTime) return;
+
     endTime = endTs ?? perf.now();
     cancelFallbackEndNeverCalledTimer();
 
