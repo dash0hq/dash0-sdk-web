@@ -7,6 +7,7 @@ import { addEventListener, removeEventListener } from "./listeners";
 const TEN_MINUTES_IN_MILLIS = 1000 * 60 * 10;
 const ONE_DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
 const OBSERVER_WAIT_TIME_MS = 300;
+const MAX_RESOURCES_ENTRIES = 100;
 
 export const isResourceTimingAvailable = !!(perf && perf.getEntriesByType);
 export const isPerformanceObserverAvailable =
@@ -140,7 +141,16 @@ export function observeResourcePerformance(opts: ObserveResourcePerformanceOptio
         const entry = e as PerformanceResourceTiming;
         return entry.startTime >= startTime && opts.resourceMatcher(entry);
       })
-      .forEach((entry) => resources.push(entry as PerformanceResourceTiming));
+      .forEach((entry) => {
+        // Limit array size to prevent memory leaks on high-traffic pages
+        if (resources.length >= MAX_RESOURCES_ENTRIES) {
+          // Remove oldest entry (FIFO)
+          // Timings are only reported once the resource is fully recorded (i.e. the request has ended), so timings ending
+          // way before the `onEnd` is called are less likely to be good matches and we can ignore them.
+          resources.shift();
+        }
+        resources.push(entry as PerformanceResourceTiming);
+      });
   }
 
   function onVisibilityChanged() {
