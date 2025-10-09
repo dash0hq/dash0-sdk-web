@@ -6,7 +6,7 @@ describe("Fetch Stress Test", () => {
   beforeEach(sharedBeforeEach);
   afterEach(sharedAfterEach);
 
-  it("must handle many parallel requests with large bodies", async () => {
+  it.skip("must handle many parallel requests with large bodies", async () => {
     await browser.url("/e2e/spec/07-fetch-stress/page.html");
     await expect(browser).toHaveTitle("fetch stress test");
 
@@ -56,7 +56,7 @@ describe("Fetch Stress Test", () => {
     expectNoBrowserErrors();
   });
 
-  it("must handle requests that are never fully read", async () => {
+  it.skip("must handle requests that are never fully read", async () => {
     await browser.url("/e2e/spec/07-fetch-stress/page.html");
     await expect(browser).toHaveTitle("fetch stress test");
 

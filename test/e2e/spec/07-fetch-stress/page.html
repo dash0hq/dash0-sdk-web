@@ -31,11 +31,16 @@
     <script>
       let activeReaders = [];
       let responsesToFinish = [];
+      let po = new PerformanceObserver((e) =>
+        console.log({ entries: e.getEntriesByType("resource"), ts: performance.now() })
+      );
 
       async function startParallelRequests() {
         const count = 10; // Number of parallel requests
-        const size = 500_000_000_000;
+        const size = 500_000_000;
         const statusEl = document.getElementById("status");
+
+        po.observe({ type: "resource" });
 
         statusEl.textContent = `Starting ${count} parallel requests...`;
 
@@ -103,6 +108,8 @@
         const successful = results.filter((r) => r.success).length;
 
         statusEl.textContent = `Finished reading ${successful} responses successfully`;
+
+        po.disconnect();
 
         // Clean up
         activeReaders = [];

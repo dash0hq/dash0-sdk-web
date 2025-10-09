@@ -54,7 +54,11 @@ type ObserveResourcePerformanceOptions = {
 
 type PerformanceObservationContoller = {
   start: () => void;
-  end: () => void;
+  /**
+   * Ends performance observation and starts matching the observed resources.
+   * @param endTs End performance timing timestamp to use for the end of the resource, instead of the current time when end is called. Useful when calling end from a timeout handler
+   */
+  end: (endTs?: number) => void;
   cancel: () => void;
 };
 
@@ -99,8 +103,8 @@ export function observeResourcePerformance(opts: ObserveResourcePerformanceOptio
     fallbackEndNeverCalledTimerHandle = setTimeout(disposeGlobalResources, TEN_MINUTES_IN_MILLIS);
   }
 
-  function onEnd() {
-    endTime = perf.now();
+  function onEnd(endTs?: number) {
+    endTime = endTs ?? perf.now();
     cancelFallbackEndNeverCalledTimer();
 
     if (!isWaitingAcceptable()) {

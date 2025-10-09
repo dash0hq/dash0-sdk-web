@@ -1,4 +1,4 @@
-import { debug, observeResourcePerformance, win } from "../../utils";
+import { debug, observeResourcePerformance, perf, win, setTimeout, isSameOrigin, wrap, parseUrl } from "../../utils";
 import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
 import {
   addAttribute,
@@ -20,7 +20,6 @@ import {
   SPAN_STATUS_ERROR,
   SPAN_STATUS_UNSET,
 } from "../../semantic-conventions";
-import { isSameOrigin, wrap, parseUrl } from "../../utils";
 import { vars, PropagatorType } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
 import { sendSpan } from "../../transport";
@@ -116,6 +115,7 @@ function wrapFetch(original: typeof fetch) {
 
       return wrapResponse(
         origResponse,
+        vars.maxToleranceForResourceTimingsMillis,
         () => performanceObserver.end(),
         (e) => {
           performanceObserver.cancel();
@@ -176,7 +176,22 @@ function addResponseData(span: InProgressSpan, response: Response) {
   tryCaptureHttpHeaders(response.headers, span, (k) => httpResponseHeaderKey(k));
 }
 
-function wrapResponse(originalResponse: Response, onDone: () => void, onError: (e: Exception) => void): Response {
+/**
+ * Wraps the response to be able to detect when it is fully read
+ * @param originalResponse
+ * @param readTimeoutMs Timeout applied between reading of response chunks, if exceeded the response is considered abandoned and onDone is called.
+ * @param onDone Called when the response is completely read or with "fallbackEndTs" when reading timed out.
+ * @param onError
+ */
+function wrapResponse(
+  originalResponse: Response,
+  readTimeoutMs: number,
+  onDone: (fallbackEndTs?: number) => void,
+  onError: (e: Exception) => void
+): Response {
+  // When the response was wrapped (i.e. first available to js) we use this to replace or find the actual end timestamp
+  // in case the response body is never read by js
+  let fallbackTs: number = perf.now();
   const body = originalResponse.body;
 
   if (!body) {
@@ -184,16 +199,22 @@ function wrapResponse(originalResponse: Response, onDone: () => void, onError: (
     return originalResponse;
   }
 
+  let bodyNeverCompletelyReadTimeout = setTimeout(() => onDone(fallbackTs), readTimeoutMs);
+
   const reader = body.getReader();
   const stream = new ReadableStream({
     async pull(controller) {
       try {
         const { value, done } = await reader.read();
         if (done) {
+          clearTimeout(bodyNeverCompletelyReadTimeout);
           reader.releaseLock();
           controller.close();
           onDone();
         } else {
+          clearTimeout(bodyNeverCompletelyReadTimeout);
+          fallbackTs = perf.now();
+          bodyNeverCompletelyReadTimeout = setTimeout(() => onDone(fallbackTs), readTimeoutMs);
           controller.enqueue(value);
         }
       } catch (e) {
