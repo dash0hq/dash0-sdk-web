@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.16.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.16.0...0.16.1) (2025-10-10)
+
+### Bug Fixes
+
+- **fetch:** stop cloning responses and eagerly reading ([#58](https://github.com/dash0hq/dash0-sdk-web/issues/58)) ([1ab7bd3](https://github.com/dash0hq/dash0-sdk-web/commit/1ab7bd300bc60c0fe6aeffe8cec7536dd5d26647))
+
 ## [0.16.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.15.0...0.16.0) (2025-09-23)
 
 ### Features
