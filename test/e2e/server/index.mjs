@@ -1,9 +1,9 @@
 import bodyParser from "body-parser";
-import multiparty from "multiparty";
-import serveIndex from "serve-index";
 import express from "express";
-import { v4 as uuidV4 } from "uuid";
+import multiparty from "multiparty";
 import path from "node:path";
+import serveIndex from "serve-index";
+import { v4 as uuidV4 } from "uuid";
 
 const app = express();
 const servers = [];
@@ -200,29 +200,6 @@ app.get("/ajax-requests", (_, res) => {
 app.delete("/ajax-requests", (_, res) => {
   ajaxRequests.length = 0;
   res.send("OK");
-});
-
-// Endpoint that returns a large body for testing
-app.get("/large-body", (req, res) => {
-  const size = parseInt(req.query["size"] || "1000000", 10); // Default 1MB
-  const chunk = "x".repeat(1000); // 1KB chunks
-  const chunks = Math.floor(size / 1000);
-
-  res.set("Content-Type", "text/plain");
-
-  // Stream the response in chunks
-  let sent = 0;
-  const sendChunk = () => {
-    if (sent >= chunks) {
-      res.end();
-      return;
-    }
-    res.write(chunk);
-    sent++;
-    setImmediate(sendChunk);
-  };
-
-  sendChunk();
 });
 
 getServerPorts().forEach((port) =>
