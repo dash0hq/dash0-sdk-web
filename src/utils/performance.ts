@@ -7,6 +7,7 @@ import { addEventListener, removeEventListener } from "./listeners";
 const TEN_MINUTES_IN_MILLIS = 1000 * 60 * 10;
 const ONE_DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
 const OBSERVER_WAIT_TIME_MS = 300;
+const MAX_RESOURCES_ENTRIES = 100;
 
 export const isResourceTimingAvailable = !!(perf && perf.getEntriesByType);
 export const isPerformanceObserverAvailable =
@@ -54,7 +55,11 @@ type ObserveResourcePerformanceOptions = {
 
 type PerformanceObservationContoller = {
   start: () => void;
-  end: () => void;
+  /**
+   * Ends performance observation and starts matching the observed resources.
+   * @param endTs End performance timing timestamp to use for the end of the resource, instead of the current time when end is called. Useful when calling end from a timeout handler
+   */
+  end: (endTs?: number) => void;
   cancel: () => void;
 };
 
@@ -99,8 +104,11 @@ export function observeResourcePerformance(opts: ObserveResourcePerformanceOptio
     fallbackEndNeverCalledTimerHandle = setTimeout(disposeGlobalResources, TEN_MINUTES_IN_MILLIS);
   }
 
-  function onEnd() {
-    endTime = perf.now();
+  function onEnd(endTs?: number) {
+    // If endTime is already set, we are already terminating and should not do so again
+    if (endTime) return;
+
+    endTime = endTs ?? perf.now();
     cancelFallbackEndNeverCalledTimer();
 
     if (!isWaitingAcceptable()) {
@@ -136,7 +144,16 @@ export function observeResourcePerformance(opts: ObserveResourcePerformanceOptio
         const entry = e as PerformanceResourceTiming;
         return entry.startTime >= startTime && opts.resourceMatcher(entry);
       })
-      .forEach((entry) => resources.push(entry as PerformanceResourceTiming));
+      .forEach((entry) => {
+        // Limit array size to prevent memory leaks on high-traffic pages
+        if (resources.length >= MAX_RESOURCES_ENTRIES) {
+          // Remove oldest entry (FIFO)
+          // Timings are only reported once the resource is fully recorded (i.e. the request has ended), so timings ending
+          // way before the `onEnd` is called are less likely to be good matches and we can ignore them.
+          resources.shift();
+        }
+        resources.push(entry as PerformanceResourceTiming);
+      });
   }
 
   function onVisibilityChanged() {

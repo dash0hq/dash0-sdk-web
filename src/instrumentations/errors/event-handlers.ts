@@ -5,7 +5,7 @@ import {
   EventListenerOptionsOrUseCapture,
   popWrappedDomEventListener,
 } from "./async-function-wrapping";
-import { ignoreNextOnErrorEvent } from "./unhandled-error";
+import { ignoreNextOnErrorEvent, reportUnhandledError } from "./unhandled-error";
 
 export function startEventHandlerInstrumentation() {
   if (vars.wrapEventHandlers) {
@@ -44,7 +44,7 @@ function wrapEventTarget(EventTarget: WindowType["EventTarget"] | undefined) {
       try {
         return fn.apply(this, arguments as any);
       } catch (e) {
-        reportError(e as any);
+        reportUnhandledError(e as any);
         ignoreNextOnErrorEvent();
         throw e;
       }

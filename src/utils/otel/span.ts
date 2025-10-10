@@ -5,6 +5,7 @@ import { generateTraceId } from "../trace-id";
 import { generateSpanId } from "../span-id";
 import { addAttribute } from "./attributes";
 import { KeyValue, Span, SpanStatus } from "../../types/otlp";
+import { debug } from "../debug";
 
 export type InProgressSpan = Omit<Span, "endTimeUnixNano">;
 
@@ -30,9 +31,23 @@ export function startSpan(name: string): InProgressSpan {
   };
 }
 
-export function endSpan(span: InProgressSpan, status: SpanStatus | undefined, durationNano: number | undefined): Span {
+/**
+ * Ends the span by setting status and endTimeUnixNano on it. If the spand was already previously ended, this returns undefined
+ * to prevent the span from being ended multiple times on accident.
+ */
+export function endSpan(
+  span: InProgressSpan,
+  status: SpanStatus | undefined,
+  durationNano: number | undefined
+): Span | undefined {
   // We cast here to avoid having to instantiate a copy of the span
   const s = span as Span;
+
+  if (s.endTimeUnixNano) {
+    debug("Attempting to end already ended span. Dropping...", s);
+    return undefined;
+  }
+
   if (status) {
     s.status = status;
   }

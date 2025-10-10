@@ -47,7 +47,9 @@ function sendLogs(logs: LogRecord[]): void {
   });
 }
 
-export function sendSpan(span: Span): void {
+export function sendSpan(span: Span | undefined): void {
+  if (!span) return;
+
   if (isRateLimited()) {
     debug("Transport rate limit. Will not send item.", span);
     return;

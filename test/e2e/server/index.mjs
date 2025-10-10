@@ -1,9 +1,9 @@
 import bodyParser from "body-parser";
-import multiparty from "multiparty";
-import serveIndex from "serve-index";
 import express from "express";
-import { v4 as uuidV4 } from "uuid";
+import multiparty from "multiparty";
 import path from "node:path";
+import serveIndex from "serve-index";
+import { v4 as uuidV4 } from "uuid";
 
 const app = express();
 const servers = [];

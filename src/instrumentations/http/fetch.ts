@@ -1,4 +1,4 @@
-import { debug, observeResourcePerformance, win } from "../../utils";
+import { debug, observeResourcePerformance, perf, win, setTimeout, isSameOrigin, wrap, parseUrl } from "../../utils";
 import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
 import {
   addAttribute,
@@ -20,7 +20,6 @@ import {
   SPAN_STATUS_ERROR,
   SPAN_STATUS_UNSET,
 } from "../../semantic-conventions";
-import { isSameOrigin, wrap, parseUrl } from "../../utils";
 import { vars, PropagatorType } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
 import { sendSpan } from "../../transport";
@@ -111,18 +110,18 @@ function wrapFetch(original: typeof fetch) {
 
     performanceObserver.start();
     try {
-      const response = await original(input instanceof Request ? request : input, copyOfInit);
-      addResponseData(span, response);
+      const origResponse = await original(input instanceof Request ? request : input, copyOfInit);
+      addResponseData(span, origResponse);
 
-      // We use a separate promise here because this needs to happen in parallel to application code consuming the response
-      waitForFullResponse(response)
-        .then(() => performanceObserver.end())
-        .catch((e) => {
+      return wrapResponse(
+        origResponse,
+        vars.maxToleranceForResourceTimingsMillis,
+        () => performanceObserver.end(),
+        (e) => {
           performanceObserver.cancel();
-          endSpanOnError(span, e as Exception);
-        });
-
-      return response;
+          endSpanOnError(span, e);
+        }
+      );
     } catch (e) {
       performanceObserver.cancel();
       endSpanOnError(span, e as Exception);
@@ -177,20 +176,86 @@ function addResponseData(span: InProgressSpan, response: Response) {
   tryCaptureHttpHeaders(response.headers, span, (k) => httpResponseHeaderKey(k));
 }
 
-function waitForFullResponse(response: Response): Promise<void> {
-  return new Promise((resolve) => {
-    const clonedResponse = response.clone();
-    const body = clonedResponse.body;
+/**
+ * Wraps the response to be able to detect when it is fully read
+ * @param originalResponse
+ * @param readTimeoutMs Timeout applied between reading of response chunks, if exceeded the response is considered abandoned and onDone is called.
+ * @param onDone Called when the response is completely read or with "fallbackEndTs" when reading timed out.
+ * @param onError
+ */
+function wrapResponse(
+  originalResponse: Response,
+  readTimeoutMs: number,
+  onDone: (fallbackEndTs?: number) => void,
+  onError: (e: Exception) => void
+): Response {
+  // When the response was wrapped (i.e. first available to js) we use this to replace or find the actual end timestamp
+  // in case the response body is never read by js
+  let fallbackTs: number = perf.now();
+  const body = originalResponse.body;
 
-    if (!body) return resolve();
+  if (!body) {
+    onDone();
+    return originalResponse;
+  }
 
-    const reader = body.getReader();
-    const read = async () => {
-      const { done } = await reader.read();
-      if (done) return resolve();
-      return read();
-    };
-    return read();
+  let cbCalled: boolean = false;
+  const handleDone = (fallbackEndTs?: number) => {
+    if (cbCalled) return;
+    onDone(fallbackEndTs);
+    cbCalled = true;
+  };
+  const handleError = (e: Exception) => {
+    if (cbCalled) return;
+    onError(e);
+    cbCalled = true;
+  };
+
+  let bodyNeverCompletelyReadTimeout = setTimeout(() => handleDone(fallbackTs), readTimeoutMs);
+
+  const reader = body.getReader();
+  const stream = new ReadableStream({
+    async pull(controller) {
+      try {
+        clearTimeout(bodyNeverCompletelyReadTimeout);
+        const { value, done } = await reader.read();
+        if (done) {
+          reader.releaseLock();
+          controller.close();
+          handleDone();
+        } else {
+          fallbackTs = perf.now();
+          bodyNeverCompletelyReadTimeout = setTimeout(() => handleDone(fallbackTs), readTimeoutMs);
+          controller.enqueue(value);
+        }
+      } catch (e) {
+        handleError(e as Exception);
+        controller.error(e);
+
+        try {
+          reader.releaseLock();
+        } catch {
+          // Spec reference:
+          // https://streams.spec.whatwg.org/#default-reader-release-lock
+          //
+          // releaseLock() only throws if called on an invalid reader
+          // (i.e. reader.[[stream]] is undefined, meaning the lock is already released
+          // or the reader was never associated). In normal use this cannot happen.
+          // This catch is defensive only.
+        }
+      }
+    },
+    cancel(reason) {
+      clearTimeout(bodyNeverCompletelyReadTimeout);
+      handleDone();
+      return reader.cancel(reason);
+    },
+  });
+
+  return new Response(stream, {
+    status: originalResponse.status,
+    statusText: originalResponse.statusText,
+    headers: originalResponse.headers,
   });
 }
 
