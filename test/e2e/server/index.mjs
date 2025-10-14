@@ -118,6 +118,15 @@ app.all("/ajax", (req, res) => {
   }, 100);
 });
 
+app.get("/ajax-requests", (_, res) => {
+  res.json(ajaxRequests);
+});
+
+app.delete("/ajax-requests", (_, res) => {
+  ajaxRequests.length = 0;
+  res.send("OK");
+});
+
 // AWS endpoints for X-Ray testing
 app.get("/aws", (req, res) => {
   const response = uuidV4();
@@ -193,13 +202,17 @@ app.post("/form", (req, res) => {
   }, 100);
 });
 
-app.get("/ajax-requests", (_, res) => {
-  res.json(ajaxRequests);
+// Response status endpoints
+app.all("/204", (req, res) => {
+  res.status(204).end();
 });
 
-app.delete("/ajax-requests", (_, res) => {
-  ajaxRequests.length = 0;
-  res.send("OK");
+app.all("/205", (req, res) => {
+  res.status(205).end();
+});
+
+app.all("/304", (req, res) => {
+  res.status(304).end();
 });
 
 getServerPorts().forEach((port) =>

@@ -174,12 +174,14 @@ describe("Fetch Instrumentation", () => {
     await btn.click();
 
     await retry(async () => {
-      expect.objectContaining({
-        attributes: expect.arrayContaining([
-          { key: "url.full", value: { stringValue: expect.stringContaining("/ajax?assert-body") } },
-          { key: "http.response.status_code", value: { stringValue: "200" } },
-        ]),
-      });
+      await expectSpanMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "url.full", value: { stringValue: expect.stringContaining("/ajax?assert-body") } },
+            { key: "http.response.status_code", value: { stringValue: "200" } },
+          ]),
+        })
+      );
     });
     expectNoBrowserErrors();
   });
@@ -192,12 +194,50 @@ describe("Fetch Instrumentation", () => {
     await btn.click();
 
     await retry(async () => {
-      expect.objectContaining({
-        attributes: expect.arrayContaining([
-          { key: "url.full", value: { stringValue: expect.stringContaining("/ajax?assert-body") } },
-          { key: "http.response.status_code", value: { stringValue: "200" } },
-        ]),
-      });
+      await expectSpanMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "url.full", value: { stringValue: expect.stringContaining("/ajax?assert-body") } },
+            { key: "http.response.status_code", value: { stringValue: "200" } },
+          ]),
+        })
+      );
+    });
+    expectNoBrowserErrors();
+  });
+
+  it("must handle responses with no body status code", async () => {
+    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await expect(browser).toHaveTitle("fetch instrumentation test");
+
+    const btn = await $("button=Multi-Fetch With No Body Response");
+    await btn.click();
+
+    await retry(async () => {
+      await expectSpanMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "url.full", value: { stringValue: expect.stringContaining("/204") } },
+            { key: "http.response.status_code", value: { stringValue: "204" } },
+          ]),
+        })
+      );
+      await expectSpanMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "url.full", value: { stringValue: expect.stringContaining("/205") } },
+            { key: "http.response.status_code", value: { stringValue: "205" } },
+          ]),
+        })
+      );
+      await expectSpanMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "url.full", value: { stringValue: expect.stringContaining("/304") } },
+            { key: "http.response.status_code", value: { stringValue: "304" } },
+          ]),
+        })
+      );
     });
     expectNoBrowserErrors();
   });
