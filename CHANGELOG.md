@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.16.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.16.1...0.16.2) (2025-10-14)
+
+### Bug Fixes
+
+- **fetch:** do not wrap body for responses that cant have a body ([#59](https://github.com/dash0hq/dash0-sdk-web/issues/59)) ([9b6b601](https://github.com/dash0hq/dash0-sdk-web/commit/9b6b6017c9166f081e8d372225cb80edef44b8d7))
+
 ## [0.16.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.16.0...0.16.1) (2025-10-10)
 
 ### Bug Fixes
