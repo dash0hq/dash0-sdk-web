@@ -194,7 +194,8 @@ function wrapResponse(
   let fallbackTs: number = perf.now();
   const body = originalResponse.body;
 
-  if (!body) {
+  // For some reason browsers return a response body on responses that can't be constructed with one. In that case we can't wrap the body stream
+  if (!body || !responseCanHaveBody(originalResponse)) {
     onDone();
     return originalResponse;
   }
@@ -313,4 +314,9 @@ function addTraceContextHttpHeaders(
       addW3CTraceContextHttpHeaders(fn, ctx, span);
     }
   }
+}
+
+function responseCanHaveBody(response: Response) {
+  const status = response.status;
+  return status >= 200 && status != 204 && status != 205 && status != 304;
 }
