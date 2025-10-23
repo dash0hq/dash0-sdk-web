@@ -125,7 +125,7 @@ These functionalities requires the use of Next.js:
   optional: `true`<br>
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
-  Supported values: `'navigation' | 'web-vitals' | 'error' | 'fetch'`
+  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch'`
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
 - **Ignore URLs**<br>
