@@ -1,4 +1,14 @@
-import { debug, observeResourcePerformance, perf, win, setTimeout, isSameOrigin, wrap, parseUrl } from "../../utils";
+import {
+  debug,
+  observeResourcePerformance,
+  perf,
+  win,
+  setTimeout,
+  isSameOrigin,
+  wrap,
+  parseUrl,
+  clearTimeout,
+} from "../../utils";
 import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
 import {
   addAttribute,
