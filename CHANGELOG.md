@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.16.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.16.2...0.16.3) (2025-10-28)
+
+### Bug Fixes
+
+- disable transport compression ([#63](https://github.com/dash0hq/dash0-sdk-web/issues/63)) ([3c8c87a](https://github.com/dash0hq/dash0-sdk-web/commit/3c8c87af7ac1af1c226869efede0aa5a0ae7011f))
+
 ## [0.16.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.16.1...0.16.2) (2025-10-14)
 
 ### Bug Fixes
