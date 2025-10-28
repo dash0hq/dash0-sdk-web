@@ -165,6 +165,12 @@ export type Vars = {
   urlAttributeScrubber: UrlAttributeScrubber;
 
   pageViewInstrumentation: PageViewInstrumentationSettings;
+
+  /**
+   * Enables telemetry transport compression using gzip.
+   * experimental - in rare cases causes Chrome to crash to use at your own risk.
+   */
+  enableTransportCompression: boolean;
 };
 
 export const vars: Vars = {
@@ -191,4 +197,5 @@ export const vars: Vars = {
     trackVirtualPageViews: true,
     includeParts: [],
   },
+  enableTransportCompression: false,
 };

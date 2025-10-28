@@ -58,5 +58,6 @@ export type InitOptions = {
     | "headersToCapture"
     | "urlAttributeScrubber"
     | "pageViewInstrumentation"
+    | "enableTransportCompression"
   >
 >;
