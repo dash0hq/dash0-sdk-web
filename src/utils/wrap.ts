@@ -26,6 +26,7 @@ export function wrap<ModuleType extends object, TargetNameType extends keyof Mod
 
   if (isAlreadyInstrumented(original)) {
     debug(`${String(target)} has already been instrumented, skipping`);
+    return;
   }
 
   markAsInstrumented(original);

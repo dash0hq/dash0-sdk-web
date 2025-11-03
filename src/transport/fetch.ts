@@ -12,7 +12,7 @@ export async function send(path: string, body: unknown): Promise<void> {
   let isCompressed = false;
 
   // Try to compress if supported
-  if (typeof CompressionStream !== "undefined") {
+  if (typeof CompressionStream !== "undefined" && vars.enableTransportCompression) {
     requestBody = await compressWithGzip(jsonString);
     byteLength = requestBody.byteLength;
     isCompressed = true;

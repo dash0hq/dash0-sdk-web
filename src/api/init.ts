@@ -69,6 +69,7 @@ export function init(opts: InitOptions) {
         "headersToCapture",
         "urlAttributeScrubber",
         "pageViewInstrumentation",
+        "enableTransportCompression",
       ])
     )
   );

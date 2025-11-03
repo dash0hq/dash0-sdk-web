@@ -1,4 +1,14 @@
-import { debug, observeResourcePerformance, perf, win, setTimeout, isSameOrigin, wrap, parseUrl } from "../../utils";
+import {
+  debug,
+  observeResourcePerformance,
+  perf,
+  win,
+  setTimeout,
+  isSameOrigin,
+  wrap,
+  parseUrl,
+  clearTimeout,
+} from "../../utils";
 import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
 import {
   addAttribute,
@@ -156,6 +166,8 @@ function isGraphQLQuery(input: RequestInfo | URL, init?: RequestInit) {
 
 function tryCaptureHttpHeaders(headers: Headers, span: InProgressSpan, getAttributeKey: (headerKey: string) => string) {
   try {
+    if (!vars.headersToCapture.length) return;
+
     headers.forEach((value, key) => {
       if (vars.headersToCapture.some((rxp) => rxp.test(key))) {
         addAttribute(span.attributes, getAttributeKey(key), value);

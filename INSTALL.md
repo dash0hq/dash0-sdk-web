@@ -190,7 +190,7 @@ These functionalities requires the use of Next.js:
   Allows the configuration of additional attributes to be included with any transmitted event.
   See [AttributeValueType](https://github.com/dash0hq/dash0-sdk-web/blob/main/src/utils/otel/attributes.ts#L4) and [AnyValue](https://github.com/dash0hq/dash0-sdk-web/blob/main/types/otlp.d.ts#L3) for detailed types.
 
-#### OTLP Endpoint
+#### Telemetry Transmission
 
 - **Endpoint**<br>
   key: `endpoint`<br>
@@ -212,6 +212,12 @@ These functionalities requires the use of Next.js:
   type: `string`<br>
   optional: `true`<br>
   Optionally specify what dataset should be placed into. Can also be configured within Dash0 through the auth token.
+- **Enable Transport Compression**<br>
+  key: `enableTransportCompression`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  Enables telemetry transport compression using gzip.
+  EXPERIMENTAL - in rare cases causes Chrome to crash to use at your own risk.
 
 #### Session Tracking
 
