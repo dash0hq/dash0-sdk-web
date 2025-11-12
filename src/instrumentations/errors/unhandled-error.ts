@@ -117,7 +117,7 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
   if (trackedError) {
     trackedError.seenCount++;
   } else {
-    const attributes: KeyValue[] = [];
+    const attributes: KeyValue[] = opts?.attributes ? [...opts.attributes] : [];
     addAttribute(attributes, EVENT_NAME, EVENT_NAMES.ERROR);
     addAttribute(attributes, EXCEPTION_MESSAGE, message);
     if (type) {
