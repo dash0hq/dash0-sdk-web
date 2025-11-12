@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.17.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.16.3...0.17.0) (2025-11-12)
+
+### Features
+
+- **unhandled-error:** you can now pass additional attributes ([#64](https://github.com/dash0hq/dash0-sdk-web/issues/64)) ([088873b](https://github.com/dash0hq/dash0-sdk-web/commit/088873b25d75669c3f20014e71df7b654b013259))
+
 ## [0.16.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.16.2...0.16.3) (2025-10-28)
 
 ### Bug Fixes
