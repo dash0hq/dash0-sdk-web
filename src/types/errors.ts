@@ -1,4 +1,5 @@
-import { KeyValue } from "./otlp";
+import { AttributeValueType } from "../utils/otel";
+import { AnyValue } from "./otlp";
 
 export type ErrorLike = {
   message: string;
@@ -7,9 +8,9 @@ export type ErrorLike = {
 };
 
 export type ReportErrorOpts = {
-  componentStack: string | null | undefined;
+  componentStack?: string | null | undefined;
   /**
    * Additional attributes to add to the error span
    */
-  attributes?: KeyValue[];
+  attributes?: Record<string, AttributeValueType | AnyValue>;
 };

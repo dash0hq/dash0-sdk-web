@@ -470,7 +470,8 @@ Manually reports an error to be tracked in telemetry.
 
 - `error` (string | ErrorLike): Error message or error object
 - `opts` (object, optional): Error reporting options
-  - `componentStack` (string | null | undefined): Component stack trace for React errors
+  - `componentStack` (string | null | undefined, optional): Component stack trace for React errors
+  - `attributes` (Record<string, AttributeValueType | AnyValue>, optional): Additional attributes to include with the error report
 
 **Example:**
 
@@ -487,9 +488,13 @@ try {
   reportError(error);
 }
 
-// Report with component stack (useful for React)
 reportError(error, {
+  // Report with component stack (useful for React)
   componentStack: getComponentStack(),
+  // Additional attributes
+  attributes: {
+    "user.id": "user123",
+  },
 });
 ```
 
