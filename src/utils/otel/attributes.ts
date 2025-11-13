@@ -55,12 +55,36 @@ export function toKeyValue(key: string, value: AttributeValueType | AnyValue): K
   };
 }
 
+/**
+ * Adds a single attribute to the provided attributes array
+ */
 export function addAttribute(attributes: KeyValue[], key: string, value: AttributeValueType | AnyValue) {
   if (!key) return;
 
   attributes.push(toKeyValue(key, value));
 }
 
+/**
+ * Adds multiple attributes to the provided attributes array
+ */
+export function addAttributes(
+  /**
+   * The attributes array to add to
+   */
+  attributes: KeyValue[],
+  /**
+   * Additional attributes to add
+   * If no attributes are provided, nothing is added
+   */
+  attrs: Record<string, AttributeValueType | AnyValue> | undefined
+) {
+  if (!attrs) return;
+  Object.entries(attrs).forEach(([key, value]) => addAttribute(attributes, key, value));
+}
+
+/**
+ * Removes an attribute from the provided attributes array by its key
+ */
 export function removeAttribute(attributes: KeyValue[], key: string) {
   const index = attributes.findIndex((attr) => attr["key"] === key);
   if (index !== -1) {

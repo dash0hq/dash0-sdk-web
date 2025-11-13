@@ -1,7 +1,7 @@
 import { EVENT_NAME, EVENT_NAMES, WEB_EVENT_TITLE, LOG_SEVERITIES, LOG_SEVERITY_TEXT } from "../semantic-conventions";
 import { sendLog } from "../transport";
 import { addCommonAttributes } from "../attributes";
-import { addAttribute, AttributeValueType, toAnyValue } from "../utils/otel";
+import { addAttribute, addAttributes, AttributeValueType, toAnyValue } from "../utils/otel";
 import { nowNanos, TimeInput, toNanosTs, warn } from "../utils";
 import { AnyValue, KeyValue } from "../types/otlp";
 
@@ -49,13 +49,17 @@ export function sendEvent(name: string, opts?: EventOptions) {
   }
 
   const attributes: KeyValue[] = [];
+
   addCommonAttributes(attributes);
-  Object.entries(opts?.attributes ?? {}).forEach(([key, value]) => addAttribute(attributes, key, value));
 
   addAttribute(attributes, EVENT_NAME, name);
+
   if (opts?.title) {
     addAttribute(attributes, WEB_EVENT_TITLE, opts.title);
   }
+
+  // Add custom attributes last to allow overrides
+  addAttributes(attributes, opts?.attributes);
 
   sendLog({
     timeUnixNano: opts?.timestamp != null ? toNanosTs(opts.timestamp) : nowNanos(),

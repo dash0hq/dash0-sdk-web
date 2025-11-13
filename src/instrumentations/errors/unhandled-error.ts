@@ -10,7 +10,7 @@ import {
   EXCEPTION_TYPE,
   LOG_SEVERITIES,
 } from "../../semantic-conventions";
-import { addAttribute } from "../../utils/otel";
+import { addAttribute, addAttributes } from "../../utils/otel";
 import { addCommonAttributes } from "../../attributes";
 import { KeyValue, LogRecord } from "../../types/otlp";
 import { ReportErrorOpts, ErrorLike } from "../../types/errors";
@@ -117,9 +117,13 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
   if (trackedError) {
     trackedError.seenCount++;
   } else {
-    const attributes: KeyValue[] = opts?.attributes ? [...opts.attributes] : [];
+    const attributes: KeyValue[] = [];
+
+    addCommonAttributes(attributes);
+
     addAttribute(attributes, EVENT_NAME, EVENT_NAMES.ERROR);
     addAttribute(attributes, EXCEPTION_MESSAGE, message);
+
     if (type) {
       addAttribute(attributes, EXCEPTION_TYPE, type);
     }
@@ -129,7 +133,9 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
     if (opts?.componentStack) {
       addAttribute(attributes, EXCEPTION_COMPONENT_STACK, opts?.componentStack.substring(0, 2048));
     }
-    addCommonAttributes(attributes);
+
+    // Add custom attributes last to allow overrides
+    addAttributes(attributes, opts?.attributes);
 
     trackedError = {
       seenCount: 1,
