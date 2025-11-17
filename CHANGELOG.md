@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.18.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.17.0...0.18.0) (2025-11-17)
+
+### Features
+
+- Added support for attributes for the `reportError` function ([#66](https://github.com/dash0hq/dash0-sdk-web/issues/66)) ([19c41a3](https://github.com/dash0hq/dash0-sdk-web/commit/19c41a38f95ca9ee0f056b8695ff8f7baba6c017))
+
 ## [0.17.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.16.3...0.17.0) (2025-11-12)
 
 ### Features
