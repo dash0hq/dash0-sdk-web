@@ -61,3 +61,7 @@ init({
 ```
 
 For more detailed instructions, refer to [`INSTALL.md`](./INSTALL.md).
+
+## Development
+
+See [`DEVELOPMENT.md`](./DEVELOPMENT.md) for instructions on the development setup, testing and release process.
