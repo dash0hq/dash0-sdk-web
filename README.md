@@ -44,20 +44,24 @@ pnpm install @dash0/sdk-web
 2. Initialize the SDK in your code: you'll need to call the `init` function at a convenient time in your applications lifecycle.
    Ideally this should happen as early as possible in the web page initialization, as most instrumentations shipped by the SDK can only observe events after init has been called.
 
-   ```ts
-   import { init } from "@dash0/sdk-web";
+```ts
+import { init } from "@dash0/sdk-web";
 
-   init({
-     serviceName: "my-website",
-     endpoint: {
-       // Replace this with the endpoint URL for your Dash0 region, that you retrieved earlier in "prerequisites"
-       url: "{endpoint}",
-       // Replace this with your auth token you retrieved earlier in "prerequisites"
-       // Ideally, you will inject the value at build time in order not commit the token to git,
-       // even if its effectively public in the HTML you ship to the end user's browser
-       authToken: "{authToken}",
-     },
-   });
-   ```
+init({
+  serviceName: "my-website",
+  endpoint: {
+    // Replace this with the endpoint URL for your Dash0 region, that you retrieved earlier in "prerequisites"
+    url: "{endpoint}",
+    // Replace this with your auth token you retrieved earlier in "prerequisites"
+    // Ideally, you will inject the value at build time in order not commit the token to git,
+    // even if its effectively public in the HTML you ship to the end user's browser
+    authToken: "{authToken}",
+  },
+});
+```
 
 For more detailed instructions, refer to [`INSTALL.md`](./INSTALL.md).
+
+## Development
+
+See [`DEVELOPMENT.md`](./DEVELOPMENT.md) for instructions on the development setup, testing and release process.
