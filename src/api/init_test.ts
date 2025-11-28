@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InitOptions, InstrumentationName } from "../types/options";
 import { PropagatorConfig, Vars } from "../vars";
+import { SERVICE_NAME } from "../semantic-conventions";
 import { init as initFun } from "./init";
 
 // Mock all the instrumentation modules
@@ -19,6 +20,15 @@ vi.mock("../instrumentations/http/fetch", () => ({
 vi.mock("../instrumentations/navigation", () => ({
   startNavigationInstrumentation: vi.fn(),
 }));
+
+// Mock the utils module to control loc.hostname
+vi.mock("../utils", async () => {
+  const actual = await vi.importActual("../utils");
+  return {
+    ...actual,
+    loc: { hostname: "test-hostname.example.com" },
+  };
+});
 
 import { startErrorInstrumentation } from "../instrumentations/errors";
 import { instrumentFetch } from "../instrumentations/http/fetch";
@@ -224,6 +234,73 @@ describe("init", () => {
 
       expect(vars.propagators).toEqual([]);
       expect(spyOnWarn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("serviceName fallback", () => {
+    it("should use provided serviceName when it is valid", async () => {
+      init({
+        ...baseOptions,
+        serviceName: "my-service",
+      });
+
+      const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
+      expect(serviceNameAttr?.value.stringValue).toBe("my-service");
+    });
+
+    it("should fallback to location.hostname when serviceName is empty string", async () => {
+      init({
+        ...baseOptions,
+        serviceName: "",
+      });
+
+      const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
+      expect(serviceNameAttr?.value.stringValue).toBe("test-hostname.example.com");
+    });
+
+    it("should fallback to location.hostname when serviceName is only whitespace", async () => {
+      init({
+        ...baseOptions,
+        serviceName: "   ",
+      });
+
+      const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
+      expect(serviceNameAttr?.value.stringValue).toBe("test-hostname.example.com");
+    });
+
+    it("should fallback to location.hostname when serviceName is tabs and spaces", async () => {
+      init({
+        ...baseOptions,
+        serviceName: " \t  \n ",
+      });
+
+      const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
+      expect(serviceNameAttr?.value.stringValue).toBe("test-hostname.example.com");
+    });
+
+    it("should fallback to 'unknown' when serviceName is empty and location.hostname is not available", async () => {
+      vi.resetModules();
+
+      // Mock utils module with loc as undefined
+      vi.doMock("../utils", async () => {
+        const actual = await vi.importActual("../utils");
+        return {
+          ...actual,
+          loc: undefined,
+        };
+      });
+
+      const { vars: importedVars } = await import("../vars");
+      const { init: importedInit } = await import("./init");
+      const { SERVICE_NAME: importedServiceName } = await import("../semantic-conventions");
+
+      importedInit({
+        ...baseOptions,
+        serviceName: "",
+      });
+
+      const serviceNameAttr = importedVars.resource.attributes.find((attr) => attr.key === importedServiceName);
+      expect(serviceNameAttr?.value.stringValue).toBe("unknown");
     });
   });
 });

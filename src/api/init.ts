@@ -19,6 +19,7 @@ import {
   win,
   NO_VALUE_FALLBACK,
   pick,
+  loc,
 } from "../utils";
 import { trackSessions } from "./session";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
@@ -44,8 +45,13 @@ export function init(opts: InitOptions) {
   }
 
   if (!isSupported()) {
-    debug("Stopping Dash0 Web SDK initialization. This browser does not support the necessary APIs");
+    debug("Stopping Dash0 Web SDK initialization. This browser does not support the necessary APIs.");
     return;
+  }
+
+  if (!opts.serviceName.trim()) {
+    debug("Missing or empty serviceName value. Falling back to location.hostname.");
+    opts.serviceName = loc?.hostname ?? "unknown";
   }
 
   vars.endpoints = opts.endpoint instanceof Array ? opts.endpoint : [opts.endpoint];
