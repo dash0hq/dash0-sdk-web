@@ -17,6 +17,8 @@ You'll need the following before you can start with the Dash0 Web SDK:
 
 ## Setup
 
+### Using Modules
+
 1. Add the SDK to your dependencies
 
 ```sh
@@ -36,14 +38,73 @@ yarn add @dash0/sdk-web
      serviceName: "my-website",
      endpoint: {
        // Replace this with the endpoint url identified during preparation
-       url: REPLACE THIS,
+       url: "REPLACE THIS",
        // Replace this with your auth token you created earlier
        // Ideally, you will inject the value at build time in order not commit the token to git,
        // even if its effectively public in the HTML you ship to the end user's browser
-       authToken: REPLACE THIS
+       authToken: "REPLACE THIS",
      },
    });
    ```
+
+### Using script tags
+
+The sdk can also injected via script tags in cases where a module build is not being used.
+Simply copy the following snippet to your html file and adjust the configuration as needed.
+You can choose to always load the latest script or pin the script to a specific version (see example below).
+Loading a specific version usually also improves loading performance of the script.
+
+```html
+<script>
+  (function (d, a, s, h, z, e, r, o) {
+    d[a] ||
+      ((z = d[a] =
+        function () {
+          h.push(arguments);
+        }),
+      (z._t = new Date()),
+      (z._v = 1),
+      (h = z._q = []));
+  })(window, "dash0");
+  dash0("init", {
+    serviceName: "my-website",
+    endpoint: {
+      // Replace this with the endpoint url identified during preparation
+      url: "REPLACE THIS",
+      // Replace this with your auth token you created earlier
+      // Ideally, you will inject the value at build time in order not commit the token to git,
+      // even if its effectively public in the HTML you ship to the end user's browser
+      authToken: "REPLACE THIS",
+    },
+  });
+</script>
+<!--Latest-->
+<script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web/dist/dash0.iife.js"></script>
+<!--Or pin a specific version-->
+<script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web@0.18.1/dist/dash0.iife.js"></script>
+```
+
+#### Api usage
+
+Please note that the api for the IIFE build of the sdk is slightly different from the module build.
+All apis can be called via a global `dash0` function. The following call `addSignalAttribute("the_answer", 42)` for example
+would called like this for the IIFE build: `dash0("addSignalAttribute", "the_answer", 42)`.
+
+#### Content Security and Integrity
+
+Depending on the content security policy of your site you might need to additionally allow loading of the script.
+You can use `Content-Security-Policy: script-src 'self' https://unpkg.com` to allow all scripts from unpkg, or if using a specific
+version of the sdk `Content-Security-Policy: script-src 'self' https://unpkg.com/@dash0/sdk-web@0.18.1/dist/dash0.iife.js`
+to only allow the specific file to be loaded.
+
+If you want to further restrict the policy to guard against changes in the hosted script,
+you can allow only the hash of the sdk version you'd like to integrate, like so:
+`Content-Security-Policy: script-src 'self' 'sha256-replace-me'`
+The current hash can be viewed by appending `?meta` to the unpkg url you are loading the script from and removing the file name: https://unpkg.com/@dash0/sdk-web@0.18.1/dist?meta
+Then find the `dash0.iife.js` file and copy its integrity value.
+
+Additionally you might need to allow the script to connect to your configured endpoint url like so:
+`Content-Security-Policy: connect-src 'self' YOUR_ENDPOINT_URL_HERE`
 
 ## Configuration
 
@@ -374,10 +435,14 @@ Adds a signal attribute to be transmitted with every signal.
 **Example:**
 
 ```js
+// Module
 import { addSignalAttribute } from "@dash0/sdk-web";
 
 addSignalAttribute("environment", "production");
 addSignalAttribute("version", "1.2.3");
+
+// Script
+dash0("addSignalAttribute", "environment", "production");
 ```
 
 **Note:** If you need to ensure attributes are included with signals transmitted on initial page load, use the `additionalSignalAttributes` property in the `init()` call instead.
@@ -393,9 +458,13 @@ Removes a previously added signal attribute.
 **Example:**
 
 ```js
+// Module
 import { removeSignalAttribute } from "@dash0/sdk-web";
 
 removeSignalAttribute("environment");
+
+// Script
+dash0("removeSignalAttribute", "environment");
 ```
 
 ### User identification
@@ -418,6 +487,7 @@ See [OTEL User Attributes](https://opentelemetry.io/docs/specs/semconv/registry/
 **Example:**
 
 ```js
+// Module
 import { identify } from "@dash0/sdk-web";
 
 identify("user123", {
@@ -426,6 +496,9 @@ identify("user123", {
   email: "john@example.com",
   roles: ["admin", "user"],
 });
+
+// Script
+dash0("identify", "user123", { name: "johndoe" });
 ```
 
 ### Custom Events
@@ -448,6 +521,7 @@ Event name cannot be one of the event names internally used by the SDK. See [Eve
 **Example:**
 
 ```js
+// Module
 import { sendEvent } from "@dash0/sdk-web";
 
 sendEvent("user_action", {
@@ -458,6 +532,9 @@ sendEvent("user_action", {
   },
   severity: "INFO",
 });
+
+// Script
+dash0("sendEvent", "user_action", { data: "button_clicked", severity: "INFO" });
 ```
 
 ### Error Reporting
@@ -476,6 +553,7 @@ Manually reports an error to be tracked in telemetry.
 **Example:**
 
 ```js
+// Module
 import { reportError } from "@dash0/sdk-web";
 
 // Report a string error
@@ -496,6 +574,9 @@ reportError(error, {
     "user.id": "user123",
   },
 });
+
+// Script
+dash0("reportError", "Something went wrong in user flow");
 ```
 
 ### Session Management
@@ -507,6 +588,7 @@ Manually terminates the current user session.
 **Example:**
 
 ```js
+// Module
 import { terminateSession } from "@dash0/sdk-web";
 
 // Terminate session on user logout
@@ -514,6 +596,9 @@ function handleLogout() {
   terminateSession();
   // Additional logout logic
 }
+
+// Script
+dash0("terminateSession");
 ```
 
 **Note:** Sessions are automatically managed by the SDK based on inactivity and termination timeouts configured during initialization. Manual termination is typically only needed for explicit user logout scenarios.
@@ -527,7 +612,11 @@ Changes the active log level of this SDK. Defaults to `warn`.
 **Example:**
 
 ```js
+// Module
 import { setActiveLogLevel } from "@dash0/sdk-web";
 
 setActiveLogLevel("debug");
+
+// Script
+dash0("setActiveLogLevel", "debug");
 ```
