@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.18.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.0...0.18.1) (2025-11-28)
+
+### Bug Fixes
+
+- add fallback to location.hostname if serviceName is not provided ([#69](https://github.com/dash0hq/dash0-sdk-web/issues/69)) ([2088a75](https://github.com/dash0hq/dash0-sdk-web/commit/2088a7531c88245d11d86b47a17e2d7b4707ca66))
+
 ## [0.18.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.17.0...0.18.0) (2025-11-17)
 
 ### Features
