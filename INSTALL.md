@@ -19,7 +19,7 @@ You'll need the following before you can start with the Dash0 Web SDK:
 
 ### Using Modules
 
-1. Add the SDK to your dependencies
+1. Add the Dash0 Web SDK to your dependencies
 
 ```sh
 # npm
@@ -28,8 +28,8 @@ npm install @dash0/sdk-web
 yarn add @dash0/sdk-web
 ```
 
-2. Initialize the SDK in your code: you'll need to call the `init` function at a convenient time in your applications lifecycle.
-   Ideally this should happen as early as possible in the web page intialization, as most instrumentations shipped by the SDK can only observe events after init has been called.
+2. Initialize the Dash0 Web SDK in your code: you'll need to call the `init` function at a convenient time in your applications lifecycle.
+   Ideally this should happen as early as possible in the web page intialization, as most instrumentations shipped by the Dash0 Web SDK can only observe events after init has been called.
 
    ```js
    import { init } from "@dash0/sdk-web";
@@ -47,12 +47,10 @@ yarn add @dash0/sdk-web
    });
    ```
 
-### Using script tags
+### Adding the Dash0 Web SDK via script tags
 
-The sdk can also injected via script tags in cases where a module build is not being used.
-Simply copy the following snippet to your html file and adjust the configuration as needed.
-You can choose to always load the latest script or pin the script to a specific version (see example below).
-Loading a specific version usually also improves loading performance of the script.
+The Dash0 Web SDK can also injected via script tags, which is useful for website not using on module builds.
+To add the Dash0 Web SDK to the HTML of your website, add the snippet below and adjust the configuration as needed.
 
 ```html
 <script>
@@ -78,38 +76,41 @@ Loading a specific version usually also improves loading performance of the scri
     },
   });
 </script>
-<!--Latest-->
+<!--Latest version-->
 <script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web/dist/dash0.iife.js"></script>
 <!--Or pin a specific version-->
 <script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web@0.18.1/dist/dash0.iife.js"></script>
 ```
 
+You can choose to always load the latest version of the Dash0 Web SDK or pin the script to a specific version (see example below).
+Loading a specific version of the Dash0 Web SDK usually improves loading performance of the script.
+
 #### Api usage
 
-Please note that the api for the IIFE build of the sdk is slightly different from the module build.
-All apis can be called via a global `dash0` function. The following call `addSignalAttribute("the_answer", 42)` for example
+Please note that the API for the IIFE build of the Dash0 Web SDK is slightly different from the module build.
+All APIs must be called via a global `dash0` function. The following call `addSignalAttribute("the_answer", 42)` for example
 would called like this for the IIFE build: `dash0("addSignalAttribute", "the_answer", 42)`.
 
 #### Content Security and Integrity
 
 Depending on the content security policy of your site you might need to additionally allow loading of the script.
-You can use `Content-Security-Policy: script-src 'self' https://unpkg.com` to allow all scripts from unpkg, or if using a specific
-version of the sdk `Content-Security-Policy: script-src 'self' https://unpkg.com/@dash0/sdk-web@0.18.1/dist/dash0.iife.js`
-to only allow the specific file to be loaded.
+You can use `Content-Security-Policy: script-src 'self' https://unpkg.com` to allow all scripts from unpkg, or something like
+`Content-Security-Policy: script-src 'self' https://unpkg.com/@dash0/sdk-web@0.18.1/dist/dash0.iife.js` when using a specific
+version of the Dash0 Web SDK to only allow the specific file to be loaded.
 
 If you want to further restrict the policy to guard against changes in the hosted script,
-you can allow only the hash of the sdk version you'd like to integrate, like so:
+you can allow only the hash of the Dash0 Web SDK version you'd like to integrate, like so:
 `Content-Security-Policy: script-src 'self' 'sha256-replace-me'`
-The current hash can be viewed by appending `?meta` to the unpkg url you are loading the script from and removing the file name: https://unpkg.com/@dash0/sdk-web@0.18.1/dist?meta
+The current hash can be viewed by appending `?meta` to the unpkg url you are loading the script from and removing the file name: `https://unpkg.com/@dash0/sdk-web@0.18.1/dist?meta`
 Then find the `dash0.iife.js` file and copy its integrity value.
 
-Additionally you might need to allow the script to connect to your configured endpoint url like so:
+Additionally you might need to allow the Dash0 Web SDK to connect to your configured endpoint URL like so:
 `Content-Security-Policy: connect-src 'self' YOUR_ENDPOINT_URL_HERE`
 
 ## Configuration
 
-The following configuration options are available, in order to customize the behaviour of the sdk.
-These can all be passed via the sdk's `init` call.
+The following configuration options are available, in order to customize the behaviour of the Dash0 Web SDK.
+These can all be passed via the Dash0 Web SDK's `init` call.
 
 ### Backend Correlation
 
@@ -164,7 +165,7 @@ The legacy `propagateTraceHeadersCorsURLs` configuration is still supported but 
 
 ### Configuration auto-detection
 
-Certain configuration values can be auto-detected if using the module version of the SDK in combination with certain cloud providers.
+Certain configuration values can be auto-detected if using the module version of the Dash0 Web SDK in combination with certain cloud providers.
 
 #### Vercel
 
@@ -417,7 +418,7 @@ These functionalities requires the use of Next.js:
 
 ## API
 
-The SDK provides several API functions to help you customize telemetry collection and add contextual information to your signals.
+The Dash0 Web SDK provides several API functions to help you customize telemetry collection and add contextual information to your signals.
 
 ### Signal attributes
 
@@ -506,7 +507,7 @@ dash0("identify", "user123", { name: "johndoe" });
 #### `sendEvent(name, opts)`
 
 Sends a custom event with optional data and attributes.
-Event name cannot be one of the event names internally used by the SDK. See [Event Names](https://github.com/dash0hq/dash0-sdk-web/blob/main/src/semantic-conventions.ts#L50)
+Event name cannot be one of the event names internally used by the Dash0 Web SDK. See [Event Names](https://github.com/dash0hq/dash0-sdk-web/blob/main/src/semantic-conventions.ts#L50)
 
 **Parameters:**
 
@@ -601,7 +602,7 @@ function handleLogout() {
 dash0("terminateSession");
 ```
 
-**Note:** Sessions are automatically managed by the SDK based on inactivity and termination timeouts configured during initialization. Manual termination is typically only needed for explicit user logout scenarios.
+**Note:** Sessions are automatically managed by the Dash0 Web SDK based on inactivity and termination timeouts configured during initialization. Manual termination is typically only needed for explicit user logout scenarios.
 
 ### Internal Telemetry
 
