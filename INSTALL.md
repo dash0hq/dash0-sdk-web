@@ -2,18 +2,23 @@
 
 The SDK is currently distributed as an NPM package.
 We are considering adding more distribution formats in the future.
-Should you need a currently unavailable format, let us know by [creating a GitHub issue](https://github.com/dash0hq/dash0-sdk-web/issues) or via [support@dash0.com](mailto:support@dash0.com).
+Should you need a currently unavailable format, let us know
+by [creating a GitHub issue](https://github.com/dash0hq/dash0-sdk-web/issues) or
+via [support@dash0.com](mailto:support@dash0.com).
 
 ## Before you begin
 
 You'll need the following before you can start with the Dash0 Web SDK:
 
 - An active Dash0 account. [Sign Up](https://www.dash0.com/sign-up)
-- An [Auth Token](https://www.dash0.com/documentation/dash0/key-concepts/auth-tokens); auth tokens for client monitoring will be public as part of your website, please make sure to:
-  - Use a separate token, exclusively for website monitoring; if you want to monitor multiple websites, it is best to use a dedicated token for each
+- An [Auth Token](https://www.dash0.com/documentation/dash0/key-concepts/auth-tokens); auth tokens for client monitoring
+  will be public as part of your website, please make sure to:
+  - Use a separate token, exclusively for website monitoring; if you want to monitor multiple websites, it is best to
+    use a dedicated token for each
   - Limit the dataset permissions on the auth token to the dataset you want to ingest Website Monitoring data with
   - Limit permissions on the auth token to `Ingesting`
-- The [Endpoint](https://www.dash0.com/documentation/dash0/key-concepts/endpoints) url for your dash0 region. You can find it via `Organization Settings > Endpoints > OTLP via HTTP`.
+- The [Endpoint](https://www.dash0.com/documentation/dash0/key-concepts/endpoints) url for your dash0 region. You can
+  find it via `Organization Settings > Endpoints > OTLP via HTTP`.
 
 ## Setup
 
@@ -28,8 +33,10 @@ npm install @dash0/sdk-web
 yarn add @dash0/sdk-web
 ```
 
-2. Initialize the Dash0 Web SDK in your code: you'll need to call the `init` function at a convenient time in your applications lifecycle.
-   Ideally this should happen as early as possible in the web page intialization, as most instrumentations shipped by the Dash0 Web SDK can only observe events after init has been called.
+2. Initialize the Dash0 Web SDK in your code: you'll need to call the `init` function at a convenient time in your
+   applications lifecycle.
+   Ideally this should happen as early as possible in the web page intialization, as most instrumentations shipped by
+   the Dash0 Web SDK can only observe events after init has been called.
 
    ```js
    import { init } from "@dash0/sdk-web";
@@ -39,8 +46,8 @@ yarn add @dash0/sdk-web
      endpoint: {
        // Replace this with the endpoint url identified during preparation
        url: "REPLACE THIS",
-       // Replace this with your auth token you created earlier
-       // Ideally, you will inject the value at build time in order not commit the token to git,
+       // Replace this with the auth token you created earlier
+       // Ideally, you will inject the value at build time in order to not commit the token to git,
        // even if its effectively public in the HTML you ship to the end user's browser
        authToken: "REPLACE THIS",
      },
@@ -49,7 +56,7 @@ yarn add @dash0/sdk-web
 
 ### Adding the Dash0 Web SDK via script tags
 
-The Dash0 Web SDK can also injected via script tags, which is useful for website not using on module builds.
+The Dash0 Web SDK can also be injected via script tags, which is useful for websites not using module builds.
 To add the Dash0 Web SDK to the HTML of your website, add the snippet below and adjust the configuration as needed.
 
 ```html
@@ -69,8 +76,8 @@ To add the Dash0 Web SDK to the HTML of your website, add the snippet below and 
     endpoint: {
       // Replace this with the endpoint url identified during preparation
       url: "REPLACE THIS",
-      // Replace this with your auth token you created earlier
-      // Ideally, you will inject the value at build time in order not commit the token to git,
+      // Replace this with the auth token you created earlier
+      // Ideally, you will inject the value at build time in order to not commit the token to git,
       // even if its effectively public in the HTML you ship to the end user's browser
       authToken: "REPLACE THIS",
     },
@@ -82,26 +89,30 @@ To add the Dash0 Web SDK to the HTML of your website, add the snippet below and 
 <script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web@0.18.1/dist/dash0.iife.js"></script>
 ```
 
-You can choose to always load the latest version of the Dash0 Web SDK or pin the script to a specific version (see example below).
+You can choose to always load the latest version of the Dash0 Web SDK or pin the script to a specific version (see the
+example above).
 Loading a specific version of the Dash0 Web SDK usually improves loading performance of the script.
 
 #### Api usage
 
 Please note that the API for the IIFE build of the Dash0 Web SDK is slightly different from the module build.
-All APIs must be called via a global `dash0` function. The following call `addSignalAttribute("the_answer", 42)` for example
-would called like this for the IIFE build: `dash0("addSignalAttribute", "the_answer", 42)`.
+All APIs must be called via a global `dash0` function. For example, the following call `addSignalAttribute("the_answer",
+42)` would be called like this for the IIFE build: `dash0("addSignalAttribute", "the_answer", 42)`.
 
 #### Content Security and Integrity
 
 Depending on the content security policy of your site you might need to additionally allow loading of the script.
-You can use `Content-Security-Policy: script-src 'self' https://unpkg.com` to allow all scripts from unpkg, or something like
-`Content-Security-Policy: script-src 'self' https://unpkg.com/@dash0/sdk-web@0.18.1/dist/dash0.iife.js` when using a specific
+You can use `Content-Security-Policy: script-src 'self' https://unpkg.com` to allow all scripts from unpkg, or something
+like
+`Content-Security-Policy: script-src 'self' https://unpkg.com/@dash0/sdk-web@0.18.1/dist/dash0.iife.js` when using a
+specific
 version of the Dash0 Web SDK to only allow the specific file to be loaded.
 
 If you want to further restrict the policy to guard against changes in the hosted script,
 you can allow only the hash of the Dash0 Web SDK version you'd like to integrate, like so:
 `Content-Security-Policy: script-src 'self' 'sha256-replace-me'`
-The current hash can be viewed by appending `?meta` to the unpkg url you are loading the script from and removing the file name: `https://unpkg.com/@dash0/sdk-web@0.18.1/dist?meta`
+The current hash can be viewed by appending `?meta` to the unpkg url you are loading the script from and removing the
+file name: `https://unpkg.com/@dash0/sdk-web@0.18.1/dist?meta`
 Then find the `dash0.iife.js` file and copy its integrity value.
 
 Additionally you might need to allow the Dash0 Web SDK to connect to your configured endpoint URL like so:
@@ -114,9 +125,11 @@ These can all be passed via the Dash0 Web SDK's `init` call.
 
 ### Backend Correlation
 
-The SDK supports trace context propagation to correlate frontend requests with backend services. You can configure different header types (`traceparent`, `X-Amzn-Trace-Id`) for different endpoints using the `propagators` configuration.
+The SDK supports trace context propagation to correlate frontend requests with backend services. You can configure
+different header types (`traceparent`, `X-Amzn-Trace-Id`) for different endpoints using the `propagators` configuration.
 
-> Misconfiguration of cross origin trace correlation can lead to request failures. Please make sure to carefully validate the configuration provided in the next steps
+> Misconfiguration of cross origin trace correlation can lead to request failures. Please make sure to carefully
+> validate the configuration provided in the next steps
 
 #### Propagators Configuration (Recommended)
 
@@ -141,17 +154,21 @@ init({
 - `"traceparent"`: W3C TraceContext headers for OpenTelemetry-compatible services
 - `"xray"`: AWS X-Ray trace headers for AWS services
 
-**Same-origin requests**: All same-origin requests automatically receive `traceparent` headers plus headers for ALL other configured propagator types, regardless of match patterns. This ensures consistent trace correlation within your application.
+**Same-origin requests**: All same-origin requests automatically receive `traceparent` headers plus headers for ALL
+other configured propagator types, regardless of match patterns. This ensures consistent trace correlation within your
+application.
 
 **Match patterns for cross-origin requests:**
 
 - `RegExp`: Regular expressions to match against full URLs
 
-**Multiple Headers**: When multiple propagators match the same URL, both headers will be added to the request. This is useful when you need to support multiple tracing systems simultaneously.
+**Multiple Headers**: When multiple propagators match the same URL, both headers will be added to the request. This is
+useful when you need to support multiple tracing systems simultaneously.
 
 **Backend setup**
 
-- Make sure the endpoints respond to `OPTIONS` requests and include the appropriate headers in their `Access-Control-Allow-Headers` response header:
+- Make sure the endpoints respond to `OPTIONS` requests and include the appropriate headers in their
+  `Access-Control-Allow-Headers` response header:
   - `traceparent` for W3C trace context
   - `X-Amzn-Trace-Id` for AWS X-Ray
 
@@ -161,11 +178,13 @@ init({
 
 The legacy `propagateTraceHeadersCorsURLs` configuration is still supported but deprecated:
 
-- Include a regex matching the endpoint you want to enable in the [propagateTraceHeadersCorsURLs](#http-request-instrumentation) configuration option.
+- Include a regex matching the endpoint you want to enable in
+  the [propagateTraceHeadersCorsURLs](#http-request-instrumentation) configuration option.
 
 ### Configuration auto-detection
 
-Certain configuration values can be auto-detected if using the module version of the Dash0 Web SDK in combination with certain cloud providers.
+Certain configuration values can be auto-detected if using the module version of the Dash0 Web SDK in combination with
+certain cloud providers.
 
 #### Vercel
 
@@ -204,7 +223,8 @@ These functionalities requires the use of Next.js:
   optional: `true`<br>
   default: `(attributes) => attributes`
   Allows the application of a custom scrubbing function to url attributes before they are applied to signals.
-  This is invoked for each url processed for inclusion in signal attributes. For example this applies both to `page.url.*`
+  This is invoked for each url processed for inclusion in signal attributes. For example this applies both to
+  `page.url.*`
   and `url.*` attribute namespaces.
   Sensitive parts of the url attributes should be replaced with `REDACTED`,
   avoid partially or fully dropping attributes to preserve telemetry quality.
@@ -216,33 +236,43 @@ These functionalities requires the use of Next.js:
   key: `serviceName`<br>
   type: `string`<br>
   optional: `false`<br>
-  The logical name or your website, maps to the [service.name](https://opentelemetry.io/docs/specs/semconv/registry/attributes/service/#service-name) otel attribute.
+  The logical name or your website, maps to
+  the [service.name](https://opentelemetry.io/docs/specs/semconv/registry/attributes/service/#service-name) otel
+  attribute.
 - **Service Version**<br>
   key: `serviceVersion`<br>
   type: `string`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  The current version of your website, maps to the [service.version](https://opentelemetry.io/docs/specs/semconv/registry/attributes/service/#service-version) otel attribute.
+  The current version of your website, maps to
+  the [service.version](https://opentelemetry.io/docs/specs/semconv/registry/attributes/service/#service-version) otel
+  attribute.
 - **Environment**<br>
   key: `environment`<br>
   type: `string`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  Name of the deployment environment, for example `staging`, or `production`. Maps to the [deployment.environment.name](https://opentelemetry.io/docs/specs/semconv/registry/attributes/deployment/#deployment-environment-name) otel attribute.
+  Name of the deployment environment, for example `staging`, or `production`. Maps to
+  the [deployment.environment.name](https://opentelemetry.io/docs/specs/semconv/registry/attributes/deployment/#deployment-environment-name)
+  otel attribute.
   This value is [auto detected](#configuration-auto-detection) in certain build environments.
 - **Deployment Name**<br>
   key: `deploymentName`<br>
   type: `string`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  Name of the deployment, maps to the [deployment.name](https://opentelemetry.io/docs/specs/semconv/registry/attributes/deployment/#deployment-name) otel attribute.
+  Name of the deployment, maps to
+  the [deployment.name](https://opentelemetry.io/docs/specs/semconv/registry/attributes/deployment/#deployment-name)
+  otel attribute.
   This value is [auto detected](#configuration-auto-detection) in certain build environments.
 - **Deployment Id**<br>
   key: `deploymentId`<br>
   type: `string`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  Id of the deployment, maps to the [deployment.id](https://opentelemetry.io/docs/specs/semconv/registry/attributes/deployment/#deployment-id) otel attribute.
+  Id of the deployment, maps to
+  the [deployment.id](https://opentelemetry.io/docs/specs/semconv/registry/attributes/deployment/#deployment-id) otel
+  attribute.
   This value is [auto detected](#configuration-auto-detection) in certain build environments.
 - **Additional Signal Attributes**<br>
   key: `additionalSignalAttributes`<br>
@@ -250,7 +280,8 @@ These functionalities requires the use of Next.js:
   optional: `true`<br>
   default: `undefined`<br>
   Allows the configuration of additional attributes to be included with any transmitted event.
-  See [AttributeValueType](https://github.com/dash0hq/dash0-sdk-web/blob/main/src/utils/otel/attributes.ts#L4) and [AnyValue](https://github.com/dash0hq/dash0-sdk-web/blob/main/types/otlp.d.ts#L3) for detailed types.
+  See [AttributeValueType](https://github.com/dash0hq/dash0-sdk-web/blob/main/src/utils/otel/attributes.ts#L4)
+  and [AnyValue](https://github.com/dash0hq/dash0-sdk-web/blob/main/types/otlp.d.ts#L3) for detailed types.
 
 #### Telemetry Transmission
 
@@ -258,7 +289,8 @@ These functionalities requires the use of Next.js:
   key: `endpoint`<br>
   type: `Endpoint | Endpoint[]`<br>
   optional: `false`<br>
-  The OTLP to which the generated telemetry should be sent. Supports multiple endpoints in parallel if an array is provided.
+  The OTLP to which the generated telemetry should be sent. Supports multiple endpoints in parallel if an array is
+  provided.
 - **Endpoint URL**<br>
   key: `endpoint.url`<br>
   type: `string`<br>
@@ -311,7 +343,8 @@ These functionalities requires the use of Next.js:
   type: `boolean`<br>
   optional: `true`<br>
   default: `true`<br>
-  Whether we should automatically wrap DOM event handlers added via addEventListener for improved uncaught error tracking.
+  Whether we should automatically wrap DOM event handlers added via addEventListener for improved uncaught error
+  tracking.
   This results in improved uncaught error tracking for cross-origin errors,
   but may have adverse effects on website performance and stability.
 - **Wrap Timers**<br>
@@ -330,7 +363,8 @@ These functionalities requires the use of Next.js:
   type: `PropagatorConfig[]`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  Configure trace context propagators for different URL patterns. Each propagator defines which header type to send for matching URLs.
+  Configure trace context propagators for different URL patterns. Each propagator defines which header type to send for
+  matching URLs.
 
   ```typescript
   type PropagatorConfig = {
@@ -352,11 +386,14 @@ These functionalities requires the use of Next.js:
   ];
   ```
 
-  **Same-origin behavior**: All same-origin requests automatically get `traceparent` headers plus headers for ALL other configured propagator types, regardless of match patterns.
+  **Same-origin behavior**: All same-origin requests automatically get `traceparent` headers plus headers for ALL other
+  configured propagator types, regardless of match patterns.
 
-  **Cross-origin behavior**: When multiple propagators match the same cross-origin URL, both headers will be sent. Duplicate propagator types for the same URL are automatically deduplicated.
+  **Cross-origin behavior**: When multiple propagators match the same cross-origin URL, both headers will be sent.
+  Duplicate propagator types for the same URL are automatically deduplicated.
 
-  NOTE: Any cross origin endpoints allowed via this option need to include the appropriate headers in the `Access-Control-Allow-Headers`
+  NOTE: Any cross origin endpoints allowed via this option need to include the appropriate headers in the
+  `Access-Control-Allow-Headers`
   response header (`traceparent` for W3C, `X-Amzn-Trace-Id` for X-Ray). Misconfiguration will cause request failures!
 
 - **Propagate Trace Header Cors URLs** ⚠️ **DEPRECATED**<br>
@@ -364,8 +401,10 @@ These functionalities requires the use of Next.js:
   type: `Array<RegExp>`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  **DEPRECATED: Use `propagators` instead.** An array of URL regular expressions for which trace context headers should be sent across origins by http client instrumentations.
-  NOTE: Any cross origin endpoints allowed via this option need to include `traceparent` in the `Access-Control-Allow-Headers`
+  **DEPRECATED: Use `propagators` instead.** An array of URL regular expressions for which trace context headers should
+  be sent across origins by http client instrumentations.
+  NOTE: Any cross origin endpoints allowed via this option need to include `traceparent` in the
+  `Access-Control-Allow-Headers`
   response header. Misconfiguration will cause request failures!
 - **Max Wait For Resource Timings**<br>
   key: `maxWaitForResourceTimingsMillis`<br>
@@ -379,7 +418,8 @@ These functionalities requires the use of Next.js:
   type: `number`<br>
   optional: `true`<br>
   default: `50`<br>
-  The number of milliseconds of tolerance between resolution of a http request promise and the end time of performanceEntries
+  The number of milliseconds of tolerance between resolution of a http request promise and the end time of
+  performanceEntries
   applied when matching a request to its respective performance entry. A higher value might increase match frequency at
   the cost of potential incorrect matches. Matching is performed based on request timing and url.
 - **Headers to Capture**<br>
@@ -418,7 +458,8 @@ These functionalities requires the use of Next.js:
 
 ## API
 
-The Dash0 Web SDK provides several API functions to help you customize telemetry collection and add contextual information to your signals.
+The Dash0 Web SDK provides several API functions to help you customize telemetry collection and add contextual
+information to your signals.
 
 ### Signal attributes
 
@@ -446,7 +487,8 @@ addSignalAttribute("version", "1.2.3");
 dash0("addSignalAttribute", "environment", "production");
 ```
 
-**Note:** If you need to ensure attributes are included with signals transmitted on initial page load, use the `additionalSignalAttributes` property in the `init()` call instead.
+**Note:** If you need to ensure attributes are included with signals transmitted on initial page load, use the
+`additionalSignalAttributes` property in the `init()` call instead.
 
 #### `removeSignalAttribute(name)`
 
@@ -473,7 +515,8 @@ dash0("removeSignalAttribute", "environment");
 #### `identify(id, opts)`
 
 Associates user information with telemetry signals.
-See [OTEL User Attributes](https://opentelemetry.io/docs/specs/semconv/registry/attributes/user/) for the matching attributes
+See [OTEL User Attributes](https://opentelemetry.io/docs/specs/semconv/registry/attributes/user/) for the matching
+attributes
 
 **Parameters:**
 
@@ -507,13 +550,15 @@ dash0("identify", "user123", { name: "johndoe" });
 #### `sendEvent(name, opts)`
 
 Sends a custom event with optional data and attributes.
-Event name cannot be one of the event names internally used by the Dash0 Web SDK. See [Event Names](https://github.com/dash0hq/dash0-sdk-web/blob/main/src/semantic-conventions.ts#L50)
+Event name cannot be one of the event names internally used by the Dash0 Web SDK.
+See [Event Names](https://github.com/dash0hq/dash0-sdk-web/blob/main/src/semantic-conventions.ts#L50)
 
 **Parameters:**
 
 - `name` (string): Event name
 - `opts` (object, optional): Event options
-  - `title` (string, optional): Human readable title for the event. Should summarize the event in a single short sentence.
+  - `title` (string, optional): Human readable title for the event. Should summarize the event in a single short
+    sentence.
   - `timestamp` (number | Date, optional): Event timestamp
   - `data` (AttributeValueType | AnyValue, optional): Event data
   - `attributes` (Record<string, AttributeValueType | AnyValue>, optional): Event attributes
@@ -549,7 +594,8 @@ Manually reports an error to be tracked in telemetry.
 - `error` (string | ErrorLike): Error message or error object
 - `opts` (object, optional): Error reporting options
   - `componentStack` (string | null | undefined, optional): Component stack trace for React errors
-  - `attributes` (Record<string, AttributeValueType | AnyValue>, optional): Additional attributes to include with the error report
+  - `attributes` (Record<string, AttributeValueType | AnyValue>, optional): Additional attributes to include with the
+    error report
 
 **Example:**
 
@@ -602,7 +648,8 @@ function handleLogout() {
 dash0("terminateSession");
 ```
 
-**Note:** Sessions are automatically managed by the Dash0 Web SDK based on inactivity and termination timeouts configured during initialization. Manual termination is typically only needed for explicit user logout scenarios.
+**Note:** Sessions are automatically managed by the Dash0 Web SDK based on inactivity and termination timeouts
+configured during initialization. Manual termination is typically only needed for explicit user logout scenarios.
 
 ### Internal Telemetry
 
