@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.18.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.1...0.18.2) (2025-12-18)
+
+### Bug Fixes
+
+- move development related dependencies to "devDependencies” ([#74](https://github.com/dash0hq/dash0-sdk-web/issues/74)) ([ed744f5](https://github.com/dash0hq/dash0-sdk-web/commit/ed744f53858ce6b9428ad5d09fee84db11facf70))
+
 ## [0.18.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.0...0.18.1) (2025-11-28)
 
 ### Bug Fixes
