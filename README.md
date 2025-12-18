@@ -35,10 +35,8 @@ To setup the web sdk you'll need the following:
 ```sh
 # npm
 npm install @dash0/sdk-web
-
 # yarn
 yarn add @dash0/sdk-web
-
 # pnpm
 pnpm install @dash0/sdk-web
 ```
