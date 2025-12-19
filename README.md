@@ -20,9 +20,9 @@ To setup the web sdk you'll need the following:
 
 2. Retrieve the following information from your Dash0 account:
 
-   - `endpoint` URL for your Dash0 region ([Dash0 link](https://app.dash0.com/settings/endpoints))
+   - The OTLP via HTTP `endpoint` URL for your Dash0 region ([Dash0 link](https://app.dash0.com/settings/endpoints))
 
-   - `authToken` with `Ingesting` permissions for the dataset ([Dash0 link](https://app.dash0.com/settings/auth-tokens))
+   - The `authToken` with `Ingesting` permissions for the dataset ([Dash0 link](https://app.dash0.com/settings/auth-tokens))
      - Auth tokens for client monitoring will be public as part of your website, please make sure to:
        - Use a separate token, exclusively for website monitoring; if you want to monitor multiple websites, it is best to use a dedicated token for each
        - Limit the dataset permissions on the auth token to the dataset you want to ingest Website Monitoring data with
@@ -51,7 +51,7 @@ init({
   serviceName: "my-website",
   endpoint: {
     // Replace this with the endpoint URL for your Dash0 region, that you retrieved earlier in "prerequisites"
-    url: "{endpoint}",
+    url: "{OTLP via HTTP endpoint}",
     // Replace this with your auth token you retrieved earlier in "prerequisites"
     // Ideally, you will inject the value at build time in order not commit the token to git,
     // even if its effectively public in the HTML you ship to the end user's browser
