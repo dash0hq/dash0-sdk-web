@@ -1,6 +1,6 @@
 {
   "name": "@dash0/sdk-web",
-  "version": "0.18.1",
+  "version": "0.18.2",
   "description": "Dash0's Web SDK to collect telemetry from end-users' web browsers",
   "type": "module",
   "main": "dist/dash0.umd.cjs",
@@ -68,18 +68,18 @@
     "url": "https://github.com/dash0hq/dash0-sdk-web/issues"
   },
   "dependencies": {
-    "@babel/core": "^7.26.10",
-    "@babel/preset-env": "^7.26.9",
-    "@rollup/plugin-babel": "^6.0.4",
-    "@rollup/plugin-terser": "^0.4.4",
     "web-vitals": "^5.0.3",
     "ts-deepmerge": "^7.0.3"
   },
   "devDependencies": {
     "dotenv-cli": "^8.0.0",
+    "@babel/core": "^7.26.10",
+    "@babel/preset-env": "^7.26.9",
     "@release-it/conventional-changelog": "^10.0.1",
+    "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-replace": "^6.0.2",
+    "@rollup/plugin-terser": "^0.4.4",
     "@types/body-parser": "^1.19.5",
     "@types/express": "^5.0.1",
     "@types/mocha": "^10.0.10",
