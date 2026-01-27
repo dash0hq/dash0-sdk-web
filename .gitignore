@@ -261,3 +261,5 @@ Temporary Items
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+/.claude/
