@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.18.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.2...0.18.3) (2026-01-28)
+
+### Bug Fixes
+
+- **transport:** properly handle beacon size limits ([#75](https://github.com/dash0hq/dash0-sdk-web/issues/75)) ([6f9c5bb](https://github.com/dash0hq/dash0-sdk-web/commit/6f9c5bb58c426b43f14fd9287c7e2aac6d371136))
+
 ## [0.18.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.1...0.18.2) (2025-12-18)
 
 ### Bug Fixes
