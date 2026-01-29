@@ -8,11 +8,22 @@ export function now(): number {
 
 export function nowNanos(): string {
   const timeOrigin = getTimeOrigin();
+  const currentDate = new Date();
+
   if (timeOrigin) {
-    return String((perf.now() + timeOrigin) * 1000000);
+    const perfTime = perf.now() + timeOrigin;
+    const dateTime = currentDate.getTime();
+
+    // Only return perf time measurement if it hasn't significantly drifted (60s).
+    // Some browsers violate the performance api spec and do not tick the monotonic time while the OS sleeps or the browser hangs
+    // See https://bugzil.la/1709767
+    // See https://webkit.org/b/225610
+    if (Math.abs(perfTime - dateTime) < 60000) {
+      return String(perfTime * 1000000);
+    }
   }
 
-  return toNanosTs(new Date());
+  return toNanosTs(currentDate);
 }
 
 export function toNanosTs(time: TimeInput): string {
