@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.18.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.3...0.18.4) (2026-01-29)
+
+### Bug Fixes
+
+- fall back to Date time if performance time has drifted ([#76](https://github.com/dash0hq/dash0-sdk-web/issues/76)) ([9406e88](https://github.com/dash0hq/dash0-sdk-web/commit/9406e88b6f868db94c69a50fb6253ea0a878616e))
+
 ## [0.18.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.2...0.18.3) (2026-01-28)
 
 ### Bug Fixes
