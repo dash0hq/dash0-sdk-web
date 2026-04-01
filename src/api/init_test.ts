@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InitOptions, InstrumentationName } from "../types/options";
 import { PropagatorConfig, Vars } from "../vars";
-import { SERVICE_NAME } from "../semantic-conventions";
+import { SERVICE_NAME, SERVICE_NAMESPACE } from "../semantic-conventions";
 import { init as initFun } from "./init";
 
 // Mock all the instrumentation modules
@@ -234,6 +234,25 @@ describe("init", () => {
 
       expect(vars.propagators).toEqual([]);
       expect(spyOnWarn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("serviceNamespace", () => {
+    it("should add serviceNamespace to resource attributes when provided", async () => {
+      init({
+        ...baseOptions,
+        serviceNamespace: "my-namespace",
+      });
+
+      const namespaceAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAMESPACE);
+      expect(namespaceAttr?.value.stringValue).toBe("my-namespace");
+    });
+
+    it("should not add serviceNamespace to resource attributes when not provided", async () => {
+      init(baseOptions);
+
+      const namespaceAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAMESPACE);
+      expect(namespaceAttr).toBeUndefined();
     });
   });
 

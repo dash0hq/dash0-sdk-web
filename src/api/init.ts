@@ -5,6 +5,7 @@ import {
   DEPLOYMENT_NAME,
   PAGE_LOAD_ID,
   SERVICE_NAME,
+  SERVICE_NAMESPACE,
   SERVICE_VERSION,
   USER_AGENT,
 } from "../semantic-conventions";
@@ -105,6 +106,10 @@ export function init(opts: InitOptions) {
 
 function initializeResourceAttributes(opts: InitOptions) {
   addAttribute(vars.resource.attributes, SERVICE_NAME, opts["serviceName"]);
+
+  if (opts.serviceNamespace) {
+    addAttribute(vars.resource.attributes, SERVICE_NAMESPACE, opts["serviceNamespace"]);
+  }
 
   if (opts.serviceVersion) {
     addAttribute(vars.resource.attributes, SERVICE_VERSION, opts["serviceVersion"]);
