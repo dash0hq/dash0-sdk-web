@@ -1,5 +1,6 @@
 // Resource Attribute Keys
 export const SERVICE_NAME = "service.name";
+export const SERVICE_NAMESPACE = "service.namespace";
 export const SERVICE_VERSION = "service.version";
 export const DEPLOYMENT_ENVIRONMENT_NAME = "deployment.environment.name";
 export const DEPLOYMENT_NAME = "deployment.name";

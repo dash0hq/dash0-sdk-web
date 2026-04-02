@@ -6,6 +6,7 @@ export type InstrumentationName = "@dash0/navigation" | "@dash0/web-vitals" | "@
 
 export type InitOptions = {
   serviceName: string;
+  serviceNamespace?: string;
   serviceVersion?: string;
   environment?: string;
   deploymentName?: string;
