@@ -112,7 +112,7 @@ jobs:
         uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
 
       - name: Use Node.js from .nvmrc
-        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
@@ -127,5 +127,4 @@ jobs:
           git-user-email: "41898282+github-actions[bot]@users.noreply.github.com"
         env:
           GITHUB_TOKEN: ${{ secrets.REPOSITORY_FULL_ACCESS_GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.DASH0_NPMJS_PUBLISH_TOKEN }}
         uses: JoshuaKGoldberg/release-it-action@dc71f396c291f62f9a17701cfc4d4a3e7c263020 #0.3.2
