@@ -239,6 +239,14 @@ These functionalities requires the use of Next.js:
   The logical name or your website, maps to
   the [service.name](https://opentelemetry.io/docs/specs/semconv/registry/attributes/service/#service-name) otel
   attribute.
+- **Service Namespace**<br>
+  key: `serviceNamespace`<br>
+  type: `string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  A namespace for `serviceName`, maps to
+  the [service.namespace](https://opentelemetry.io/docs/specs/semconv/registry/attributes/service/#service-namespace) otel
+  attribute.
 - **Service Version**<br>
   key: `serviceVersion`<br>
   type: `string`<br>
