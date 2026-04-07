@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.18.5](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.4...0.18.5) (2026-04-07)
+
+### Bug Fixes
+
+- adds service.namespace as an optional resource attribute ([#78](https://github.com/dash0hq/dash0-sdk-web/issues/78)) ([e51340a](https://github.com/dash0hq/dash0-sdk-web/commit/e51340a76c20dcdecab12c416748ca14a7db858d))
+
 ## [0.18.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.3...0.18.4) (2026-01-29)
 
 ### Bug Fixes
