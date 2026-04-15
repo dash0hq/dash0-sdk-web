@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.19.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.5...0.19.0) (2026-04-15)
+
+### Features
+
+- validate service names ([#84](https://github.com/dash0hq/dash0-sdk-web/issues/84)) ([d2ad1dc](https://github.com/dash0hq/dash0-sdk-web/commit/d2ad1dc49e14b6e72e6d607aac4acc0a28526148))
+
 ## [0.18.5](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.4...0.18.5) (2026-04-07)
 
 ### Bug Fixes
