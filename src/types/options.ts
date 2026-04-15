@@ -18,6 +18,17 @@ export type InitOptions = {
   additionalSignalAttributes?: Record<string, AttributeValueType | AnyValue>;
 
   /**
+   * When `true`, reject `serviceName` values that contain characters commonly
+   * associated with injection payloads (quotes, angle brackets, braces,
+   * semicolons, control characters) and fall back to `location.hostname`.
+   *
+   * Useful when automated security scanners or untrusted callers can influence
+   * the value sent to `init()`. Disabled by default so that existing service
+   * names containing special characters keep working unchanged.
+   */
+  rejectSuspiciousServiceName?: boolean;
+
+  /**
    * OTLP endpoints to which the generated telemetry should be sent to.
    */
   endpoint: Endpoint | Endpoint[];

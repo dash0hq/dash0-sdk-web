@@ -55,7 +55,7 @@ export function init(opts: InitOptions) {
   if (!trimmedServiceName) {
     debug("Missing or empty serviceName value. Falling back to location.hostname.");
     opts.serviceName = loc?.hostname ?? "unknown";
-  } else if (!isSafeServiceName(trimmedServiceName)) {
+  } else if (opts.rejectSuspiciousServiceName && !isSafeServiceName(trimmedServiceName)) {
     debug("serviceName contains disallowed characters. Falling back to location.hostname.");
     opts.serviceName = loc?.hostname ?? "unknown";
   }

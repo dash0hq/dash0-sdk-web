@@ -307,30 +307,55 @@ describe("init", () => {
       ["greater-than", "svc>name"],
       ["embedded newline", "svc\nname"],
       ["NUL byte", "svc\x00name"],
-    ])("should fallback to location.hostname when serviceName contains %s", async (_label, suspicious) => {
-      init({
-        ...baseOptions,
-        serviceName: suspicious,
-      });
+    ])(
+      "should fallback to location.hostname when rejectSuspiciousServiceName is true and serviceName contains %s",
+      async (_label, suspicious) => {
+        init({
+          ...baseOptions,
+          serviceName: suspicious,
+          rejectSuspiciousServiceName: true,
+        });
 
-      const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
-      expect(serviceNameAttr?.value.stringValue).toBe("test-hostname.example.com");
-    });
+        const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
+        expect(serviceNameAttr?.value.stringValue).toBe("test-hostname.example.com");
+      }
+    );
+
+    it.each([
+      ["single quote", "evil';DROP TABLE users;--"],
+      ["semicolon", "svc;injected"],
+      ["less-than", "<script>"],
+    ])(
+      "should keep suspicious serviceName unchanged when rejectSuspiciousServiceName is not enabled (%s)",
+      async (_label, suspicious) => {
+        init({
+          ...baseOptions,
+          serviceName: suspicious,
+        });
+
+        const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
+        expect(serviceNameAttr?.value.stringValue).toBe(suspicious);
+      }
+    );
 
     it.each([
       ["forward slash", "myteam/myservice"],
       ["backslash", "myteam\\myservice"],
       ["spaces", "my service"],
       ["dots and hyphens", "svc-name.v2"],
-    ])("should keep serviceName when it only contains allowed characters like %s", async (_label, allowed) => {
-      init({
-        ...baseOptions,
-        serviceName: allowed,
-      });
+    ])(
+      "should keep serviceName with allowed characters like %s even when rejectSuspiciousServiceName is true",
+      async (_label, allowed) => {
+        init({
+          ...baseOptions,
+          serviceName: allowed,
+          rejectSuspiciousServiceName: true,
+        });
 
-      const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
-      expect(serviceNameAttr?.value.stringValue).toBe(allowed);
-    });
+        const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
+        expect(serviceNameAttr?.value.stringValue).toBe(allowed);
+      }
+    );
 
     it("should fallback to 'unknown' when serviceName is empty and location.hostname is not available", async () => {
       vi.resetModules();
