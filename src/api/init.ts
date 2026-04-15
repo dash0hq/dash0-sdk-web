@@ -12,6 +12,7 @@ import {
 import {
   fetch,
   generateUniqueId,
+  isSafeServiceName,
   PAGE_LOAD_ID_BYTES,
   warn,
   debug,
@@ -50,8 +51,12 @@ export function init(opts: InitOptions) {
     return;
   }
 
-  if (!opts.serviceName.trim()) {
+  const trimmedServiceName = opts.serviceName.trim();
+  if (!trimmedServiceName) {
     debug("Missing or empty serviceName value. Falling back to location.hostname.");
+    opts.serviceName = loc?.hostname ?? "unknown";
+  } else if (!isSafeServiceName(trimmedServiceName)) {
+    debug("serviceName contains disallowed characters. Falling back to location.hostname.");
     opts.serviceName = loc?.hostname ?? "unknown";
   }
 

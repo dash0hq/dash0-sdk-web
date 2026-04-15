@@ -297,6 +297,41 @@ describe("init", () => {
       expect(serviceNameAttr?.value.stringValue).toBe("test-hostname.example.com");
     });
 
+    it.each([
+      ["single quote", "evil';DROP TABLE users;--"],
+      ["double quote", 'svc"name'],
+      ["semicolon", "svc;injected"],
+      ["open brace", "svc${tpl}"],
+      ["close brace", "svc}name"],
+      ["less-than", "<script>"],
+      ["greater-than", "svc>name"],
+      ["embedded newline", "svc\nname"],
+      ["NUL byte", "svc\x00name"],
+    ])("should fallback to location.hostname when serviceName contains %s", async (_label, suspicious) => {
+      init({
+        ...baseOptions,
+        serviceName: suspicious,
+      });
+
+      const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
+      expect(serviceNameAttr?.value.stringValue).toBe("test-hostname.example.com");
+    });
+
+    it.each([
+      ["forward slash", "myteam/myservice"],
+      ["backslash", "myteam\\myservice"],
+      ["spaces", "my service"],
+      ["dots and hyphens", "svc-name.v2"],
+    ])("should keep serviceName when it only contains allowed characters like %s", async (_label, allowed) => {
+      init({
+        ...baseOptions,
+        serviceName: allowed,
+      });
+
+      const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
+      expect(serviceNameAttr?.value.stringValue).toBe(allowed);
+    });
+
     it("should fallback to 'unknown' when serviceName is empty and location.hostname is not available", async () => {
       vi.resetModules();
 

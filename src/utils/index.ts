@@ -14,4 +14,5 @@ export * from "./math";
 export * from "./origin";
 export * from "./url";
 export * from "./pick";
+export * from "./sanitize";
 export * from "./wrap";
