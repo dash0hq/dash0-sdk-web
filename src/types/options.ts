@@ -18,13 +18,13 @@ export type InitOptions = {
   additionalSignalAttributes?: Record<string, AttributeValueType | AnyValue>;
 
   /**
-   * When `true`, reject `serviceName` values that contain characters commonly
-   * associated with injection payloads (quotes, angle brackets, braces,
-   * semicolons, control characters) and fall back to `location.hostname`.
+   * When enabled (the default), reject `serviceName` values that contain
+   * characters commonly associated with injection payloads (quotes, angle
+   * brackets, braces, semicolons, control characters) and fall back to
+   * `location.hostname`. This guards against automated security scanners or
+   * untrusted callers influencing the value sent to `init()`.
    *
-   * Useful when automated security scanners or untrusted callers can influence
-   * the value sent to `init()`. Disabled by default so that existing service
-   * names containing special characters keep working unchanged.
+   * Set to `false` to opt out and pass the `serviceName` through unchanged.
    */
   rejectSuspiciousServiceName?: boolean;
 

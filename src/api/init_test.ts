@@ -307,8 +307,23 @@ describe("init", () => {
       ["greater-than", "svc>name"],
       ["embedded newline", "svc\nname"],
       ["NUL byte", "svc\x00name"],
+    ])("should fallback to location.hostname by default when serviceName contains %s", async (_label, suspicious) => {
+      init({
+        ...baseOptions,
+        serviceName: suspicious,
+      });
+
+      const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
+      expect(serviceNameAttr?.value.stringValue).toBe("test-hostname.example.com");
+    });
+
+    it.each([
+      ["single quote", "evil';DROP TABLE users;--"],
+      ["double quote", 'svc"name'],
+      ["semicolon", "svc;injected"],
+      ["embedded newline", "svc\nname"],
     ])(
-      "should fallback to location.hostname when rejectSuspiciousServiceName is true and serviceName contains %s",
+      "should also fallback when rejectSuspiciousServiceName is explicitly true and serviceName contains %s",
       async (_label, suspicious) => {
         init({
           ...baseOptions,
@@ -326,11 +341,12 @@ describe("init", () => {
       ["semicolon", "svc;injected"],
       ["less-than", "<script>"],
     ])(
-      "should keep suspicious serviceName unchanged when rejectSuspiciousServiceName is not enabled (%s)",
+      "should keep suspicious serviceName unchanged when rejectSuspiciousServiceName is explicitly false (%s)",
       async (_label, suspicious) => {
         init({
           ...baseOptions,
           serviceName: suspicious,
+          rejectSuspiciousServiceName: false,
         });
 
         const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
@@ -344,12 +360,11 @@ describe("init", () => {
       ["spaces", "my service"],
       ["dots and hyphens", "svc-name.v2"],
     ])(
-      "should keep serviceName with allowed characters like %s even when rejectSuspiciousServiceName is true",
+      "should keep serviceName with allowed characters like %s under the default configuration",
       async (_label, allowed) => {
         init({
           ...baseOptions,
           serviceName: allowed,
-          rejectSuspiciousServiceName: true,
         });
 
         const serviceNameAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAME);
