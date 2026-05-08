@@ -104,6 +104,30 @@
       function onFetchWithNoBodyResponse() {
         return Promise.all([fetch("/204"), fetch("/205"), fetch("/304")]);
       }
+
+      function onAbortedFetchBeforeResponse() {
+        const controller = new AbortController();
+        const p = fetch("/delay-fetch?abort-before-response", { signal: controller.signal }).catch(() => {});
+        controller.abort();
+        return p;
+      }
+
+      function onAbortedFetchDuringBody() {
+        const controller = new AbortController();
+        return fetch("/stream-slowly?abort-during-body", { signal: controller.signal }).then(async (response) => {
+          const reader = response.body.getReader();
+          await reader.read();
+          controller.abort();
+          try {
+            while (true) {
+              const { done } = await reader.read();
+              if (done) break;
+            }
+          } catch (_) {
+            // Expected: read rejects once the underlying transport is aborted.
+          }
+        });
+      }
     </script>
   </head>
   <body>
@@ -116,5 +140,7 @@
     <button onclick="onFetchWithBodyFromInit()">Fetch With Body From Init</button>
     <button onclick="onFetchWithBodyFromRequest()">Fetch With Body From Request</button>
     <button onclick="onFetchWithNoBodyResponse()">Multi-Fetch With No Body Response</button>
+    <button onclick="onAbortedFetchBeforeResponse()">Aborted Fetch Before Response</button>
+    <button onclick="onAbortedFetchDuringBody()">Aborted Fetch During Body</button>
   </body>
 </html>

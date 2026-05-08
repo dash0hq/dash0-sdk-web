@@ -242,6 +242,51 @@ describe("Fetch Instrumentation", () => {
     expectNoBrowserErrors();
   });
 
+  it("must mark fetches aborted before the response as cancelled, not failed", async () => {
+    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await expect(browser).toHaveTitle("fetch instrumentation test");
+
+    const btn = await $("button=Aborted Fetch Before Response");
+    await btn.click();
+
+    await retry(async () => {
+      await expectSpanMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "url.full", value: { stringValue: expect.stringContaining("/delay-fetch") } },
+            { key: "dash0.web.request.cancelled", value: { boolValue: true } },
+          ]),
+          status: expect.objectContaining({ code: 0 }),
+          events: expect.not.arrayContaining([expect.objectContaining({ name: "exception" })]),
+        })
+      );
+    });
+    expectNoBrowserErrors();
+  });
+
+  it("must mark fetches aborted while reading the body as cancelled, not failed", async () => {
+    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await expect(browser).toHaveTitle("fetch instrumentation test");
+
+    const btn = await $("button=Aborted Fetch During Body");
+    await btn.click();
+
+    await retry(async () => {
+      await expectSpanMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "url.full", value: { stringValue: expect.stringContaining("/stream-slowly") } },
+            { key: "http.response.status_code", value: { stringValue: "200" } },
+            { key: "dash0.web.request.cancelled", value: { boolValue: true } },
+          ]),
+          status: expect.objectContaining({ code: 0 }),
+          events: expect.not.arrayContaining([expect.objectContaining({ name: "exception" })]),
+        })
+      );
+    });
+    expectNoBrowserErrors();
+  });
+
   describe("with zonejs", () => {
     it("must not add any work to non-root zones", async () => {
       await browser.url("/e2e/spec/01-fetch-instrumentation/withZoneJs.html");

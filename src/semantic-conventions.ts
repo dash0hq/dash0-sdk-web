@@ -10,6 +10,7 @@ export const DEPLOYMENT_ID = "deployment.id";
 export const EVENT_NAME = "event.name";
 export const WEB_EVENT_TITLE = "dash0.web.event.title";
 export const WEB_EVENT_ID = "dash0.web.event.id";
+export const WEB_REQUEST_CANCELLED = "dash0.web.request.cancelled";
 export const PAGE_LOAD_ID = "page.load.id";
 export const SESSION_ID = "session.id";
 export const USER_AGENT = "user_agent.original";

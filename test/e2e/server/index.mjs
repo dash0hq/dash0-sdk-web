@@ -202,6 +202,30 @@ app.post("/form", (req, res) => {
   }, 100);
 });
 
+// Long-delay endpoint for abort-before-response tests. Responds well after the test
+// is expected to abort the request.
+app.all("/delay-fetch", (_req, res) => {
+  const timer = setTimeout(() => res.send("late"), 30_000);
+  res.on("close", () => clearTimeout(timer));
+});
+
+// Streaming endpoint for abort-during-body tests. Sends headers and chunks at a
+// steady cadence until the client aborts. The initial chunk is large enough to
+// defeat any TCP/HTTP buffering on Windows Chrome so the browser delivers it to
+// JS immediately; periodic follow-up chunks keep the connection alive.
+app.all("/stream-slowly", (_req, res) => {
+  res.status(200).set("Content-Type", "application/octet-stream");
+  res.write(Buffer.alloc(8 * 1024, 0));
+  const interval = setInterval(() => {
+    if (!res.writable) {
+      clearInterval(interval);
+      return;
+    }
+    res.write(Buffer.alloc(64, 0));
+  }, 100);
+  res.on("close", () => clearInterval(interval));
+});
+
 // Response status endpoints
 app.all("/204", (req, res) => {
   res.status(204).end();
