@@ -29,6 +29,7 @@ import {
   HTTP_RESPONSE_STATUS_CODE,
   SPAN_STATUS_ERROR,
   SPAN_STATUS_UNSET,
+  WEB_REQUEST_CANCELLED,
 } from "../../semantic-conventions";
 import { vars, PropagatorType } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
@@ -129,12 +130,20 @@ function wrapFetch(original: typeof fetch) {
         () => performanceObserver.end(),
         (e) => {
           performanceObserver.cancel();
-          endSpanOnError(span, e);
+          if (request.signal?.aborted) {
+            endSpanOnAbort(span);
+          } else {
+            endSpanOnError(span, e);
+          }
         }
       );
     } catch (e) {
       performanceObserver.cancel();
-      endSpanOnError(span, e as Exception);
+      if (request.signal?.aborted) {
+        endSpanOnAbort(span);
+      } else {
+        endSpanOnError(span, e as Exception);
+      }
       throw e;
     }
   };
@@ -275,6 +284,11 @@ function wrapResponse(
 function endSpanOnError(span: InProgressSpan, error: Exception) {
   recordException(span, error);
   sendSpan(endSpan(span, errorToSpanStatus(error), undefined));
+}
+
+function endSpanOnAbort(span: InProgressSpan) {
+  addAttribute(span.attributes, WEB_REQUEST_CANCELLED, true);
+  sendSpan(endSpan(span, undefined, undefined));
 }
 
 function determinePropagatorTypes(url: string): PropagatorType[] {
