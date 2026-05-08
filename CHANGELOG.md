@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.20.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.19.0...0.20.0) (2026-05-08)
+
+### Features
+
+- **fetch:** dont mark aborted requests as failed ([#86](https://github.com/dash0hq/dash0-sdk-web/issues/86)) ([5139654](https://github.com/dash0hq/dash0-sdk-web/commit/5139654902fb322d95b8dd1481a25e61536d553c))
+
 ## [0.19.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.18.5...0.19.0) (2026-04-15)
 
 ### Features
