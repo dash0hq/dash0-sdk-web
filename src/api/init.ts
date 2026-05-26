@@ -12,6 +12,7 @@ import {
 import {
   fetch,
   generateUniqueId,
+  isSessionSampledIn,
   isSafeServiceName,
   PAGE_LOAD_ID_BYTES,
   warn,
@@ -23,7 +24,7 @@ import {
   pick,
   loc,
 } from "../utils";
-import { trackSessions } from "./session";
+import { sessionId, trackSessions } from "./session";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { startErrorInstrumentation } from "../instrumentations/errors";
 import { addAttribute } from "../utils/otel";
@@ -92,6 +93,17 @@ export function init(opts: InitOptions) {
   initializeSignalAttributes(opts);
   initializeTabId();
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
+
+  if (opts.sessionSamplingRate != null) {
+    const rate = Math.max(0, Math.min(100, opts.sessionSamplingRate));
+    vars.isSessionSampled = sessionId != null ? isSessionSampledIn(sessionId, rate) : rate > 0;
+  }
+
+  if (!vars.isSessionSampled) {
+    debug("Session is not sampled. No telemetry will be transmitted for this session.");
+    hasBeenInitialised = true;
+    return;
+  }
 
   if (isInstrumentationEnabled("@dash0/navigation", opts)) {
     startNavigationInstrumentation();

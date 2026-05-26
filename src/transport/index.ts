@@ -21,6 +21,8 @@ function isRateLimited() {
 }
 
 export function sendLog(log: LogRecord): void {
+  if (!vars.isSessionSampled) return;
+
   if (isRateLimited()) {
     debug("Transport rate limit. Will not send item.", log);
     return;
@@ -49,6 +51,7 @@ function sendLogs(logs: LogRecord[]): void {
 
 export function sendSpan(span: Span | undefined): void {
   if (!span) return;
+  if (!vars.isSessionSampled) return;
 
   if (isRateLimited()) {
     debug("Transport rate limit. Will not send item.", span);
