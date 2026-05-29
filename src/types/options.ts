@@ -39,6 +39,16 @@ export type InitOptions = {
   enabledInstrumentations?: InstrumentationName[];
 
   /**
+   * The percentage of sessions for which telemetry data is recorded and transmitted.
+   * Must be a number between 0 and 100.
+   * - 0: No sessions are recorded/transferred.
+   * - 100: All sessions are recorded/transferred (default).
+   * - Any other value: That percentage of sessions are recorded/transferred.
+   * The sampling decision is deterministic per session ID.
+   */
+  sessionSamplingRate?: number;
+
+  /**
    * The  session inactivity timeout. Session inactivity is the maximum
    * allowed time to pass between two page loads before the session is considered
    * to be expired. Also think of cache time-to-idle configuration options.

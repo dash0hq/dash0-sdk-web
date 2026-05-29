@@ -323,6 +323,21 @@ These functionalities requires the use of Next.js:
 
 #### Session Tracking
 
+- **Session Sampling Rate**<br>
+  key: `sessionSamplingRate`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `100`<br>
+  The percentage of sessions for which telemetry data is recorded and transmitted.
+  Must be a number between 0 and 100.
+
+  - `0`: No sessions are recorded or transferred.
+  - `100`: All sessions are recorded and transferred (default).
+  - Any other value: That percentage of sessions are recorded and transferred.
+
+  The sampling decision is deterministic per session ID, so a given session will always produce the same
+  sampling outcome.
+
 - **Session Inactivity Timeout**<br>
   key: `sessionInactivityTimeoutMillis`<br>
   type: `number`<br>
