@@ -4,6 +4,29 @@ import { Endpoint, Vars, PropagatorConfig } from "../vars";
 
 export type InstrumentationName = "@dash0/navigation" | "@dash0/web-vitals" | "@dash0/error" | "@dash0/fetch";
 
+/**
+ * VCS (version control) context describing the build the SDK is running
+ * inside. Used both as the public manual-override shape on `InitOptions.vcs`
+ * and internally as the merged result of auto-detection. Each field maps to
+ * a standard OpenTelemetry `vcs.*` resource attribute.
+ */
+export type VcsAttributes = {
+  /** vcs.provider.name — e.g. "github", "gitlab", "bitbucket". */
+  providerName?: string;
+  /** vcs.owner.name — repository owner / organization. */
+  ownerName?: string;
+  /** vcs.repository.name — short repository name (no owner prefix). */
+  repositoryName?: string;
+  /** vcs.repository.url.full — canonical repository URL. */
+  repositoryUrlFull?: string;
+  /** vcs.ref.head.name — branch or tag name the build was made from. */
+  refHeadName?: string;
+  /** vcs.ref.head.revision — commit SHA the build was made from. */
+  refHeadRevision?: string;
+  /** vcs.change.id — pull/merge request identifier (preview deploys). */
+  changeId?: string;
+};
+
 export type InitOptions = {
   serviceName: string;
   serviceNamespace?: string;
@@ -59,22 +82,7 @@ export type InitOptions = {
    * environment for that attribute. Use this for non-Vercel/Netlify
    * deployments, or when the auto-detected values are wrong.
    */
-  vcs?: {
-    /** vcs.provider.name — e.g. "github", "gitlab", "bitbucket". */
-    providerName?: string;
-    /** vcs.owner.name — repository owner / organization. */
-    ownerName?: string;
-    /** vcs.repository.name — short repository name (no owner prefix). */
-    repositoryName?: string;
-    /** vcs.repository.url.full — canonical repository URL. */
-    repositoryUrlFull?: string;
-    /** vcs.ref.head.name — branch or tag name the build was made from. */
-    refHeadName?: string;
-    /** vcs.ref.head.revision — commit SHA the build was made from. */
-    refHeadRevision?: string;
-    /** vcs.change.id — pull/merge request identifier (preview deploys). */
-    changeId?: string;
-  };
+  vcs?: VcsAttributes;
 
   /**
    * OTLP endpoints to which the generated telemetry should be sent to.

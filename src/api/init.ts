@@ -38,7 +38,7 @@ import { instrumentFetch } from "../instrumentations/http/fetch";
 import { startNavigationInstrumentation } from "../instrumentations/navigation";
 import { merge } from "ts-deepmerge";
 import { initializeTabId } from "../utils/tab-id";
-import { InitOptions, InstrumentationName } from "../types/options";
+import { InitOptions, InstrumentationName, VcsAttributes } from "../types/options";
 
 let hasBeenInitialised: boolean = false;
 
@@ -144,16 +144,6 @@ function initializeResourceAttributes(opts: InitOptions) {
 
   applyVcsResourceAttributes(opts);
 }
-
-type VcsAttributes = {
-  providerName?: string;
-  ownerName?: string;
-  repositoryName?: string;
-  repositoryUrlFull?: string;
-  refHeadName?: string;
-  refHeadRevision?: string;
-  changeId?: string;
-};
 
 function applyVcsResourceAttributes(opts: InitOptions) {
   const vcs = detectVcs(opts);
