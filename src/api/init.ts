@@ -293,15 +293,18 @@ function buildRepositoryUrlFromVercel(
 // Single source of truth for provider↔host mapping. Both `vcsHostForProvider`
 // (Vercel path: provider name is known, derive the canonical host) and
 // `vcsProviderForHost` (Netlify path: only the URL is known, derive the
-// provider) consult this map so adding a provider is one edit.
-const VCS_PROVIDER_HOSTS: Record<string, string> = {
-  github: "github.com",
-  gitlab: "gitlab.com",
-  bitbucket: "bitbucket.org",
+// provider) consult this map so adding a provider is one edit. Each entry is
+// a list of accepted hostnames; the FIRST entry is the canonical host used
+// when building URLs from a provider name. Subsequent entries are exact
+// aliases — we do not match arbitrary subdomains.
+const VCS_PROVIDER_HOSTS: Record<string, readonly string[]> = {
+  github: ["github.com", "gist.github.com"],
+  gitlab: ["gitlab.com"],
+  bitbucket: ["bitbucket.org"],
 };
 
 function vcsHostForProvider(provider: string): string | undefined {
-  return VCS_PROVIDER_HOSTS[provider];
+  return VCS_PROVIDER_HOSTS[provider]?.[0];
 }
 
 function parseRepositoryUrl(
@@ -336,11 +339,8 @@ function parseRepositoryUrl(
 }
 
 function vcsProviderForHost(host: string): string | undefined {
-  for (const provider in VCS_PROVIDER_HOSTS) {
-    const providerHost = VCS_PROVIDER_HOSTS[provider];
-    if (host === providerHost || host.endsWith(`.${providerHost}`)) {
-      return provider;
-    }
+  for (const [provider, hosts] of Object.entries(VCS_PROVIDER_HOSTS)) {
+    if (hosts.includes(host)) return provider;
   }
   return undefined;
 }

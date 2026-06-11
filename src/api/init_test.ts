@@ -574,6 +574,25 @@ describe("init", () => {
       expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBeUndefined();
     });
 
+    it("accepts gist.github.com as a github host alias", () => {
+      vi.stubEnv("NEXT_PUBLIC_REPOSITORY_URL", "https://gist.github.com/owner/abc123");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBe("github");
+      expect(stringAttr(VCS_OWNER_NAME)).toBe("owner");
+    });
+
+    it("rejects arbitrary github.com subdomains", () => {
+      vi.stubEnv("NEXT_PUBLIC_REPOSITORY_URL", "https://evil.github.com/attacker/repo");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_OWNER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBeUndefined();
+    });
+
     it("ignores a Netlify REPOSITORY_URL on an unknown host", () => {
       vi.stubEnv("NEXT_PUBLIC_REPOSITORY_URL", "https://internal-git.example.com/team/app");
       vi.stubEnv("NEXT_PUBLIC_BRANCH", "main");
