@@ -11,6 +11,20 @@ import {
 import { InitOptions, VcsAttributes } from "../types/options";
 import { addAttribute } from "../utils/otel";
 
+// Single source of truth mapping each VcsAttributes field to its OTel
+// resource attribute name. Typed as `Record<keyof VcsAttributes, string>` so
+// adding a field to VcsAttributes without adding an entry here is a compile
+// error — no silent "I forgot to apply that field" bugs.
+const VCS_FIELD_TO_ATTRIBUTE: Record<keyof VcsAttributes, string> = {
+  providerName: VCS_PROVIDER_NAME,
+  ownerName: VCS_OWNER_NAME,
+  repositoryName: VCS_REPOSITORY_NAME,
+  repositoryUrlFull: VCS_REPOSITORY_URL_FULL,
+  refHeadName: VCS_REF_HEAD_NAME,
+  refHeadRevision: VCS_REF_HEAD_REVISION,
+  changeId: VCS_CHANGE_ID,
+};
+
 /**
  * Derive VCS (version control) context from the build environment and apply
  * the resulting `vcs.*` resource attributes to `vars.resource.attributes`.
@@ -21,26 +35,11 @@ import { addAttribute } from "../utils/otel";
  */
 export function applyVcsResourceAttributes(opts: InitOptions) {
   const vcs = detectVcs(opts);
-  if (vcs.providerName) {
-    addAttribute(vars.resource.attributes, VCS_PROVIDER_NAME, vcs.providerName);
-  }
-  if (vcs.ownerName) {
-    addAttribute(vars.resource.attributes, VCS_OWNER_NAME, vcs.ownerName);
-  }
-  if (vcs.repositoryName) {
-    addAttribute(vars.resource.attributes, VCS_REPOSITORY_NAME, vcs.repositoryName);
-  }
-  if (vcs.repositoryUrlFull) {
-    addAttribute(vars.resource.attributes, VCS_REPOSITORY_URL_FULL, vcs.repositoryUrlFull);
-  }
-  if (vcs.refHeadName) {
-    addAttribute(vars.resource.attributes, VCS_REF_HEAD_NAME, vcs.refHeadName);
-  }
-  if (vcs.refHeadRevision) {
-    addAttribute(vars.resource.attributes, VCS_REF_HEAD_REVISION, vcs.refHeadRevision);
-  }
-  if (vcs.changeId) {
-    addAttribute(vars.resource.attributes, VCS_CHANGE_ID, vcs.changeId);
+  for (const field of Object.keys(VCS_FIELD_TO_ATTRIBUTE) as (keyof VcsAttributes)[]) {
+    const value = vcs[field];
+    if (value) {
+      addAttribute(vars.resource.attributes, VCS_FIELD_TO_ATTRIBUTE[field], value);
+    }
   }
 }
 
