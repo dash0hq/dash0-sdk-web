@@ -181,13 +181,17 @@ function applyVcsResourceAttributes(opts: InitOptions) {
 }
 
 function detectVcs(opts: InitOptions): VcsAttributes {
+  // opts.vcs manual overrides always win, even when auto-detection is disabled.
+  // This lets callers on non-Vercel/Netlify platforms supply context explicitly
+  // while still opting out of any env-var reading.
+  const override = opts.vcs ?? {};
+
   if (opts.disableVcsDetection) {
-    return {};
+    return override;
   }
 
   const vercel = detectVcsFromVercel();
   const netlify = detectVcsFromNetlify();
-  const override = opts.vcs ?? {};
 
   return {
     providerName: override.providerName ?? vercel.providerName ?? netlify.providerName,

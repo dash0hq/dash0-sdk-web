@@ -497,6 +497,46 @@ describe("init", () => {
       expect(stringAttr(VCS_REF_HEAD_REVISION)).toBeUndefined();
     });
 
+    it("disableVcsDetection: true still applies opts.vcs manual overrides", () => {
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_PROVIDER", "github");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER", "dash0hq");
+
+      init({
+        ...baseOptions,
+        disableVcsDetection: true,
+        vcs: { providerName: "gitlab", refHeadName: "release/1.0" },
+      });
+
+      // env-var values are suppressed
+      expect(stringAttr(VCS_OWNER_NAME)).toBeUndefined();
+      // manual overrides still win
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBe("gitlab");
+      expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("release/1.0");
+    });
+
+    it("applies opts.vcs fields as the sole source when no env vars are set", () => {
+      init({
+        ...baseOptions,
+        vcs: {
+          providerName: "github",
+          ownerName: "my-org",
+          repositoryName: "my-repo",
+          repositoryUrlFull: "https://github.com/my-org/my-repo",
+          refHeadName: "main",
+          refHeadRevision: "deadbeef",
+          changeId: "7",
+        },
+      });
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBe("github");
+      expect(stringAttr(VCS_OWNER_NAME)).toBe("my-org");
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBe("my-repo");
+      expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBe("https://github.com/my-org/my-repo");
+      expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("main");
+      expect(stringAttr(VCS_REF_HEAD_REVISION)).toBe("deadbeef");
+      expect(stringAttr(VCS_CHANGE_ID)).toBe("7");
+    });
+
     it("emits nothing when no env vars and no opts.vcs are provided", () => {
       init(baseOptions);
 

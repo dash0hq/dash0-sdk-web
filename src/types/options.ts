@@ -46,6 +46,10 @@ export type InitOptions = {
    *
    * Pairing telemetry with the git commit + branch the build came from lets
    * Dash0 Agent answer questions like "which PR introduced this error?".
+   *
+   * Note: any fields supplied via `vcs` are still applied even when this flag
+   * is `true` — manual overrides always win. Set this flag when you want to
+   * prevent env-var reads entirely but still supply context explicitly.
    */
   disableVcsDetection?: boolean;
 
