@@ -443,7 +443,8 @@ describe("init", () => {
     // detectVcsFromVercel is actually wired up.
     const FRAMEWORK_PREFIX_SAMPLES: Array<[label: string, prefix: string]> = [
       ["Next.js", "NEXT_PUBLIC_"],
-      ["Nuxt", "NUXT_ENV_"],
+      ["Nuxt 3", "NUXT_PUBLIC_"],
+      ["Nuxt 2", "NUXT_ENV_"],
       ["Create React App", "REACT_APP_"],
       ["Gatsby", "GATSBY_"],
       ["Vite", "VITE_"],
@@ -701,7 +702,8 @@ describe("init", () => {
     // `FrameworkPrefix` union in `./browser-env`.
     const FRAMEWORK_PREFIX_SAMPLES: Array<[label: string, prefix: string]> = [
       ["Next.js", "NEXT_PUBLIC_"],
-      ["Nuxt", "NUXT_ENV_"],
+      ["Nuxt 3", "NUXT_PUBLIC_"],
+      ["Nuxt 2", "NUXT_ENV_"],
       ["Create React App", "REACT_APP_"],
       ["Gatsby", "GATSBY_"],
       ["Vite", "VITE_"],
