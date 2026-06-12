@@ -32,6 +32,7 @@ import { startNavigationInstrumentation } from "../instrumentations/navigation";
 import { merge } from "ts-deepmerge";
 import { initializeTabId } from "../utils/tab-id";
 import { InitOptions, InstrumentationName } from "../types/options";
+import { applyVcsResourceAttributes } from "./vcs";
 
 let hasBeenInitialised: boolean = false;
 
@@ -134,6 +135,8 @@ function initializeResourceAttributes(opts: InitOptions) {
   if (deploymentId) {
     addAttribute(vars.resource.attributes, DEPLOYMENT_ID, deploymentId);
   }
+
+  applyVcsResourceAttributes(opts);
 }
 
 function initializeSignalAttributes(opts: InitOptions) {

@@ -6,6 +6,15 @@ export const DEPLOYMENT_ENVIRONMENT_NAME = "deployment.environment.name";
 export const DEPLOYMENT_NAME = "deployment.name";
 export const DEPLOYMENT_ID = "deployment.id";
 
+// VCS Resource Attribute Keys
+export const VCS_PROVIDER_NAME = "vcs.provider.name";
+export const VCS_OWNER_NAME = "vcs.owner.name";
+export const VCS_REPOSITORY_NAME = "vcs.repository.name";
+export const VCS_REPOSITORY_URL_FULL = "vcs.repository.url.full";
+export const VCS_REF_HEAD_NAME = "vcs.ref.head.name";
+export const VCS_REF_HEAD_REVISION = "vcs.ref.head.revision";
+export const VCS_CHANGE_ID = "vcs.change.id";
+
 // Misc Signal Attribute Keys
 export const EVENT_NAME = "event.name";
 export const WEB_EVENT_TITLE = "dash0.web.event.title";
