@@ -186,15 +186,52 @@ The legacy `propagateTraceHeadersCorsURLs` configuration is still supported but 
 Certain configuration values can be auto-detected if using the module version of the Dash0 Web SDK in combination with
 certain cloud providers.
 
-#### Vercel
+#### Vercel — environment and deployment
 
-These functionalities requires the use of Next.js:
+The SDK detects `environment`, `deploymentName`, and `deploymentId` from Vercel's auto-prefixed system env vars. The same 9 framework prefixes listed under [VCS context](#vcs-version-control-context) are supported — the SDK picks up whichever variant the bundler substituted at build time.
 
-| Configuration Key | Source                                                                                                                                       |
-| :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| environment       | [NEXT_PUBLIC_VERCEL_ENV](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_ENV)               |
-| deploymentName    | [NEXT_PUBLIC_VERCEL_TARGET_ENV](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_TARGET_ENV) |
-| deploymentId      | [NEXT_PUBLIC_VERCEL_BRANCH_URL](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_BRANCH_URL) |
+| Configuration Key | Vercel system var (auto-prefixed per framework)                                                                                    |
+| :---------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| environment       | [`VERCEL_ENV`](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_ENV)               |
+| deploymentName    | [`VERCEL_TARGET_ENV`](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_TARGET_ENV) |
+| deploymentId      | [`VERCEL_BRANCH_URL`](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_BRANCH_URL) |
+
+#### VCS (version control) context
+
+The SDK auto-detects VCS context from the build environment and applies it as OpenTelemetry [`vcs.*`](https://opentelemetry.io/docs/specs/semconv/registry/attributes/vcs/) resource attributes on every signal. Pairing telemetry with the git commit, branch, and PR the build came from lets Dash0 Agent answer questions like _"which PR introduced this error?"_ out of the box.
+
+**Detected attributes:**
+
+| Resource attribute        | Vercel source                | Netlify source   |
+| :------------------------ | :--------------------------- | :--------------- |
+| `vcs.provider.name`       | `VERCEL_GIT_PROVIDER`        | derived from URL |
+| `vcs.owner.name`          | `VERCEL_GIT_REPO_OWNER`      | derived from URL |
+| `vcs.repository.name`     | `VERCEL_GIT_REPO_SLUG`       | derived from URL |
+| `vcs.repository.url.full` | constructed from above       | `REPOSITORY_URL` |
+| `vcs.ref.head.name`       | `VERCEL_GIT_COMMIT_REF`      | `BRANCH`         |
+| `vcs.ref.head.revision`   | `VERCEL_GIT_COMMIT_SHA`      | `COMMIT_REF`     |
+| `vcs.change.id`           | `VERCEL_GIT_PULL_REQUEST_ID` | `REVIEW_ID`      |
+
+**Supported framework prefixes:**
+
+The SDK enumerates the env vars above under every framework prefix the bundler exposes to the browser. On Vercel these prefixes are applied [automatically](https://vercel.com/docs/environment-variables/framework-environment-variables). On Netlify (and other CI/CD platforms that do not auto-prefix) you can expose the raw build env vars under your framework's prefix to get the same auto-detection — e.g. set `NEXT_PUBLIC_REPOSITORY_URL = $REPOSITORY_URL` in your Netlify build env, or the equivalent for your bundler.
+
+| Framework                                | Prefix           |
+| :--------------------------------------- | :--------------- |
+| Next.js / Blitz.js                       | `NEXT_PUBLIC_`   |
+| Nuxt 3                                   | `NUXT_PUBLIC_`   |
+| Nuxt 2                                   | `NUXT_ENV_`      |
+| Create React App                         | `REACT_APP_`     |
+| Gatsby                                   | `GATSBY_`        |
+| Vite / SvelteKit (v0) / SolidStart       | `VITE_`          |
+| Astro / Hydrogen (v1) / modern SvelteKit | `PUBLIC_`        |
+| Vue CLI                                  | `VUE_APP_`       |
+| RedwoodJS                                | `REDWOOD_ENV_`   |
+| Sanity Studio                            | `SANITY_STUDIO_` |
+
+> **Bundler caveat for Vite-based setups:** Vite reads env vars via `import.meta.env.VITE_*` by default and does not substitute `process.env.VITE_*` in source code. The SDK relies on `process.env.VITE_*` literal accessors, so Vite users on Vercel get auto-detection (Vercel applies `VITE_` prefixing inside the build environment before Vite's substitution layer runs). Vite users on other platforms need to add a `define` entry or `process.env` polyfill to their `vite.config.ts` to substitute the relevant literals — or use the [`vcs`](#vcs-context) manual override.
+
+**Detection precedence**, per attribute: `vcs` (manual override) → Vercel env var → Netlify env var → unset. Set [`vcs`](#vcs-context) to override any auto-detected value, or [`disableVcsDetection`](#vcs-context) to disable env-var reads entirely.
 
 ### Configuration Overview
 
@@ -290,6 +327,31 @@ These functionalities requires the use of Next.js:
   Allows the configuration of additional attributes to be included with any transmitted event.
   See [AttributeValueType](https://github.com/dash0hq/dash0-sdk-web/blob/main/src/utils/otel/attributes.ts#L4)
   and [AnyValue](https://github.com/dash0hq/dash0-sdk-web/blob/main/types/otlp.d.ts#L3) for detailed types.
+
+#### VCS context
+
+The SDK auto-detects VCS (version control) context from the build environment and applies it as `vcs.*` resource attributes — see [Configuration auto-detection > VCS](#vcs-version-control-context) for the full list of detected attributes and supported framework prefixes.
+
+- **Disable VCS Detection**<br>
+  key: `disableVcsDetection`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  When `true`, the SDK does not read any build env vars to derive `vcs.*` attributes. Any values supplied via `vcs` are still applied — manual overrides always win.
+
+- **VCS Manual Override**<br>
+  key: `vcs`<br>
+  type: `VcsAttributes`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  Manually specify VCS context. Each provided field overrides the auto-detected value for that attribute. Use this for platforms without supported auto-detection, or when the auto-detected values are wrong. Supported fields:
+  - `providerName` — maps to `vcs.provider.name`
+  - `ownerName` — maps to `vcs.owner.name`
+  - `repositoryName` — maps to `vcs.repository.name`
+  - `repositoryUrlFull` — maps to `vcs.repository.url.full`
+  - `refHeadName` — maps to `vcs.ref.head.name` (branch or tag)
+  - `refHeadRevision` — maps to `vcs.ref.head.revision` (commit SHA)
+  - `changeId` — maps to `vcs.change.id` (PR / MR identifier)
 
 #### Telemetry Transmission
 

@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InitOptions, InstrumentationName } from "../types/options";
 import { PropagatorConfig, Vars } from "../vars";
 import {
+  DEPLOYMENT_ENVIRONMENT_NAME,
+  DEPLOYMENT_ID,
+  DEPLOYMENT_NAME,
   SERVICE_NAME,
   SERVICE_NAMESPACE,
   VCS_CHANGE_ID,
@@ -440,7 +443,8 @@ describe("init", () => {
     // detectVcsFromVercel is actually wired up.
     const FRAMEWORK_PREFIX_SAMPLES: Array<[label: string, prefix: string]> = [
       ["Next.js", "NEXT_PUBLIC_"],
-      ["Nuxt", "NUXT_ENV_"],
+      ["Nuxt 3", "NUXT_PUBLIC_"],
+      ["Nuxt 2", "NUXT_ENV_"],
       ["Create React App", "REACT_APP_"],
       ["Gatsby", "GATSBY_"],
       ["Vite", "VITE_"],
@@ -682,6 +686,71 @@ describe("init", () => {
       expect(stringAttr(VCS_PROVIDER_NAME)).toBeUndefined();
       expect(stringAttr(VCS_OWNER_NAME)).toBeUndefined();
       expect(stringAttr(VCS_REPOSITORY_NAME)).toBeUndefined();
+    });
+  });
+
+  describe("environment + deployment auto-detection", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    const stringAttr = (key: string) => vars.resource.attributes.find((attr) => attr.key === key)?.value.stringValue;
+
+    // The 9 framework prefixes Vercel auto-prefixes its `VERCEL_*` system
+    // vars under (per https://vercel.com/docs/environment-variables/framework-environment-variables).
+    // Same matrix the VCS detection uses, sourced from the shared
+    // `FrameworkPrefix` union in `./browser-env`.
+    const FRAMEWORK_PREFIX_SAMPLES: Array<[label: string, prefix: string]> = [
+      ["Next.js", "NEXT_PUBLIC_"],
+      ["Nuxt 3", "NUXT_PUBLIC_"],
+      ["Nuxt 2", "NUXT_ENV_"],
+      ["Create React App", "REACT_APP_"],
+      ["Gatsby", "GATSBY_"],
+      ["Vite", "VITE_"],
+      ["Astro / SvelteKit / Hydrogen", "PUBLIC_"],
+      ["Vue CLI", "VUE_APP_"],
+      ["RedwoodJS", "REDWOOD_ENV_"],
+      ["Sanity Studio", "SANITY_STUDIO_"],
+    ];
+
+    it.each(FRAMEWORK_PREFIX_SAMPLES)(
+      "derives environment + deployment resource attributes from %s framework prefix (%s)",
+      (_label, prefix) => {
+        vi.stubEnv(`${prefix}VERCEL_ENV`, "production");
+        vi.stubEnv(`${prefix}VERCEL_TARGET_ENV`, "production");
+        vi.stubEnv(`${prefix}VERCEL_BRANCH_URL`, "my-site-git-main.vercel.app");
+
+        init(baseOptions);
+
+        expect(stringAttr(DEPLOYMENT_ENVIRONMENT_NAME)).toBe("production");
+        expect(stringAttr(DEPLOYMENT_NAME)).toBe("production");
+        expect(stringAttr(DEPLOYMENT_ID)).toBe("my-site-git-main.vercel.app");
+      }
+    );
+
+    it("opts.environment / opts.deploymentName / opts.deploymentId override env-var detection", () => {
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", "from-env");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_TARGET_ENV", "from-env");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_BRANCH_URL", "from-env");
+
+      init({
+        ...baseOptions,
+        environment: "manual-environment",
+        deploymentName: "manual-deployment-name",
+        deploymentId: "manual-deployment-id",
+      });
+
+      expect(stringAttr(DEPLOYMENT_ENVIRONMENT_NAME)).toBe("manual-environment");
+      expect(stringAttr(DEPLOYMENT_NAME)).toBe("manual-deployment-name");
+      expect(stringAttr(DEPLOYMENT_ID)).toBe("manual-deployment-id");
+    });
+
+    it("emits no environment/deployment attributes when neither env vars nor opts are set", () => {
+      init(baseOptions);
+
+      expect(stringAttr(DEPLOYMENT_ENVIRONMENT_NAME)).toBeUndefined();
+      expect(stringAttr(DEPLOYMENT_NAME)).toBeUndefined();
+      expect(stringAttr(DEPLOYMENT_ID)).toBeUndefined();
     });
   });
 });
