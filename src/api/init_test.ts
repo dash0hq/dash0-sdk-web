@@ -434,6 +434,63 @@ describe("init", () => {
       expect(stringAttr(VCS_CHANGE_ID)).toBe("42");
     });
 
+    // The 9 framework prefixes Vercel auto-prefixes its VERCEL_GIT_* system
+    // vars under (per https://vercel.com/docs/environment-variables/framework-environment-variables).
+    // A passing test for each confirms the literal-accessor enumeration in
+    // detectVcsFromVercel is actually wired up.
+    const FRAMEWORK_PREFIX_SAMPLES: Array<[label: string, prefix: string]> = [
+      ["Next.js", "NEXT_PUBLIC_"],
+      ["Nuxt", "NUXT_ENV_"],
+      ["Create React App", "REACT_APP_"],
+      ["Gatsby", "GATSBY_"],
+      ["Vite", "VITE_"],
+      ["Astro / SvelteKit / Hydrogen", "PUBLIC_"],
+      ["Vue CLI", "VUE_APP_"],
+      ["RedwoodJS", "REDWOOD_ENV_"],
+      ["Sanity Studio", "SANITY_STUDIO_"],
+    ];
+
+    it.each(FRAMEWORK_PREFIX_SAMPLES)(
+      "derives Vercel vcs attributes from %s framework prefix (%s)",
+      (_label, prefix) => {
+        vi.stubEnv(`${prefix}VERCEL_GIT_PROVIDER`, "github");
+        vi.stubEnv(`${prefix}VERCEL_GIT_REPO_OWNER`, "dash0hq");
+        vi.stubEnv(`${prefix}VERCEL_GIT_REPO_SLUG`, "dash0");
+        vi.stubEnv(`${prefix}VERCEL_GIT_COMMIT_REF`, "main");
+        vi.stubEnv(`${prefix}VERCEL_GIT_COMMIT_SHA`, "abc123");
+        vi.stubEnv(`${prefix}VERCEL_GIT_PULL_REQUEST_ID`, "42");
+
+        init(baseOptions);
+
+        expect(stringAttr(VCS_PROVIDER_NAME)).toBe("github");
+        expect(stringAttr(VCS_OWNER_NAME)).toBe("dash0hq");
+        expect(stringAttr(VCS_REPOSITORY_NAME)).toBe("dash0");
+        expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBe("https://github.com/dash0hq/dash0");
+        expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("main");
+        expect(stringAttr(VCS_REF_HEAD_REVISION)).toBe("abc123");
+        expect(stringAttr(VCS_CHANGE_ID)).toBe("42");
+      }
+    );
+
+    it.each(FRAMEWORK_PREFIX_SAMPLES)(
+      "derives Netlify vcs attributes from %s framework prefix (%s)",
+      (_label, prefix) => {
+        vi.stubEnv(`${prefix}REPOSITORY_URL`, "https://github.com/dash0hq/dash0");
+        vi.stubEnv(`${prefix}BRANCH`, "feature/x");
+        vi.stubEnv(`${prefix}COMMIT_REF`, "def456");
+        vi.stubEnv(`${prefix}REVIEW_ID`, "99");
+
+        init(baseOptions);
+
+        expect(stringAttr(VCS_PROVIDER_NAME)).toBe("github");
+        expect(stringAttr(VCS_OWNER_NAME)).toBe("dash0hq");
+        expect(stringAttr(VCS_REPOSITORY_NAME)).toBe("dash0");
+        expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("feature/x");
+        expect(stringAttr(VCS_REF_HEAD_REVISION)).toBe("def456");
+        expect(stringAttr(VCS_CHANGE_ID)).toBe("99");
+      }
+    );
+
     it("derives vcs resource attributes from Netlify env vars (parsed REPOSITORY_URL)", () => {
       vi.stubEnv("NEXT_PUBLIC_REPOSITORY_URL", "https://github.com/dash0hq/dash0.git");
       vi.stubEnv("NEXT_PUBLIC_BRANCH", "feature/x");

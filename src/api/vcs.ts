@@ -11,6 +11,43 @@ import {
 import { InitOptions, VcsAttributes } from "../types/options";
 import { addAttribute } from "../utils/otel";
 
+// Module-local typing for the `process` global. The SDK does not depend on
+// @types/node, and bundler substitution requires literal `process.env.NAME`
+// accessors (dot notation, not bracket lookup). We enumerate the exact set of
+// env var names the readers below access via template-literal types — typos
+// are caught at compile time, and `noPropertyAccessFromIndexSignature` does
+// not fire because each key is a known union member, not an index signature.
+//
+// Adding a new framework prefix here automatically permits every combination
+// with every known suffix. Adding a vendor suffix permits every combination
+// with every known prefix.
+type FrameworkPrefix =
+  | "NEXT_PUBLIC_"
+  | "NUXT_ENV_"
+  | "REACT_APP_"
+  | "GATSBY_"
+  | "VITE_"
+  | "PUBLIC_"
+  | "VUE_APP_"
+  | "REDWOOD_ENV_"
+  | "SANITY_STUDIO_";
+
+type VercelGitSuffix =
+  | "VERCEL_GIT_PROVIDER"
+  | "VERCEL_GIT_REPO_OWNER"
+  | "VERCEL_GIT_REPO_SLUG"
+  | "VERCEL_GIT_COMMIT_REF"
+  | "VERCEL_GIT_COMMIT_SHA"
+  | "VERCEL_GIT_PULL_REQUEST_ID";
+
+type NetlifyGitSuffix = "REPOSITORY_URL" | "BRANCH" | "COMMIT_REF" | "REVIEW_ID";
+
+type BrowserBuildEnvKey = `${FrameworkPrefix}${VercelGitSuffix | NetlifyGitSuffix}`;
+
+type BrowserBuildEnv = { readonly [K in BrowserBuildEnvKey]?: string };
+
+declare const process: { env?: BrowserBuildEnv } | undefined;
+
 // Single source of truth mapping each VcsAttributes field to its OTel
 // resource attribute name. Typed as `Record<keyof VcsAttributes, string>` so
 // adding a field to VcsAttributes without adding an entry here is a compile
@@ -67,13 +104,27 @@ function detectVcs(opts: InitOptions): VcsAttributes {
   };
 }
 
+// Frameworks expose env vars to the browser bundle using a per-framework
+// prefix (Next.js `NEXT_PUBLIC_*`, Vite `VITE_*`, etc.). For each known
+// vendor suffix (e.g. Vercel's `VERCEL_GIT_PROVIDER`, Netlify's
+// `REPOSITORY_URL`) we enumerate the prefixed variants below.
+//
+// IMPORTANT: each `process.env.NAME` MUST be a LITERAL accessor. Webpack
+// DefinePlugin, Next.js, Gatsby, and equivalents substitute env vars at
+// build time only when they see the literal form. Dynamic lookups like
+// `process.env[name]` or iterating a string array are NOT substituted —
+// they would resolve to `undefined` in the browser bundle.
+//
+// The 9 prefixes below are the framework presets Vercel auto-prefixes
+// `VERCEL_*` system vars under (https://vercel.com/docs/environment-variables/framework-environment-variables).
+// Users on platforms without auto-prefixing (Netlify, Cloudflare Pages, custom
+// CI) can manually expose any env var under any of these prefixes and get
+// the same auto-detection.
+//
+// Adding a new framework prefix = one new literal accessor per attribute in
+// each `detectVcsFrom*` function below.
+
 function detectVcsFromVercel(): VcsAttributes {
-  // Vercel exposes its system git env vars to the browser bundle by also
-  // emitting `NEXT_PUBLIC_VERCEL_GIT_*` variants. Each read goes through the
-  // literal `process.env.NAME` form on purpose: webpack DefinePlugin (and
-  // friends) replace these at build time only when they see the literal
-  // accessor — a dynamic lookup like `process.env[name]` is not substituted
-  // and would resolve to `undefined` in the browser.
   let provider: string | undefined;
   let owner: string | undefined;
   let repo: string | undefined;
@@ -81,20 +132,74 @@ function detectVcsFromVercel(): VcsAttributes {
   let revision: string | undefined;
   let changeId: string | undefined;
   try {
-    // @ts-expect-error -- literal accessor required for build-time replacement
-    provider = process?.env?.NEXT_PUBLIC_VERCEL_GIT_PROVIDER;
-    // @ts-expect-error -- literal accessor required for build-time replacement
-    owner = process?.env?.NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER;
-    // @ts-expect-error -- literal accessor required for build-time replacement
-    repo = process?.env?.NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG;
-    // @ts-expect-error -- literal accessor required for build-time replacement
-    ref = process?.env?.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF;
-    // @ts-expect-error -- literal accessor required for build-time replacement
-    revision = process?.env?.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA;
-    // @ts-expect-error -- literal accessor required for build-time replacement
-    changeId = process?.env?.NEXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID;
+    provider = pickFirstString(
+      process?.env?.NEXT_PUBLIC_VERCEL_GIT_PROVIDER,
+      process?.env?.NUXT_ENV_VERCEL_GIT_PROVIDER,
+      process?.env?.REACT_APP_VERCEL_GIT_PROVIDER,
+      process?.env?.GATSBY_VERCEL_GIT_PROVIDER,
+      process?.env?.VITE_VERCEL_GIT_PROVIDER,
+      process?.env?.PUBLIC_VERCEL_GIT_PROVIDER,
+      process?.env?.VUE_APP_VERCEL_GIT_PROVIDER,
+      process?.env?.REDWOOD_ENV_VERCEL_GIT_PROVIDER,
+      process?.env?.SANITY_STUDIO_VERCEL_GIT_PROVIDER
+    );
+    owner = pickFirstString(
+      process?.env?.NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER,
+      process?.env?.NUXT_ENV_VERCEL_GIT_REPO_OWNER,
+      process?.env?.REACT_APP_VERCEL_GIT_REPO_OWNER,
+      process?.env?.GATSBY_VERCEL_GIT_REPO_OWNER,
+      process?.env?.VITE_VERCEL_GIT_REPO_OWNER,
+      process?.env?.PUBLIC_VERCEL_GIT_REPO_OWNER,
+      process?.env?.VUE_APP_VERCEL_GIT_REPO_OWNER,
+      process?.env?.REDWOOD_ENV_VERCEL_GIT_REPO_OWNER,
+      process?.env?.SANITY_STUDIO_VERCEL_GIT_REPO_OWNER
+    );
+    repo = pickFirstString(
+      process?.env?.NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG,
+      process?.env?.NUXT_ENV_VERCEL_GIT_REPO_SLUG,
+      process?.env?.REACT_APP_VERCEL_GIT_REPO_SLUG,
+      process?.env?.GATSBY_VERCEL_GIT_REPO_SLUG,
+      process?.env?.VITE_VERCEL_GIT_REPO_SLUG,
+      process?.env?.PUBLIC_VERCEL_GIT_REPO_SLUG,
+      process?.env?.VUE_APP_VERCEL_GIT_REPO_SLUG,
+      process?.env?.REDWOOD_ENV_VERCEL_GIT_REPO_SLUG,
+      process?.env?.SANITY_STUDIO_VERCEL_GIT_REPO_SLUG
+    );
+    ref = pickFirstString(
+      process?.env?.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF,
+      process?.env?.NUXT_ENV_VERCEL_GIT_COMMIT_REF,
+      process?.env?.REACT_APP_VERCEL_GIT_COMMIT_REF,
+      process?.env?.GATSBY_VERCEL_GIT_COMMIT_REF,
+      process?.env?.VITE_VERCEL_GIT_COMMIT_REF,
+      process?.env?.PUBLIC_VERCEL_GIT_COMMIT_REF,
+      process?.env?.VUE_APP_VERCEL_GIT_COMMIT_REF,
+      process?.env?.REDWOOD_ENV_VERCEL_GIT_COMMIT_REF,
+      process?.env?.SANITY_STUDIO_VERCEL_GIT_COMMIT_REF
+    );
+    revision = pickFirstString(
+      process?.env?.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
+      process?.env?.NUXT_ENV_VERCEL_GIT_COMMIT_SHA,
+      process?.env?.REACT_APP_VERCEL_GIT_COMMIT_SHA,
+      process?.env?.GATSBY_VERCEL_GIT_COMMIT_SHA,
+      process?.env?.VITE_VERCEL_GIT_COMMIT_SHA,
+      process?.env?.PUBLIC_VERCEL_GIT_COMMIT_SHA,
+      process?.env?.VUE_APP_VERCEL_GIT_COMMIT_SHA,
+      process?.env?.REDWOOD_ENV_VERCEL_GIT_COMMIT_SHA,
+      process?.env?.SANITY_STUDIO_VERCEL_GIT_COMMIT_SHA
+    );
+    changeId = pickFirstString(
+      process?.env?.NEXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID,
+      process?.env?.NUXT_ENV_VERCEL_GIT_PULL_REQUEST_ID,
+      process?.env?.REACT_APP_VERCEL_GIT_PULL_REQUEST_ID,
+      process?.env?.GATSBY_VERCEL_GIT_PULL_REQUEST_ID,
+      process?.env?.VITE_VERCEL_GIT_PULL_REQUEST_ID,
+      process?.env?.PUBLIC_VERCEL_GIT_PULL_REQUEST_ID,
+      process?.env?.VUE_APP_VERCEL_GIT_PULL_REQUEST_ID,
+      process?.env?.REDWOOD_ENV_VERCEL_GIT_PULL_REQUEST_ID,
+      process?.env?.SANITY_STUDIO_VERCEL_GIT_PULL_REQUEST_ID
+    );
   } catch (_ignored) {
-    // process is not defined (or some bundler shimmed it strangely) — skip.
+    // process is not defined (or a bundler shimmed it strangely) — skip.
   }
 
   return {
@@ -109,23 +214,61 @@ function detectVcsFromVercel(): VcsAttributes {
 }
 
 function detectVcsFromNetlify(): VcsAttributes {
-  // Netlify exposes read-only build env vars that the user must surface to the
-  // browser bundle themselves — for Next.js that means setting
-  // `NEXT_PUBLIC_*` variants (e.g. `NEXT_PUBLIC_REPOSITORY_URL = $REPOSITORY_URL`).
-  // Same `process.env.NAME` literal-accessor requirement as the Vercel path.
+  // Netlify exposes read-only build env vars (REPOSITORY_URL, BRANCH,
+  // COMMIT_REF, REVIEW_ID) but does not auto-prefix them for browser
+  // exposure. Users must surface them via their framework's prefix
+  // convention themselves (e.g. `NEXT_PUBLIC_REPOSITORY_URL = $REPOSITORY_URL`
+  // for Next.js, `VITE_REPOSITORY_URL = $REPOSITORY_URL` for Vite, etc.).
+  // We enumerate the same 9 framework prefixes as the Vercel path above.
   let repositoryUrl: string | undefined;
   let branch: string | undefined;
   let commit: string | undefined;
   let reviewId: string | undefined;
   try {
-    // @ts-expect-error -- literal accessor required for build-time replacement
-    repositoryUrl = process?.env?.NEXT_PUBLIC_REPOSITORY_URL;
-    // @ts-expect-error -- literal accessor required for build-time replacement
-    branch = process?.env?.NEXT_PUBLIC_BRANCH;
-    // @ts-expect-error -- literal accessor required for build-time replacement
-    commit = process?.env?.NEXT_PUBLIC_COMMIT_REF;
-    // @ts-expect-error -- literal accessor required for build-time replacement
-    reviewId = process?.env?.NEXT_PUBLIC_REVIEW_ID;
+    repositoryUrl = pickFirstString(
+      process?.env?.NEXT_PUBLIC_REPOSITORY_URL,
+      process?.env?.NUXT_ENV_REPOSITORY_URL,
+      process?.env?.REACT_APP_REPOSITORY_URL,
+      process?.env?.GATSBY_REPOSITORY_URL,
+      process?.env?.VITE_REPOSITORY_URL,
+      process?.env?.PUBLIC_REPOSITORY_URL,
+      process?.env?.VUE_APP_REPOSITORY_URL,
+      process?.env?.REDWOOD_ENV_REPOSITORY_URL,
+      process?.env?.SANITY_STUDIO_REPOSITORY_URL
+    );
+    branch = pickFirstString(
+      process?.env?.NEXT_PUBLIC_BRANCH,
+      process?.env?.NUXT_ENV_BRANCH,
+      process?.env?.REACT_APP_BRANCH,
+      process?.env?.GATSBY_BRANCH,
+      process?.env?.VITE_BRANCH,
+      process?.env?.PUBLIC_BRANCH,
+      process?.env?.VUE_APP_BRANCH,
+      process?.env?.REDWOOD_ENV_BRANCH,
+      process?.env?.SANITY_STUDIO_BRANCH
+    );
+    commit = pickFirstString(
+      process?.env?.NEXT_PUBLIC_COMMIT_REF,
+      process?.env?.NUXT_ENV_COMMIT_REF,
+      process?.env?.REACT_APP_COMMIT_REF,
+      process?.env?.GATSBY_COMMIT_REF,
+      process?.env?.VITE_COMMIT_REF,
+      process?.env?.PUBLIC_COMMIT_REF,
+      process?.env?.VUE_APP_COMMIT_REF,
+      process?.env?.REDWOOD_ENV_COMMIT_REF,
+      process?.env?.SANITY_STUDIO_COMMIT_REF
+    );
+    reviewId = pickFirstString(
+      process?.env?.NEXT_PUBLIC_REVIEW_ID,
+      process?.env?.NUXT_ENV_REVIEW_ID,
+      process?.env?.REACT_APP_REVIEW_ID,
+      process?.env?.GATSBY_REVIEW_ID,
+      process?.env?.VITE_REVIEW_ID,
+      process?.env?.PUBLIC_REVIEW_ID,
+      process?.env?.VUE_APP_REVIEW_ID,
+      process?.env?.REDWOOD_ENV_REVIEW_ID,
+      process?.env?.SANITY_STUDIO_REVIEW_ID
+    );
   } catch (_ignored) {
     // process is not defined — skip.
   }
@@ -140,6 +283,13 @@ function detectVcsFromNetlify(): VcsAttributes {
     refHeadRevision: commit,
     changeId: reviewId,
   };
+}
+
+function pickFirstString(...values: (string | undefined)[]): string | undefined {
+  for (const value of values) {
+    if (value) return value;
+  }
+  return undefined;
 }
 
 function buildRepositoryUrlFromVercel(
