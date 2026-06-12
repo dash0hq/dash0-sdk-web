@@ -219,7 +219,8 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
 | Framework                                | Prefix           |
 | :--------------------------------------- | :--------------- |
 | Next.js / Blitz.js                       | `NEXT_PUBLIC_`   |
-| Nuxt                                     | `NUXT_ENV_`      |
+| Nuxt 3                                   | `NUXT_PUBLIC_`   |
+| Nuxt 2                                   | `NUXT_ENV_`      |
 | Create React App                         | `REACT_APP_`     |
 | Gatsby                                   | `GATSBY_`        |
 | Vite / SvelteKit (v0) / SolidStart       | `VITE_`          |
@@ -227,6 +228,8 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
 | Vue CLI                                  | `VUE_APP_`       |
 | RedwoodJS                                | `REDWOOD_ENV_`   |
 | Sanity Studio                            | `SANITY_STUDIO_` |
+
+> **Bundler caveat for Vite-based setups:** Vite reads env vars via `import.meta.env.VITE_*` by default and does not substitute `process.env.VITE_*` in source code. The SDK relies on `process.env.VITE_*` literal accessors, so Vite users on Vercel get auto-detection (Vercel applies `VITE_` prefixing inside the build environment before Vite's substitution layer runs). Vite users on other platforms need to add a `define` entry or `process.env` polyfill to their `vite.config.ts` to substitute the relevant literals — or use the [`vcs`](#vcs-context) manual override.
 
 **Detection precedence**, per attribute: `vcs` (manual override) → Vercel env var → Netlify env var → unset. Set [`vcs`](#vcs-context) to override any auto-detected value, or [`disableVcsDetection`](#vcs-context) to disable env-var reads entirely.
 

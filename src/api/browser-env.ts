@@ -15,15 +15,31 @@
 // a suffix is a one-line edit to the appropriate suffix union.
 
 /**
- * Framework prefixes that bundlers expose to the browser bundle. Vercel
- * auto-prefixes its `VERCEL_*` system vars under each of these (per
- * https://vercel.com/docs/environment-variables/framework-environment-variables).
+ * Framework prefixes the SDK reads as literal `process.env.{PREFIX}{SUFFIX}`
+ * accessors. Vercel auto-prefixes its `VERCEL_*` system vars under each
+ * (per https://vercel.com/docs/environment-variables/framework-environment-variables).
  * Users on platforms without auto-prefixing (Netlify, Cloudflare Pages,
  * custom CI) can expose env vars under any of these prefixes to get the
  * same detection.
+ *
+ * Caveat: a prefix being listed here means the SDK *will read* a literal
+ * `process.env.{PREFIX}_X` accessor — it does not guarantee the consumer's
+ * bundler will substitute that accessor. Webpack-based bundlers (Next.js,
+ * Gatsby, CRA) substitute `process.env.X` literals by default. Vite reads
+ * env vars via `import.meta.env.VITE_*` by default; for `process.env.VITE_*`
+ * to be substituted in a Vite build the consumer must add
+ * `define: { 'process.env.VITE_X': JSON.stringify(...) }` to their Vite
+ * config, or use a `process.env` polyfill plugin. When deploying to Vercel
+ * the `VITE_VERCEL_*` substitution happens inside the build environment, so
+ * Vite + Vercel works out of the box; Vite users on other platforms need to
+ * surface env vars via their own bundler config.
+ *
+ * Keep `FRAMEWORK_PREFIX_SAMPLES` in `init_test.ts` in sync when adding a
+ * prefix here.
  */
 export type FrameworkPrefix =
   | "NEXT_PUBLIC_"
+  | "NUXT_PUBLIC_"
   | "NUXT_ENV_"
   | "REACT_APP_"
   | "GATSBY_"
@@ -60,9 +76,15 @@ type BrowserBuildEnvKey = `${FrameworkPrefix}${VercelDeploymentSuffix | VercelGi
 export type BrowserBuildEnv = { readonly [K in BrowserBuildEnvKey]?: string };
 
 /**
- * Return the first defined and non-empty value, or undefined. Used to walk
- * the list of framework-prefixed variants of an env var and pick whichever
- * the user's bundler substituted at build time.
+ * Return the first truthy value, or undefined. Used to walk the list of
+ * framework-prefixed variants of an env var and pick whichever the user's
+ * bundler substituted at build time.
+ *
+ * The falsy check skips empty strings as well as undefined — bundlers that
+ * do not substitute a literal leave it as `undefined`, not `""`, so empty
+ * is treated as "not set". This is intentional and matches every known
+ * `VERCEL_GIT_*` / `REPOSITORY_URL` / etc. value shape (non-empty strings
+ * or absent; Vercel PR IDs are positive integer strings, never `"0"`).
  */
 export function pickFirstString(...values: (string | undefined)[]): string | undefined {
   for (const value of values) {

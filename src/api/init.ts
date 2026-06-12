@@ -187,6 +187,7 @@ function detectEnvironment(opts: InitOptions): string | undefined {
   try {
     return pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_ENV,
+      process?.env?.NUXT_PUBLIC_VERCEL_ENV,
       process?.env?.NUXT_ENV_VERCEL_ENV,
       process?.env?.REACT_APP_VERCEL_ENV,
       process?.env?.GATSBY_VERCEL_ENV,
@@ -208,6 +209,7 @@ function detectDeploymentName(opts: InitOptions): string | undefined {
   try {
     return pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_TARGET_ENV,
+      process?.env?.NUXT_PUBLIC_VERCEL_TARGET_ENV,
       process?.env?.NUXT_ENV_VERCEL_TARGET_ENV,
       process?.env?.REACT_APP_VERCEL_TARGET_ENV,
       process?.env?.GATSBY_VERCEL_TARGET_ENV,
@@ -229,6 +231,7 @@ function detectDeploymentId(opts: InitOptions): string | undefined {
   try {
     return pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_BRANCH_URL,
+      process?.env?.NUXT_PUBLIC_VERCEL_BRANCH_URL,
       process?.env?.NUXT_ENV_VERCEL_BRANCH_URL,
       process?.env?.REACT_APP_VERCEL_BRANCH_URL,
       process?.env?.GATSBY_VERCEL_BRANCH_URL,

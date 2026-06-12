@@ -100,6 +100,7 @@ function detectVcsFromVercel(): VcsAttributes {
   try {
     provider = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_PROVIDER,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_PROVIDER,
       process?.env?.NUXT_ENV_VERCEL_GIT_PROVIDER,
       process?.env?.REACT_APP_VERCEL_GIT_PROVIDER,
       process?.env?.GATSBY_VERCEL_GIT_PROVIDER,
@@ -111,6 +112,7 @@ function detectVcsFromVercel(): VcsAttributes {
     );
     owner = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_REPO_OWNER,
       process?.env?.NUXT_ENV_VERCEL_GIT_REPO_OWNER,
       process?.env?.REACT_APP_VERCEL_GIT_REPO_OWNER,
       process?.env?.GATSBY_VERCEL_GIT_REPO_OWNER,
@@ -122,6 +124,7 @@ function detectVcsFromVercel(): VcsAttributes {
     );
     repo = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_REPO_SLUG,
       process?.env?.NUXT_ENV_VERCEL_GIT_REPO_SLUG,
       process?.env?.REACT_APP_VERCEL_GIT_REPO_SLUG,
       process?.env?.GATSBY_VERCEL_GIT_REPO_SLUG,
@@ -133,6 +136,7 @@ function detectVcsFromVercel(): VcsAttributes {
     );
     ref = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_COMMIT_REF,
       process?.env?.NUXT_ENV_VERCEL_GIT_COMMIT_REF,
       process?.env?.REACT_APP_VERCEL_GIT_COMMIT_REF,
       process?.env?.GATSBY_VERCEL_GIT_COMMIT_REF,
@@ -144,6 +148,7 @@ function detectVcsFromVercel(): VcsAttributes {
     );
     revision = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
       process?.env?.NUXT_ENV_VERCEL_GIT_COMMIT_SHA,
       process?.env?.REACT_APP_VERCEL_GIT_COMMIT_SHA,
       process?.env?.GATSBY_VERCEL_GIT_COMMIT_SHA,
@@ -155,6 +160,7 @@ function detectVcsFromVercel(): VcsAttributes {
     );
     changeId = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID,
       process?.env?.NUXT_ENV_VERCEL_GIT_PULL_REQUEST_ID,
       process?.env?.REACT_APP_VERCEL_GIT_PULL_REQUEST_ID,
       process?.env?.GATSBY_VERCEL_GIT_PULL_REQUEST_ID,
@@ -193,6 +199,7 @@ function detectVcsFromNetlify(): VcsAttributes {
   try {
     repositoryUrl = pickFirstString(
       process?.env?.NEXT_PUBLIC_REPOSITORY_URL,
+      process?.env?.NUXT_PUBLIC_REPOSITORY_URL,
       process?.env?.NUXT_ENV_REPOSITORY_URL,
       process?.env?.REACT_APP_REPOSITORY_URL,
       process?.env?.GATSBY_REPOSITORY_URL,
@@ -204,6 +211,7 @@ function detectVcsFromNetlify(): VcsAttributes {
     );
     branch = pickFirstString(
       process?.env?.NEXT_PUBLIC_BRANCH,
+      process?.env?.NUXT_PUBLIC_BRANCH,
       process?.env?.NUXT_ENV_BRANCH,
       process?.env?.REACT_APP_BRANCH,
       process?.env?.GATSBY_BRANCH,
@@ -215,6 +223,7 @@ function detectVcsFromNetlify(): VcsAttributes {
     );
     commit = pickFirstString(
       process?.env?.NEXT_PUBLIC_COMMIT_REF,
+      process?.env?.NUXT_PUBLIC_COMMIT_REF,
       process?.env?.NUXT_ENV_COMMIT_REF,
       process?.env?.REACT_APP_COMMIT_REF,
       process?.env?.GATSBY_COMMIT_REF,
@@ -226,6 +235,7 @@ function detectVcsFromNetlify(): VcsAttributes {
     );
     reviewId = pickFirstString(
       process?.env?.NEXT_PUBLIC_REVIEW_ID,
+      process?.env?.NUXT_PUBLIC_REVIEW_ID,
       process?.env?.NUXT_ENV_REVIEW_ID,
       process?.env?.REACT_APP_REVIEW_ID,
       process?.env?.GATSBY_REVIEW_ID,
