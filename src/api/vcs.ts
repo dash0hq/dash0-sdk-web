@@ -10,41 +10,7 @@ import {
 } from "../semantic-conventions";
 import { InitOptions, VcsAttributes } from "../types/options";
 import { addAttribute } from "../utils/otel";
-
-// Module-local typing for the `process` global. The SDK does not depend on
-// @types/node, and bundler substitution requires literal `process.env.NAME`
-// accessors (dot notation, not bracket lookup). We enumerate the exact set of
-// env var names the readers below access via template-literal types — typos
-// are caught at compile time, and `noPropertyAccessFromIndexSignature` does
-// not fire because each key is a known union member, not an index signature.
-//
-// Adding a new framework prefix here automatically permits every combination
-// with every known suffix. Adding a vendor suffix permits every combination
-// with every known prefix.
-type FrameworkPrefix =
-  | "NEXT_PUBLIC_"
-  | "NUXT_ENV_"
-  | "REACT_APP_"
-  | "GATSBY_"
-  | "VITE_"
-  | "PUBLIC_"
-  | "VUE_APP_"
-  | "REDWOOD_ENV_"
-  | "SANITY_STUDIO_";
-
-type VercelGitSuffix =
-  | "VERCEL_GIT_PROVIDER"
-  | "VERCEL_GIT_REPO_OWNER"
-  | "VERCEL_GIT_REPO_SLUG"
-  | "VERCEL_GIT_COMMIT_REF"
-  | "VERCEL_GIT_COMMIT_SHA"
-  | "VERCEL_GIT_PULL_REQUEST_ID";
-
-type NetlifyGitSuffix = "REPOSITORY_URL" | "BRANCH" | "COMMIT_REF" | "REVIEW_ID";
-
-type BrowserBuildEnvKey = `${FrameworkPrefix}${VercelGitSuffix | NetlifyGitSuffix}`;
-
-type BrowserBuildEnv = { readonly [K in BrowserBuildEnvKey]?: string };
+import { BrowserBuildEnv, pickFirstString } from "./browser-env";
 
 declare const process: { env?: BrowserBuildEnv } | undefined;
 
@@ -283,13 +249,6 @@ function detectVcsFromNetlify(): VcsAttributes {
     refHeadRevision: commit,
     changeId: reviewId,
   };
-}
-
-function pickFirstString(...values: (string | undefined)[]): string | undefined {
-  for (const value of values) {
-    if (value) return value;
-  }
-  return undefined;
 }
 
 function buildRepositoryUrlFromVercel(
