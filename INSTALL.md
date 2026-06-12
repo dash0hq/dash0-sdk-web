@@ -188,13 +188,13 @@ certain cloud providers.
 
 #### Vercel — environment and deployment
 
-These functionalities require the use of Next.js:
+The SDK detects `environment`, `deploymentName`, and `deploymentId` from Vercel's auto-prefixed system env vars. The same 9 framework prefixes listed under [VCS context](#vcs-version-control-context) are supported — the SDK picks up whichever variant the bundler substituted at build time.
 
-| Configuration Key | Source                                                                                                                                       |
-| :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| environment       | [NEXT_PUBLIC_VERCEL_ENV](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_ENV)               |
-| deploymentName    | [NEXT_PUBLIC_VERCEL_TARGET_ENV](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_TARGET_ENV) |
-| deploymentId      | [NEXT_PUBLIC_VERCEL_BRANCH_URL](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_BRANCH_URL) |
+| Configuration Key | Vercel system var (auto-prefixed per framework)                                                                                    |
+| :---------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| environment       | [`VERCEL_ENV`](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_ENV)               |
+| deploymentName    | [`VERCEL_TARGET_ENV`](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_TARGET_ENV) |
+| deploymentId      | [`VERCEL_BRANCH_URL`](https://vercel.com/docs/environment-variables/framework-environment-variables#NEXT_PUBLIC_VERCEL_BRANCH_URL) |
 
 #### VCS (version control) context
 
