@@ -1,7 +1,7 @@
 import { clearOTLPRequests, sharedAfterEach, sharedBeforeEach } from "../shared";
 import { generateUniqueId } from "../../../../src/utils";
 import { browser } from "@wdio/globals";
-import { delay, retry } from "../utils";
+import { delay, loadPage, retry } from "../utils";
 import { expectLogMatching, expectNoBrowserErrors, expectNoLogMatching } from "../expectations";
 import { PAGE_VIEW_TYPE_VALUES } from "../../../../src/semantic-conventions";
 
@@ -12,7 +12,7 @@ describe("Page Transition", () => {
   describe("virtual page view events", () => {
     it("transmits virtual page view logs on history.pushState", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}#someFragment`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}#someFragment`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       const btn = await $("button=Do a transition");
@@ -62,7 +62,7 @@ describe("Page Transition", () => {
 
     it("transmits virtual page views on history.replaceState", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       const btn = await $("button=Call history.replaceState");
@@ -100,7 +100,7 @@ describe("Page Transition", () => {
 
     it("transmits virtual page view logs on history.go", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       const btn = await $("button=Do a transition");
@@ -141,7 +141,7 @@ describe("Page Transition", () => {
 
     it("transmits virtual page view logs on history.back", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       const btn = await $("button=Do a transition");
@@ -182,7 +182,7 @@ describe("Page Transition", () => {
 
     it("transmits virtual page view logs on history.forward", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       const btn = await $("button=Do a transition");
@@ -225,7 +225,7 @@ describe("Page Transition", () => {
 
     it("transmits events on query changes if enabled", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}&include-parts=SEARCH`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}&include-parts=SEARCH`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       const btn = await $("button=Change url.search");
@@ -265,7 +265,7 @@ describe("Page Transition", () => {
 
     it("transmits events on fragment changes if enabled", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}&include-parts=HASH`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}&include-parts=HASH`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       const btn = await $("button=Change url.fragment");
@@ -305,7 +305,7 @@ describe("Page Transition", () => {
 
     it("does nothing if the url does not change", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       await delay(1000);
@@ -333,7 +333,7 @@ describe("Page Transition", () => {
 
     it("does nothing if trackVirtualPageViews is false", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}&disable-page-view-tracking=true`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}&disable-page-view-tracking=true`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       await delay(1000);
@@ -361,7 +361,7 @@ describe("Page Transition", () => {
 
     it("ignores fragment changes if not enabled", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       await delay(1000);
@@ -389,7 +389,7 @@ describe("Page Transition", () => {
 
     it("ignores query changes if not enabled", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       await delay(1000);
@@ -417,7 +417,7 @@ describe("Page Transition", () => {
 
     it("uses custom page titles if provided", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/05-page-transition/page.html?testId=${testId}&useCustomTitle=true`);
+      await loadPage(`/e2e/spec/05-page-transition/page.html?testId=${testId}&useCustomTitle=true`);
       await expect(await browser.getTitle()).toMatch(/page transition test/);
 
       const btn = await $("button=Do a transition");

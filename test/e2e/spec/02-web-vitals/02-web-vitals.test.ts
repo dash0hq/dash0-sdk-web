@@ -1,6 +1,6 @@
 import { sharedAfterEach, sharedBeforeEach } from "../shared";
 import { browser } from "@wdio/globals";
-import { retry } from "../utils";
+import { loadPage, retry } from "../utils";
 import { expectLogMatching, expectNoBrowserErrors } from "../expectations";
 import { generateUniqueId } from "../../../../src/utils";
 import { supportsLCPWebVital } from "../browser-compat";
@@ -16,7 +16,7 @@ describe("Web Vitals", () => {
     }
 
     const testId = generateUniqueId(16);
-    await browser.url(`/e2e/spec/02-web-vitals/page.html?testId=${testId}#someFragment`);
+    await loadPage(`/e2e/spec/02-web-vitals/page.html?testId=${testId}#someFragment`);
     await expect(await browser.getTitle()).toMatch(/web-vitals test/);
 
     // We need some interaction to trigger the web vital calculation
