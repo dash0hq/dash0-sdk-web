@@ -1,7 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InitOptions, InstrumentationName } from "../types/options";
 import { PropagatorConfig, Vars } from "../vars";
-import { SERVICE_NAME, SERVICE_NAMESPACE } from "../semantic-conventions";
+import {
+  SERVICE_NAME,
+  SERVICE_NAMESPACE,
+  VCS_CHANGE_ID,
+  VCS_OWNER_NAME,
+  VCS_PROVIDER_NAME,
+  VCS_REF_HEAD_NAME,
+  VCS_REF_HEAD_REVISION,
+  VCS_REPOSITORY_NAME,
+  VCS_REPOSITORY_URL_FULL,
+} from "../semantic-conventions";
 import { init as initFun } from "./init";
 
 // Mock all the instrumentation modules
@@ -395,6 +405,283 @@ describe("init", () => {
 
       const serviceNameAttr = importedVars.resource.attributes.find((attr) => attr.key === importedServiceName);
       expect(serviceNameAttr?.value.stringValue).toBe("unknown");
+    });
+  });
+
+  describe("vcs auto-detection", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    const stringAttr = (key: string) => vars.resource.attributes.find((attr) => attr.key === key)?.value.stringValue;
+
+    it("derives full vcs resource attributes from Vercel env vars", () => {
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_PROVIDER", "github");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER", "dash0hq");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG", "dash0");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF", "main");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA", "abc123");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID", "42");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBe("github");
+      expect(stringAttr(VCS_OWNER_NAME)).toBe("dash0hq");
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBe("dash0");
+      expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBe("https://github.com/dash0hq/dash0");
+      expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("main");
+      expect(stringAttr(VCS_REF_HEAD_REVISION)).toBe("abc123");
+      expect(stringAttr(VCS_CHANGE_ID)).toBe("42");
+    });
+
+    // The 9 framework prefixes Vercel auto-prefixes its VERCEL_GIT_* system
+    // vars under (per https://vercel.com/docs/environment-variables/framework-environment-variables).
+    // A passing test for each confirms the literal-accessor enumeration in
+    // detectVcsFromVercel is actually wired up.
+    const FRAMEWORK_PREFIX_SAMPLES: Array<[label: string, prefix: string]> = [
+      ["Next.js", "NEXT_PUBLIC_"],
+      ["Nuxt", "NUXT_ENV_"],
+      ["Create React App", "REACT_APP_"],
+      ["Gatsby", "GATSBY_"],
+      ["Vite", "VITE_"],
+      ["Astro / SvelteKit / Hydrogen", "PUBLIC_"],
+      ["Vue CLI", "VUE_APP_"],
+      ["RedwoodJS", "REDWOOD_ENV_"],
+      ["Sanity Studio", "SANITY_STUDIO_"],
+    ];
+
+    it.each(FRAMEWORK_PREFIX_SAMPLES)(
+      "derives Vercel vcs attributes from %s framework prefix (%s)",
+      (_label, prefix) => {
+        vi.stubEnv(`${prefix}VERCEL_GIT_PROVIDER`, "github");
+        vi.stubEnv(`${prefix}VERCEL_GIT_REPO_OWNER`, "dash0hq");
+        vi.stubEnv(`${prefix}VERCEL_GIT_REPO_SLUG`, "dash0");
+        vi.stubEnv(`${prefix}VERCEL_GIT_COMMIT_REF`, "main");
+        vi.stubEnv(`${prefix}VERCEL_GIT_COMMIT_SHA`, "abc123");
+        vi.stubEnv(`${prefix}VERCEL_GIT_PULL_REQUEST_ID`, "42");
+
+        init(baseOptions);
+
+        expect(stringAttr(VCS_PROVIDER_NAME)).toBe("github");
+        expect(stringAttr(VCS_OWNER_NAME)).toBe("dash0hq");
+        expect(stringAttr(VCS_REPOSITORY_NAME)).toBe("dash0");
+        expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBe("https://github.com/dash0hq/dash0");
+        expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("main");
+        expect(stringAttr(VCS_REF_HEAD_REVISION)).toBe("abc123");
+        expect(stringAttr(VCS_CHANGE_ID)).toBe("42");
+      }
+    );
+
+    it.each(FRAMEWORK_PREFIX_SAMPLES)(
+      "derives Netlify vcs attributes from %s framework prefix (%s)",
+      (_label, prefix) => {
+        vi.stubEnv(`${prefix}REPOSITORY_URL`, "https://github.com/dash0hq/dash0");
+        vi.stubEnv(`${prefix}BRANCH`, "feature/x");
+        vi.stubEnv(`${prefix}COMMIT_REF`, "def456");
+        vi.stubEnv(`${prefix}REVIEW_ID`, "99");
+
+        init(baseOptions);
+
+        expect(stringAttr(VCS_PROVIDER_NAME)).toBe("github");
+        expect(stringAttr(VCS_OWNER_NAME)).toBe("dash0hq");
+        expect(stringAttr(VCS_REPOSITORY_NAME)).toBe("dash0");
+        expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("feature/x");
+        expect(stringAttr(VCS_REF_HEAD_REVISION)).toBe("def456");
+        expect(stringAttr(VCS_CHANGE_ID)).toBe("99");
+      }
+    );
+
+    it("derives vcs resource attributes from Netlify env vars (parsed REPOSITORY_URL)", () => {
+      vi.stubEnv("NEXT_PUBLIC_REPOSITORY_URL", "https://github.com/dash0hq/dash0.git");
+      vi.stubEnv("NEXT_PUBLIC_BRANCH", "feature/x");
+      vi.stubEnv("NEXT_PUBLIC_COMMIT_REF", "def456");
+      vi.stubEnv("NEXT_PUBLIC_REVIEW_ID", "99");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBe("github");
+      expect(stringAttr(VCS_OWNER_NAME)).toBe("dash0hq");
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBe("dash0");
+      expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBe("https://github.com/dash0hq/dash0.git");
+      expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("feature/x");
+      expect(stringAttr(VCS_REF_HEAD_REVISION)).toBe("def456");
+      expect(stringAttr(VCS_CHANGE_ID)).toBe("99");
+    });
+
+    it("prefers Vercel values over Netlify values when both are present", () => {
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_PROVIDER", "github");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER", "vercel-owner");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG", "vercel-repo");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF", "vercel-branch");
+      vi.stubEnv("NEXT_PUBLIC_REPOSITORY_URL", "https://github.com/netlify-owner/netlify-repo");
+      vi.stubEnv("NEXT_PUBLIC_BRANCH", "netlify-branch");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_OWNER_NAME)).toBe("vercel-owner");
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBe("vercel-repo");
+      expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("vercel-branch");
+    });
+
+    it("opts.vcs overrides individual auto-detected fields", () => {
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_PROVIDER", "github");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER", "dash0hq");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG", "dash0");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF", "main");
+
+      init({
+        ...baseOptions,
+        vcs: {
+          refHeadName: "release/2026.06",
+          changeId: "1234",
+        },
+      });
+
+      expect(stringAttr(VCS_OWNER_NAME)).toBe("dash0hq");
+      expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("release/2026.06");
+      expect(stringAttr(VCS_CHANGE_ID)).toBe("1234");
+    });
+
+    it("disableVcsDetection: true emits no vcs.* resource attributes even when env vars are set", () => {
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_PROVIDER", "github");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER", "dash0hq");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA", "abc123");
+
+      init({ ...baseOptions, disableVcsDetection: true });
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_OWNER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_REF_HEAD_REVISION)).toBeUndefined();
+    });
+
+    it("disableVcsDetection: true still applies opts.vcs manual overrides", () => {
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_PROVIDER", "github");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER", "dash0hq");
+
+      init({
+        ...baseOptions,
+        disableVcsDetection: true,
+        vcs: { providerName: "gitlab", refHeadName: "release/1.0" },
+      });
+
+      // env-var values are suppressed
+      expect(stringAttr(VCS_OWNER_NAME)).toBeUndefined();
+      // manual overrides still win
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBe("gitlab");
+      expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("release/1.0");
+    });
+
+    it("applies opts.vcs fields as the sole source when no env vars are set", () => {
+      init({
+        ...baseOptions,
+        vcs: {
+          providerName: "github",
+          ownerName: "my-org",
+          repositoryName: "my-repo",
+          repositoryUrlFull: "https://github.com/my-org/my-repo",
+          refHeadName: "main",
+          refHeadRevision: "deadbeef",
+          changeId: "7",
+        },
+      });
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBe("github");
+      expect(stringAttr(VCS_OWNER_NAME)).toBe("my-org");
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBe("my-repo");
+      expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBe("https://github.com/my-org/my-repo");
+      expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("main");
+      expect(stringAttr(VCS_REF_HEAD_REVISION)).toBe("deadbeef");
+      expect(stringAttr(VCS_CHANGE_ID)).toBe("7");
+    });
+
+    it("emits nothing when no env vars and no opts.vcs are provided", () => {
+      init(baseOptions);
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_OWNER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBeUndefined();
+      expect(stringAttr(VCS_REF_HEAD_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_REF_HEAD_REVISION)).toBeUndefined();
+      expect(stringAttr(VCS_CHANGE_ID)).toBeUndefined();
+    });
+
+    it("emits only the partial attributes that are available", () => {
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA", "abc123");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF", "main");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("main");
+      expect(stringAttr(VCS_REF_HEAD_REVISION)).toBe("abc123");
+      expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBeUndefined();
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBeUndefined();
+    });
+
+    it("does not derive repository URL when provider is unknown", () => {
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_PROVIDER", "someproprietary");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER", "owner");
+      vi.stubEnv("NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG", "repo");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBe("someproprietary");
+      expect(stringAttr(VCS_OWNER_NAME)).toBe("owner");
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBe("repo");
+      expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBeUndefined();
+    });
+
+    it("accepts gist.github.com as a github host alias", () => {
+      vi.stubEnv("NEXT_PUBLIC_REPOSITORY_URL", "https://gist.github.com/owner/abc123");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBe("github");
+      expect(stringAttr(VCS_OWNER_NAME)).toBe("owner");
+    });
+
+    it("rejects arbitrary github.com subdomains", () => {
+      vi.stubEnv("NEXT_PUBLIC_REPOSITORY_URL", "https://evil.github.com/attacker/repo");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_OWNER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBeUndefined();
+    });
+
+    it("ignores a Netlify REPOSITORY_URL on an unknown host", () => {
+      vi.stubEnv("NEXT_PUBLIC_REPOSITORY_URL", "https://internal-git.example.com/team/app");
+      vi.stubEnv("NEXT_PUBLIC_BRANCH", "main");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_OWNER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBe("https://internal-git.example.com/team/app");
+      expect(stringAttr(VCS_REF_HEAD_NAME)).toBe("main");
+    });
+
+    it("parses GitLab nested-group repository URLs to the last path segment", () => {
+      vi.stubEnv("NEXT_PUBLIC_REPOSITORY_URL", "https://gitlab.com/group/subgroup/app.git");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBe("gitlab");
+      expect(stringAttr(VCS_OWNER_NAME)).toBe("group");
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBe("app");
+    });
+
+    it("ignores a malformed REPOSITORY_URL", () => {
+      vi.stubEnv("NEXT_PUBLIC_REPOSITORY_URL", "not-a-url");
+
+      init(baseOptions);
+
+      expect(stringAttr(VCS_REPOSITORY_URL_FULL)).toBe("not-a-url");
+      expect(stringAttr(VCS_PROVIDER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_OWNER_NAME)).toBeUndefined();
+      expect(stringAttr(VCS_REPOSITORY_NAME)).toBeUndefined();
     });
   });
 });

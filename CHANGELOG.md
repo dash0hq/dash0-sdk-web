@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.21.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.20.0...0.21.0) (2026-06-12)
+
+### Features
+
+- auto-detect vcs.\* resource attributes from build env ([#88](https://github.com/dash0hq/dash0-sdk-web/issues/88)) ([0fd38e6](https://github.com/dash0hq/dash0-sdk-web/commit/0fd38e6cb18a97d9791123bd8e2b3dfcf038de0d))
+
 ## [0.20.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.19.0...0.20.0) (2026-05-08)
 
 ### Features
