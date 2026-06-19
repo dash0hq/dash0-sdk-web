@@ -33,23 +33,47 @@ export function expectOneMatching<T>(arr: T[], fn: (item: T) => void): T {
   throw new Error("this should be unreachable");
 }
 
+/**
+ * Runs an assertion and, if it fails, rethrows the error with the full-depth
+ * JSON serialization of the received payload appended.
+ *
+ * jest's matcher diffs (used by expect-webdriverio) are serialized through
+ * `jest-matcher-utils`' `stringify`, which truncates objects to `[Object]` and
+ * arrays to `…` once the output exceeds ~10k characters. For the deeply nested
+ * OTLP payloads we assert against this hides exactly the data needed to debug a
+ * failure (e.g. browser-specific differences only reproducible in CI). Dumping
+ * the received payload at full depth gives us something actionable.
+ */
+function withFullDepthDiff(received: unknown, assert: () => void) {
+  try {
+    assert();
+  } catch (e) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    err.message += "\n\nFull received payload (full depth):\n" + JSON.stringify(received, undefined, 2);
+    throw err;
+  }
+}
+
 export async function expectSpanMatching(matcher: ExpectWebdriverIO.PartialMatcher) {
   const requests = await getOTLPRequests();
+  const traceRequests = requests.filter((r) => r.path === "/v1/traces");
 
-  expect(requests.filter((r) => r.path === "/v1/traces")).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        body: expect.objectContaining({
-          resourceSpans: expect.arrayContaining([
-            expect.objectContaining({
-              scopeSpans: expect.arrayContaining([
-                expect.objectContaining({ spans: expect.arrayContaining([matcher]) }),
-              ]),
-            }),
-          ]),
+  withFullDepthDiff(traceRequests, () =>
+    expect(traceRequests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          body: expect.objectContaining({
+            resourceSpans: expect.arrayContaining([
+              expect.objectContaining({
+                scopeSpans: expect.arrayContaining([
+                  expect.objectContaining({ spans: expect.arrayContaining([matcher]) }),
+                ]),
+              }),
+            ]),
+          }),
         }),
-      }),
-    ])
+      ])
+    )
   );
 }
 
@@ -77,14 +101,16 @@ function getLogMatcher(matcher: ExpectWebdriverIO.PartialMatcher) {
 
 export async function expectLogMatching(matcher: ExpectWebdriverIO.PartialMatcher) {
   const requests = await getOTLPRequests();
+  const logRequests = requests.filter((r) => r.path === "/v1/logs");
 
-  expect(requests.filter((r) => r.path === "/v1/logs")).toEqual(getLogMatcher(matcher));
+  withFullDepthDiff(logRequests, () => expect(logRequests).toEqual(getLogMatcher(matcher)));
 }
 
 export async function expectNoLogMatching(matcher: ExpectWebdriverIO.PartialMatcher) {
   const requests = await getOTLPRequests();
+  const logRequests = requests.filter((r) => r.path === "/v1/logs");
 
-  expect(requests.filter((r) => r.path === "/v1/logs")).not.toEqual(getLogMatcher(matcher));
+  withFullDepthDiff(logRequests, () => expect(logRequests).not.toEqual(getLogMatcher(matcher)));
 }
 
 export function expectNoBrowserErrors() {
