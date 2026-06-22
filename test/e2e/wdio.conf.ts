@@ -143,6 +143,13 @@ export const config: WebdriverIO.Config = {
   mochaOpts: {
     ui: "bdd",
     timeout: 60000,
+    // Safari on LambdaTest has an irreducible nondeterminism where the *first* user-gesture action
+    // of a browser session occasionally does not connect to the (fully initialized) SDK, so its
+    // telemetry is lost. loadPage() waits for the SDK pipeline to be live which removes most of it,
+    // but not all. A retried test re-runs as a later (warm) action in the same session and passes,
+    // so retries close the residual gap without masking real product failures (a genuine break fails
+    // every attempt).
+    retries: 2,
   },
 
   onPrepare: function (config, capabilities) {

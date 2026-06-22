@@ -1,6 +1,6 @@
 import { sharedAfterEach, sharedBeforeEach } from "../shared";
 import { browser } from "@wdio/globals";
-import { retry } from "../utils";
+import { loadPage, retry } from "../utils";
 import { expectLogMatching } from "../expectations";
 import { generateUniqueId } from "../../../../src/utils";
 
@@ -11,7 +11,7 @@ describe("Error Instrumentation", () => {
   describe("on unhandled error", () => {
     it("transmits error logs", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
+      await loadPage(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
       await expect(await browser.getTitle()).toMatch(/error-instrumentation test/);
 
       const btn = await $("button=Throw unhandled error");
@@ -58,7 +58,7 @@ describe("Error Instrumentation", () => {
   describe("on unhandled rejection", () => {
     it("transmits error logs", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
+      await loadPage(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
       await expect(await browser.getTitle()).toMatch(/error-instrumentation test/);
 
       const btn = await $("button=Cause unhandled rejection");
@@ -108,7 +108,7 @@ describe("Error Instrumentation", () => {
   describe("on error in event handler", () => {
     it("transmits error logs", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
+      await loadPage(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
       await expect(await browser.getTitle()).toMatch(/error-instrumentation test/);
 
       const btn = await $("button=Throw error in event handler");
@@ -155,7 +155,7 @@ describe("Error Instrumentation", () => {
   describe("on error in timer", () => {
     it("transmits error logs", async () => {
       const testId = generateUniqueId(16);
-      await browser.url(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
+      await loadPage(`/e2e/spec/03-error-instrumentation/page.html?testId=${testId}#someFragment`);
       await expect(await browser.getTitle()).toMatch(/error-instrumentation test/);
 
       const btn = await $("button=Trigger error in timeout");
