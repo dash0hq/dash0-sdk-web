@@ -33,7 +33,10 @@ import { startNavigationInstrumentation } from "../instrumentations/navigation";
 import { merge } from "ts-deepmerge";
 import { initializeTabId } from "../utils/tab-id";
 import { InitOptions, InstrumentationName } from "../types/options";
+import { BrowserBuildEnv, pickFirstString } from "./browser-env";
 import { applyVcsResourceAttributes } from "./vcs";
+
+declare const process: { env?: BrowserBuildEnv } | undefined;
 
 let hasBeenInitialised: boolean = false;
 
@@ -170,18 +173,30 @@ function isClient() {
   return win != null;
 }
 
+// Vercel auto-prefixes its system env vars under every framework preset
+// (see https://vercel.com/docs/environment-variables/framework-environment-variables).
+// The shared `FrameworkPrefix` union in `./browser-env` is the single source
+// of truth for which prefixes the SDK recognises. To add a new prefix, edit
+// it there; the literal accessors below pick it up automatically via the
+// typed `process.env` declaration.
+
 function detectEnvironment(opts: InitOptions): string | undefined {
-  // if there is a manually specified value we use that
   if (opts.environment) {
     return opts.environment;
   }
-
-  // if process isn't defined access to it causes an exception, but we can't check for its present due to how
-  // plugins like webpack define work.
   try {
-    // vercel
-    // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
-    return process?.env?.NEXT_PUBLIC_VERCEL_ENV;
+    return pickFirstString(
+      process?.env?.NEXT_PUBLIC_VERCEL_ENV,
+      process?.env?.NUXT_PUBLIC_VERCEL_ENV,
+      process?.env?.NUXT_ENV_VERCEL_ENV,
+      process?.env?.REACT_APP_VERCEL_ENV,
+      process?.env?.GATSBY_VERCEL_ENV,
+      process?.env?.VITE_VERCEL_ENV,
+      process?.env?.PUBLIC_VERCEL_ENV,
+      process?.env?.VUE_APP_VERCEL_ENV,
+      process?.env?.REDWOOD_ENV_VERCEL_ENV,
+      process?.env?.SANITY_STUDIO_VERCEL_ENV
+    );
   } catch (_ignored) {
     return undefined;
   }
@@ -191,13 +206,19 @@ function detectDeploymentName(opts: InitOptions): string | undefined {
   if (opts.deploymentName) {
     return opts.deploymentName;
   }
-
-  // if process isn't defined access to it causes an exception, but we can't check for its present due to how
-  // plugins like webpack define work.
   try {
-    // vercel
-    // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
-    return process?.env?.NEXT_PUBLIC_VERCEL_TARGET_ENV;
+    return pickFirstString(
+      process?.env?.NEXT_PUBLIC_VERCEL_TARGET_ENV,
+      process?.env?.NUXT_PUBLIC_VERCEL_TARGET_ENV,
+      process?.env?.NUXT_ENV_VERCEL_TARGET_ENV,
+      process?.env?.REACT_APP_VERCEL_TARGET_ENV,
+      process?.env?.GATSBY_VERCEL_TARGET_ENV,
+      process?.env?.VITE_VERCEL_TARGET_ENV,
+      process?.env?.PUBLIC_VERCEL_TARGET_ENV,
+      process?.env?.VUE_APP_VERCEL_TARGET_ENV,
+      process?.env?.REDWOOD_ENV_VERCEL_TARGET_ENV,
+      process?.env?.SANITY_STUDIO_VERCEL_TARGET_ENV
+    );
   } catch (_ignored) {
     return undefined;
   }
@@ -207,13 +228,19 @@ function detectDeploymentId(opts: InitOptions): string | undefined {
   if (opts.deploymentId) {
     return opts.deploymentId;
   }
-
-  // if process isn't defined access to it causes an exception, but we can't check for its present due to how
-  // plugins like webpack define work.
   try {
-    // vercel
-    // @ts-expect-error -- we need to access like this to allow webpack in the nextjs build to replace this
-    return process?.env?.NEXT_PUBLIC_VERCEL_BRANCH_URL;
+    return pickFirstString(
+      process?.env?.NEXT_PUBLIC_VERCEL_BRANCH_URL,
+      process?.env?.NUXT_PUBLIC_VERCEL_BRANCH_URL,
+      process?.env?.NUXT_ENV_VERCEL_BRANCH_URL,
+      process?.env?.REACT_APP_VERCEL_BRANCH_URL,
+      process?.env?.GATSBY_VERCEL_BRANCH_URL,
+      process?.env?.VITE_VERCEL_BRANCH_URL,
+      process?.env?.PUBLIC_VERCEL_BRANCH_URL,
+      process?.env?.VUE_APP_VERCEL_BRANCH_URL,
+      process?.env?.REDWOOD_ENV_VERCEL_BRANCH_URL,
+      process?.env?.SANITY_STUDIO_VERCEL_BRANCH_URL
+    );
   } catch (_ignored) {
     return undefined;
   }

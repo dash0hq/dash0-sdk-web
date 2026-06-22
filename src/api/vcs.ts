@@ -10,41 +10,7 @@ import {
 } from "../semantic-conventions";
 import { InitOptions, VcsAttributes } from "../types/options";
 import { addAttribute } from "../utils/otel";
-
-// Module-local typing for the `process` global. The SDK does not depend on
-// @types/node, and bundler substitution requires literal `process.env.NAME`
-// accessors (dot notation, not bracket lookup). We enumerate the exact set of
-// env var names the readers below access via template-literal types — typos
-// are caught at compile time, and `noPropertyAccessFromIndexSignature` does
-// not fire because each key is a known union member, not an index signature.
-//
-// Adding a new framework prefix here automatically permits every combination
-// with every known suffix. Adding a vendor suffix permits every combination
-// with every known prefix.
-type FrameworkPrefix =
-  | "NEXT_PUBLIC_"
-  | "NUXT_ENV_"
-  | "REACT_APP_"
-  | "GATSBY_"
-  | "VITE_"
-  | "PUBLIC_"
-  | "VUE_APP_"
-  | "REDWOOD_ENV_"
-  | "SANITY_STUDIO_";
-
-type VercelGitSuffix =
-  | "VERCEL_GIT_PROVIDER"
-  | "VERCEL_GIT_REPO_OWNER"
-  | "VERCEL_GIT_REPO_SLUG"
-  | "VERCEL_GIT_COMMIT_REF"
-  | "VERCEL_GIT_COMMIT_SHA"
-  | "VERCEL_GIT_PULL_REQUEST_ID";
-
-type NetlifyGitSuffix = "REPOSITORY_URL" | "BRANCH" | "COMMIT_REF" | "REVIEW_ID";
-
-type BrowserBuildEnvKey = `${FrameworkPrefix}${VercelGitSuffix | NetlifyGitSuffix}`;
-
-type BrowserBuildEnv = { readonly [K in BrowserBuildEnvKey]?: string };
+import { BrowserBuildEnv, pickFirstString } from "./browser-env";
 
 declare const process: { env?: BrowserBuildEnv } | undefined;
 
@@ -134,6 +100,7 @@ function detectVcsFromVercel(): VcsAttributes {
   try {
     provider = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_PROVIDER,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_PROVIDER,
       process?.env?.NUXT_ENV_VERCEL_GIT_PROVIDER,
       process?.env?.REACT_APP_VERCEL_GIT_PROVIDER,
       process?.env?.GATSBY_VERCEL_GIT_PROVIDER,
@@ -145,6 +112,7 @@ function detectVcsFromVercel(): VcsAttributes {
     );
     owner = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_REPO_OWNER,
       process?.env?.NUXT_ENV_VERCEL_GIT_REPO_OWNER,
       process?.env?.REACT_APP_VERCEL_GIT_REPO_OWNER,
       process?.env?.GATSBY_VERCEL_GIT_REPO_OWNER,
@@ -156,6 +124,7 @@ function detectVcsFromVercel(): VcsAttributes {
     );
     repo = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_REPO_SLUG,
       process?.env?.NUXT_ENV_VERCEL_GIT_REPO_SLUG,
       process?.env?.REACT_APP_VERCEL_GIT_REPO_SLUG,
       process?.env?.GATSBY_VERCEL_GIT_REPO_SLUG,
@@ -167,6 +136,7 @@ function detectVcsFromVercel(): VcsAttributes {
     );
     ref = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_COMMIT_REF,
       process?.env?.NUXT_ENV_VERCEL_GIT_COMMIT_REF,
       process?.env?.REACT_APP_VERCEL_GIT_COMMIT_REF,
       process?.env?.GATSBY_VERCEL_GIT_COMMIT_REF,
@@ -178,6 +148,7 @@ function detectVcsFromVercel(): VcsAttributes {
     );
     revision = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
       process?.env?.NUXT_ENV_VERCEL_GIT_COMMIT_SHA,
       process?.env?.REACT_APP_VERCEL_GIT_COMMIT_SHA,
       process?.env?.GATSBY_VERCEL_GIT_COMMIT_SHA,
@@ -189,6 +160,7 @@ function detectVcsFromVercel(): VcsAttributes {
     );
     changeId = pickFirstString(
       process?.env?.NEXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID,
+      process?.env?.NUXT_PUBLIC_VERCEL_GIT_PULL_REQUEST_ID,
       process?.env?.NUXT_ENV_VERCEL_GIT_PULL_REQUEST_ID,
       process?.env?.REACT_APP_VERCEL_GIT_PULL_REQUEST_ID,
       process?.env?.GATSBY_VERCEL_GIT_PULL_REQUEST_ID,
@@ -227,6 +199,7 @@ function detectVcsFromNetlify(): VcsAttributes {
   try {
     repositoryUrl = pickFirstString(
       process?.env?.NEXT_PUBLIC_REPOSITORY_URL,
+      process?.env?.NUXT_PUBLIC_REPOSITORY_URL,
       process?.env?.NUXT_ENV_REPOSITORY_URL,
       process?.env?.REACT_APP_REPOSITORY_URL,
       process?.env?.GATSBY_REPOSITORY_URL,
@@ -238,6 +211,7 @@ function detectVcsFromNetlify(): VcsAttributes {
     );
     branch = pickFirstString(
       process?.env?.NEXT_PUBLIC_BRANCH,
+      process?.env?.NUXT_PUBLIC_BRANCH,
       process?.env?.NUXT_ENV_BRANCH,
       process?.env?.REACT_APP_BRANCH,
       process?.env?.GATSBY_BRANCH,
@@ -249,6 +223,7 @@ function detectVcsFromNetlify(): VcsAttributes {
     );
     commit = pickFirstString(
       process?.env?.NEXT_PUBLIC_COMMIT_REF,
+      process?.env?.NUXT_PUBLIC_COMMIT_REF,
       process?.env?.NUXT_ENV_COMMIT_REF,
       process?.env?.REACT_APP_COMMIT_REF,
       process?.env?.GATSBY_COMMIT_REF,
@@ -260,6 +235,7 @@ function detectVcsFromNetlify(): VcsAttributes {
     );
     reviewId = pickFirstString(
       process?.env?.NEXT_PUBLIC_REVIEW_ID,
+      process?.env?.NUXT_PUBLIC_REVIEW_ID,
       process?.env?.NUXT_ENV_REVIEW_ID,
       process?.env?.REACT_APP_REVIEW_ID,
       process?.env?.GATSBY_REVIEW_ID,
@@ -283,13 +259,6 @@ function detectVcsFromNetlify(): VcsAttributes {
     refHeadRevision: commit,
     changeId: reviewId,
   };
-}
-
-function pickFirstString(...values: (string | undefined)[]): string | undefined {
-  for (const value of values) {
-    if (value) return value;
-  }
-  return undefined;
 }
 
 function buildRepositoryUrlFromVercel(

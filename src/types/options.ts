@@ -54,9 +54,9 @@ export type InitOptions = {
   /**
    * When `true`, disable auto-detection of VCS (version control) context
    * from the build environment. By default the SDK reads VCS context from
-   * Vercel (`NEXT_PUBLIC_VERCEL_GIT_*`) and Netlify
-   * (`NEXT_PUBLIC_REPOSITORY_URL`, `NEXT_PUBLIC_BRANCH`,
-   * `NEXT_PUBLIC_COMMIT_REF`, `NEXT_PUBLIC_REVIEW_ID`) and applies the values
+   * Vercel (`<FRAMEWORK_PREFIX>VERCEL_GIT_*`) and Netlify
+   * (`<FRAMEWORK_PREFIX>REPOSITORY_URL`, `<FRAMEWORK_PREFIX>BRANCH`,
+   * `<FRAMEWORK_PREFIX>COMMIT_REF`, `<FRAMEWORK_PREFIX>REVIEW_ID`) and applies the values
    * as resource attributes following the OTel `vcs.*` semantic conventions:
    *
    *   - vcs.provider.name
