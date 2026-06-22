@@ -171,6 +171,12 @@ export type Vars = {
    * experimental - in rare cases causes Chrome to crash to use at your own risk.
    */
   enableTransportCompression: boolean;
+
+  /**
+   * Whether the current session is sampled in (true) or out (false).
+   * Determined at init time based on sessionSamplingRate and the session ID.
+   */
+  isSessionSampled: boolean;
 };
 
 export const vars: Vars = {
@@ -198,4 +204,5 @@ export const vars: Vars = {
     includeParts: [],
   },
   enableTransportCompression: false,
+  isSessionSampled: true,
 };

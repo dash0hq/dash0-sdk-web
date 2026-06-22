@@ -60,6 +60,18 @@ init({
 });
 ```
 
+#### Session Sampling
+
+You can control the percentage of user sessions that produce telemetry by setting `sessionSamplingRate` (0–100, default 100):
+
+```ts
+init({
+  serviceName: "my-website",
+  endpoint: { url: "{OTLP via HTTP endpoint}", authToken: "{authToken}" },
+  sessionSamplingRate: 50, // Only 50% of sessions will be recorded
+});
+```
+
 For more detailed instructions, refer to [`INSTALL.md`](./INSTALL.md).
 
 ## Development
