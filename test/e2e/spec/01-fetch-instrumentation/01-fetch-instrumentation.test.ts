@@ -1,6 +1,6 @@
 import { SPAN_KIND_CLIENT } from "../../../../src/semantic-conventions";
 import { sharedAfterEach, sharedBeforeEach } from "../shared";
-import { retry } from "../utils";
+import { loadPage, retry } from "../utils";
 import { expectNoBrowserErrors, expectSpanCount, expectSpanMatching } from "../expectations";
 import { supportsExceptionStacktrace } from "../browser-compat";
 
@@ -9,7 +9,7 @@ describe("Fetch Instrumentation", () => {
   afterEach(sharedAfterEach);
 
   it("must send spans for fetch requests", async () => {
-    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await loadPage("/e2e/spec/01-fetch-instrumentation/page.html");
     await expect(browser).toHaveTitle("fetch instrumentation test");
 
     const btn = await $("button=Same Origin Fetch");
@@ -58,7 +58,7 @@ describe("Fetch Instrumentation", () => {
   });
 
   it("must send spans for fetch requests with a Request object", async () => {
-    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await loadPage("/e2e/spec/01-fetch-instrumentation/page.html");
     await expect(browser).toHaveTitle("fetch instrumentation test");
 
     const btn = await $("button=Fetch With Request Object");
@@ -83,7 +83,7 @@ describe("Fetch Instrumentation", () => {
   });
 
   it("must send spans for fetch requests with a Request and init object", async () => {
-    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await loadPage("/e2e/spec/01-fetch-instrumentation/page.html");
     await expect(browser).toHaveTitle("fetch instrumentation test");
 
     const btn = await $("button=Fetch With Request and Init");
@@ -108,7 +108,7 @@ describe("Fetch Instrumentation", () => {
   });
 
   it("must ignore urls matching the ignoredUrls config", async () => {
-    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await loadPage("/e2e/spec/01-fetch-instrumentation/page.html");
     await expect(browser).toHaveTitle("fetch instrumentation test");
 
     const btn1 = await $("button=Fetch With Ignored URL");
@@ -131,7 +131,7 @@ describe("Fetch Instrumentation", () => {
   });
 
   it("must send an erroneous span on request failures", async () => {
-    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await loadPage("/e2e/spec/01-fetch-instrumentation/page.html");
     await expect(browser).toHaveTitle("fetch instrumentation test");
 
     const btn = await $("button=Failing Fetch");
@@ -167,7 +167,7 @@ describe("Fetch Instrumentation", () => {
   });
 
   it("must send body from init object", async () => {
-    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await loadPage("/e2e/spec/01-fetch-instrumentation/page.html");
     await expect(browser).toHaveTitle("fetch instrumentation test");
 
     const btn = await $("button=Fetch With Body From Init");
@@ -187,7 +187,7 @@ describe("Fetch Instrumentation", () => {
   });
 
   it("must send body from Request instance", async () => {
-    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await loadPage("/e2e/spec/01-fetch-instrumentation/page.html");
     await expect(browser).toHaveTitle("fetch instrumentation test");
 
     const btn = await $("button=Fetch With Body From Request");
@@ -207,7 +207,7 @@ describe("Fetch Instrumentation", () => {
   });
 
   it("must handle responses with no body status code", async () => {
-    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await loadPage("/e2e/spec/01-fetch-instrumentation/page.html");
     await expect(browser).toHaveTitle("fetch instrumentation test");
 
     const btn = await $("button=Multi-Fetch With No Body Response");
@@ -243,7 +243,7 @@ describe("Fetch Instrumentation", () => {
   });
 
   it("must mark fetches aborted before the response as cancelled, not failed", async () => {
-    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await loadPage("/e2e/spec/01-fetch-instrumentation/page.html");
     await expect(browser).toHaveTitle("fetch instrumentation test");
 
     const btn = await $("button=Aborted Fetch Before Response");
@@ -265,7 +265,7 @@ describe("Fetch Instrumentation", () => {
   });
 
   it("must mark fetches aborted while reading the body as cancelled, not failed", async () => {
-    await browser.url("/e2e/spec/01-fetch-instrumentation/page.html");
+    await loadPage("/e2e/spec/01-fetch-instrumentation/page.html");
     await expect(browser).toHaveTitle("fetch instrumentation test");
 
     const btn = await $("button=Aborted Fetch During Body");
@@ -289,7 +289,7 @@ describe("Fetch Instrumentation", () => {
 
   describe("with zonejs", () => {
     it("must not add any work to non-root zones", async () => {
-      await browser.url("/e2e/spec/01-fetch-instrumentation/withZoneJs.html");
+      await loadPage("/e2e/spec/01-fetch-instrumentation/withZoneJs.html");
       await expect(browser).toHaveTitle("fetch with zonejs test");
 
       const btn = await $("button=Do A Fetch");

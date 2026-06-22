@@ -22,6 +22,15 @@ app.use((req, res, next) => {
       "Access-Control-Allow-Headers",
       "Authorization, Content-Encoding, Dash0-Dataset, Content-Type, traceparent, X-Amzn-Trace-Id"
     );
+    // The SDK injects non-safelisted headers (traceparent / x-amzn-trace-id) on cross-origin requests,
+    // which makes them non-simple and triggers a CORS preflight. Answer the preflight properly --
+    // advertise the allowed methods and short-circuit OPTIONS with a 204 -- otherwise the OPTIONS
+    // request falls through to a 404 and the browser blocks the actual request. Safari enforces this
+    // strictly; more lenient browsers happened to let the requests through before.
+    res.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
   }
   next();
 });

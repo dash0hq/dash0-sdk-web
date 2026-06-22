@@ -1,6 +1,6 @@
 import { SPAN_KIND_CLIENT } from "../../../../src/semantic-conventions";
 import { sharedAfterEach, sharedBeforeEach } from "../shared";
-import { retry } from "../utils";
+import { loadPage, retry } from "../utils";
 import { expectNoBrowserErrors, expectSpanCount, expectSpanMatching } from "../expectations";
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -10,7 +10,7 @@ describe("X-Ray Propagation", () => {
   afterEach(sharedAfterEach);
 
   it("must send X-Ray headers for configured AWS endpoints", async () => {
-    await browser.url("/e2e/spec/06-xray-propagation/page.html");
+    await loadPage("/e2e/spec/06-xray-propagation/page.html");
     await expect(browser).toHaveTitle("X-Ray propagation test");
 
     // Clear any previous requests
@@ -25,7 +25,7 @@ describe("X-Ray Propagation", () => {
     });
 
     // Navigate back to test page and make request
-    await browser.url("/e2e/spec/06-xray-propagation/page.html");
+    await loadPage("/e2e/spec/06-xray-propagation/page.html");
     const btn = await $("button=Fetch with X-Ray Headers");
     await btn.click();
 
@@ -36,6 +36,8 @@ describe("X-Ray Propagation", () => {
     const ajaxResponse = await fetch("http://localhost.lambdatest.com:8012/ajax-requests");
     const ajaxRequests = await ajaxResponse.json();
     const getRequest = ajaxRequests.find((req: any) => req.method == "GET");
+
+    expect(getRequest).toBeDefined();
     expect(getRequest.headers).toHaveProperty("x-amzn-trace-id");
     expect(getRequest.headers["x-amzn-trace-id"]).toMatch(
       /^Root=1-[0-9a-f]{8}-[0-9a-f]{24};Parent=[0-9a-f]{16};Sampled=1$/
@@ -48,7 +50,7 @@ describe("X-Ray Propagation", () => {
   });
 
   it("must send traceparent headers for configured API endpoints", async () => {
-    await browser.url("/e2e/spec/06-xray-propagation/page.html");
+    await loadPage("/e2e/spec/06-xray-propagation/page.html");
     await expect(browser).toHaveTitle("X-Ray propagation test");
 
     // Clear any previous requests
@@ -63,7 +65,7 @@ describe("X-Ray Propagation", () => {
     });
 
     // Navigate back to test page and make request
-    await browser.url("/e2e/spec/06-xray-propagation/page.html");
+    await loadPage("/e2e/spec/06-xray-propagation/page.html");
     const btn = await $("button=Fetch with Traceparent Headers");
     await btn.click();
 
@@ -74,6 +76,8 @@ describe("X-Ray Propagation", () => {
     const ajaxResponse = await fetch("http://localhost.lambdatest.com:8012/ajax-requests");
     const ajaxRequests = await ajaxResponse.json();
     const getRequest = ajaxRequests.find((req: any) => req.method == "GET");
+
+    expect(getRequest).toBeDefined();
     expect(getRequest.headers).toHaveProperty("traceparent");
     expect(getRequest.headers["traceparent"]).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
 
@@ -84,7 +88,7 @@ describe("X-Ray Propagation", () => {
   });
 
   it("must not send headers for unconfigured endpoints", async () => {
-    await browser.url("/e2e/spec/06-xray-propagation/page.html");
+    await loadPage("/e2e/spec/06-xray-propagation/page.html");
     await expect(browser).toHaveTitle("X-Ray propagation test");
 
     // Clear any previous requests
@@ -99,7 +103,7 @@ describe("X-Ray Propagation", () => {
     });
 
     // Navigate back to test page and make request
-    await browser.url("/e2e/spec/06-xray-propagation/page.html");
+    await loadPage("/e2e/spec/06-xray-propagation/page.html");
     const btn = await $("button=Fetch with No Headers");
     await btn.click();
 
@@ -112,6 +116,8 @@ describe("X-Ray Propagation", () => {
 
     const getRequest = ajaxRequests.find((req: any) => req.method == "GET");
 
+    expect(getRequest).toBeDefined();
+
     expect(getRequest.headers).not.toHaveProperty("traceparent");
     expect(getRequest.headers).not.toHaveProperty("x-amzn-trace-id");
 
@@ -119,7 +125,7 @@ describe("X-Ray Propagation", () => {
   });
 
   it("must send both headers for same-origin requests when multiple propagators configured", async () => {
-    await browser.url("/e2e/spec/06-xray-propagation/page.html");
+    await loadPage("/e2e/spec/06-xray-propagation/page.html");
     await expect(browser).toHaveTitle("X-Ray propagation test");
 
     // Clear any previous requests
@@ -134,7 +140,7 @@ describe("X-Ray Propagation", () => {
     });
 
     // Navigate back to test page and make request
-    await browser.url("/e2e/spec/06-xray-propagation/page.html");
+    await loadPage("/e2e/spec/06-xray-propagation/page.html");
     const btn = await $("button=Same Origin Fetch");
     await btn.click();
 
@@ -146,6 +152,8 @@ describe("X-Ray Propagation", () => {
     const ajaxRequests = await ajaxResponse.json();
 
     const getRequest = ajaxRequests.find((req: any) => req.method == "GET");
+
+    expect(getRequest).toBeDefined();
 
     // Both headers should be present since both propagators are configured
     expect(getRequest.headers).toHaveProperty("traceparent");
@@ -161,7 +169,7 @@ describe("X-Ray Propagation", () => {
   });
 
   it("must send both headers when multiple propagators match the same URL", async () => {
-    await browser.url("/e2e/spec/06-xray-propagation/page.html");
+    await loadPage("/e2e/spec/06-xray-propagation/page.html");
     await expect(browser).toHaveTitle("X-Ray propagation test");
 
     // Clear any previous requests
@@ -169,7 +177,7 @@ describe("X-Ray Propagation", () => {
     await browser.url("http://localhost.lambdatest.com:8012/ajax-requests");
 
     // Navigate back to test page and make request
-    await browser.url("/e2e/spec/06-xray-propagation/page.html");
+    await loadPage("/e2e/spec/06-xray-propagation/page.html");
     const btn = await $("button=Fetch with traceparent and xray Headers");
     await btn.click();
 
@@ -180,6 +188,8 @@ describe("X-Ray Propagation", () => {
     const ajaxResponse = await fetch("http://localhost.lambdatest.com:8012/ajax-requests");
     const ajaxRequests = await ajaxResponse.json();
     const getRequest = ajaxRequests.find((req: any) => req.method == "GET");
+
+    expect(getRequest).toBeDefined();
 
     // Both headers should be present
     expect(getRequest.headers).toHaveProperty("traceparent");

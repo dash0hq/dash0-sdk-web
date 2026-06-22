@@ -1,7 +1,7 @@
 import { sharedAfterEach, sharedBeforeEach } from "../shared";
 import { generateUniqueId } from "../../../../src/utils";
 import { browser } from "@wdio/globals";
-import { retry } from "../utils";
+import { loadPage, retry } from "../utils";
 import { expectLogMatching } from "../expectations";
 
 describe("Events Api", () => {
@@ -10,7 +10,7 @@ describe("Events Api", () => {
 
   it("transmits an event", async () => {
     const testId = generateUniqueId(16);
-    await browser.url(`/e2e/spec/04-events-api/page.html?testId=${testId}#someFragment`);
+    await loadPage(`/e2e/spec/04-events-api/page.html?testId=${testId}#someFragment`);
     await expect(await browser.getTitle()).toMatch(/events-api test/);
 
     const btn = await $("button=Send Event");
