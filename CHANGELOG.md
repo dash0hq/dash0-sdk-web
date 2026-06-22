@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.22.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.21.0...0.22.0) (2026-06-22)
+
+### Features
+
+- extend framework-prefix detection to environment + deployment attributes ([#89](https://github.com/dash0hq/dash0-sdk-web/issues/89)) ([e9822c2](https://github.com/dash0hq/dash0-sdk-web/commit/e9822c2b95c6e4d0a3442c2cb245b119010cd954)), closes [#88](https://github.com/dash0hq/dash0-sdk-web/issues/88) [#88](https://github.com/dash0hq/dash0-sdk-web/issues/88)
+
 ## [0.21.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.20.0...0.21.0) (2026-06-12)
 
 ### Features
