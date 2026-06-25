@@ -30,7 +30,6 @@ import { startErrorInstrumentation } from "../instrumentations/errors";
 import { addAttribute } from "../utils/otel";
 import { instrumentFetch } from "../instrumentations/http/fetch";
 import { startNavigationInstrumentation } from "../instrumentations/navigation";
-import { merge } from "ts-deepmerge";
 import { initializeTabId } from "../utils/tab-id";
 import { InitOptions, InstrumentationName } from "../types/options";
 import { BrowserBuildEnv, pickFirstString } from "./browser-env";
@@ -284,4 +283,27 @@ function isInstrumentationEnabled(name: InstrumentationName, opts: InitOptions):
   if (!instrumentations) return true;
 
   return instrumentations.includes(name);
+}
+
+function merge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+  for (const key of Object.keys(source) as Array<keyof T>) {
+    const srcVal = source[key];
+    const dstVal = target[key];
+    if (srcVal !== undefined) {
+      if (
+        srcVal !== null &&
+        typeof srcVal === "object" &&
+        !Array.isArray(srcVal) &&
+        typeof dstVal === "object" &&
+        dstVal !== null &&
+        !Array.isArray(dstVal)
+      ) {
+        result[key] = { ...dstVal, ...srcVal } as T[keyof T];
+      } else {
+        result[key] = srcVal as T[keyof T];
+      }
+    }
+  }
+  return result;
 }
