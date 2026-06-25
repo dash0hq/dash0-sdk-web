@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.22.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.22.0...0.22.1) (2026-06-25)
+
+### Bug Fixes
+
+- replace ts-deepmerge with inline implementation (CVE-2026-12644) ([#91](https://github.com/dash0hq/dash0-sdk-web/issues/91)) ([648e643](https://github.com/dash0hq/dash0-sdk-web/commit/648e643bef51aad1b10f00eacb92771a2e2271f1))
+
 ## [0.22.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.21.0...0.22.0) (2026-06-22)
 
 ### Features
