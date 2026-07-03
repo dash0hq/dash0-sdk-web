@@ -286,6 +286,22 @@ describe("deriveActionName", () => {
         nameSource: "blank",
       });
     });
+
+    it("never derives a name from an OPTION click target's visible text", () => {
+      // Pins the OPTION entry of TEXT_FALLBACK_EXCLUDED_TAGS: an option's
+      // visible text is the user's chosen value, so a direct click on it
+      // (no attribute sources anywhere in the walk) must stay blank.
+      dom.body.innerHTML = `
+        <select id="sel">
+          <option id="opt" value="secret-option" selected>Secret Option Label</option>
+        </select>`;
+      const target = dom.getElementById("opt")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "",
+        nameSource: "blank",
+      });
+    });
   });
 
   describe("ancestor walk boundaries", () => {
@@ -334,6 +350,49 @@ describe("deriveActionName", () => {
       }
       html += `<span id="span"></span>`;
       for (let i = 0; i < 12; i++) {
+        html += `</div>`;
+      }
+      html += `</div>`;
+      dom.body.innerHTML = html;
+      const target = dom.getElementById("span")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "",
+        nameSource: "blank",
+      });
+    });
+
+    it("finds a custom attribute on exactly the 10th ancestor", () => {
+      // Pins the exact MAX_ANCESTOR_WALK boundary: the attribute div plus 9
+      // plain divs puts the attribute exactly 10 ancestors above the target.
+      let html = `<div data-dash0-action-name="At The Cap">`;
+      for (let i = 0; i < 9; i++) {
+        html += `<div>`;
+      }
+      html += `<span id="span"></span>`;
+      for (let i = 0; i < 9; i++) {
+        html += `</div>`;
+      }
+      html += `</div>`;
+      dom.body.innerHTML = html;
+      const target = dom.getElementById("span")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "At The Cap",
+        nameSource: "custom_attribute",
+      });
+    });
+
+    it("does not find a custom attribute on the 11th ancestor", () => {
+      // Pins the exact MAX_ANCESTOR_WALK boundary from the other side: 10
+      // plain divs push the attribute to ancestor 11, one past the cap. The
+      // target is deliberately text-free so blank isolates the cap itself.
+      let html = `<div data-dash0-action-name="One Past The Cap">`;
+      for (let i = 0; i < 10; i++) {
+        html += `<div>`;
+      }
+      html += `<span id="span"></span>`;
+      for (let i = 0; i < 10; i++) {
         html += `</div>`;
       }
       html += `</div>`;
