@@ -31,6 +31,7 @@ import { addAttribute } from "../utils/otel";
 import { instrumentFetch } from "../instrumentations/http/fetch";
 import { instrumentXhr } from "../instrumentations/http/xhr";
 import { startNavigationInstrumentation } from "../instrumentations/navigation";
+import { startInteractionInstrumentation } from "../instrumentations/interactions";
 import { initializeTabId } from "../utils/tab-id";
 import { InitOptions, InstrumentationName } from "../types/options";
 import { BrowserBuildEnv, pickFirstString } from "./browser-env";
@@ -86,6 +87,7 @@ export function init(opts: InitOptions) {
         "headersToCapture",
         "urlAttributeScrubber",
         "pageViewInstrumentation",
+        "interactionInstrumentation",
         "enableTransportCompression",
       ])
     )
@@ -123,6 +125,9 @@ export function init(opts: InitOptions) {
   }
   if (isInstrumentationEnabled("@dash0/xhr", opts)) {
     instrumentXhr();
+  }
+  if (isInstrumentationEnabled("@dash0/interactions", opts) && vars.interactionInstrumentation.enabled) {
+    startInteractionInstrumentation();
   }
 
   hasBeenInitialised = true;

@@ -58,6 +58,26 @@ export type PageViewInstrumentationSettings = {
   includeParts?: Array<"HASH" | "SEARCH">;
 };
 
+export type InteractionInstrumentationSettings = {
+  /**
+   * Whether the SDK should automatically capture click interactions.
+   * Opt-in: disabled by default.
+   *
+   * @default false
+   */
+  enabled?: boolean;
+
+  /**
+   * The element attribute the SDK checks first (on the clicked element or any
+   * ancestor) when deriving a human-readable interaction name. Set this
+   * attribute on interactive elements to fully control the captured name,
+   * e.g. `<button data-dash0-action-name="Save Settings">`.
+   *
+   * @default "data-dash0-action-name"
+   */
+  actionNameAttribute?: string;
+};
+
 export type Vars = {
   /**
    * Telemetry endpoints to which the generated telemetry should be sent
@@ -167,6 +187,12 @@ export type Vars = {
   pageViewInstrumentation: PageViewInstrumentationSettings;
 
   /**
+   * Configures automatic user-interaction (click) instrumentation. Opt-in --
+   * disabled by default. See {@link InteractionInstrumentationSettings}.
+   */
+  interactionInstrumentation: InteractionInstrumentationSettings;
+
+  /**
    * Enables telemetry transport compression using gzip.
    * experimental - in rare cases causes Chrome to crash to use at your own risk.
    */
@@ -202,6 +228,10 @@ export const vars: Vars = {
   pageViewInstrumentation: {
     trackVirtualPageViews: true,
     includeParts: [],
+  },
+  interactionInstrumentation: {
+    enabled: false,
+    actionNameAttribute: "data-dash0-action-name",
   },
   enableTransportCompression: false,
   isSessionSampled: true,
