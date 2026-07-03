@@ -1,14 +1,16 @@
-import { sharedAfterEach, sharedBeforeEach } from "../shared";
+import { getOTLPRequests, sharedAfterEach, sharedBeforeEach } from "../shared";
+import { generateUniqueId } from "../../../../src/utils";
 import { browser } from "@wdio/globals";
 import { loadPage, retry } from "../utils";
-import { expectLogMatching, expectNoLogMatching } from "../expectations";
+import { expectLogMatching, expectNoBrowserErrors, expectNoLogMatching } from "../expectations";
 
 describe("Interaction Instrumentation", () => {
   beforeEach(sharedBeforeEach);
   afterEach(sharedAfterEach);
 
   it("emits a browser.interaction log with the custom action name when a data-dash0-action-name button is clicked", async () => {
-    await loadPage("/e2e/spec/10-interactions/page.html");
+    const testId = generateUniqueId(16);
+    await loadPage(`/e2e/spec/10-interactions/page.html?testId=${testId}`);
     await expect(await browser.getTitle()).toMatch(/interactions test/);
 
     const btn = await $("#save-button");
@@ -41,10 +43,13 @@ describe("Interaction Instrumentation", () => {
         })
       );
     });
+
+    expectNoBrowserErrors();
   });
 
   it("derives the name from visible text when no custom attribute or aria-label is present", async () => {
-    await loadPage("/e2e/spec/10-interactions/page.html");
+    const testId = generateUniqueId(16);
+    await loadPage(`/e2e/spec/10-interactions/page.html?testId=${testId}`);
 
     const btn = await $("#plain-button");
     await btn.click();
@@ -65,10 +70,13 @@ describe("Interaction Instrumentation", () => {
         })
       );
     });
+
+    expectNoBrowserErrors();
   });
 
   it("derives the name from aria-label for an icon-only button with no visible text", async () => {
-    await loadPage("/e2e/spec/10-interactions/page.html");
+    const testId = generateUniqueId(16);
+    await loadPage(`/e2e/spec/10-interactions/page.html?testId=${testId}`);
 
     const btn = await $("#icon-button");
     await btn.click();
@@ -89,10 +97,13 @@ describe("Interaction Instrumentation", () => {
         })
       );
     });
+
+    expectNoBrowserErrors();
   });
 
   it("never derives a name from a text input's value, even though it has a pre-filled value", async () => {
-    await loadPage("/e2e/spec/10-interactions/page.html");
+    const testId = generateUniqueId(16);
+    await loadPage(`/e2e/spec/10-interactions/page.html?testId=${testId}`);
 
     const input = await $("#text-input");
     await input.click();
@@ -118,7 +129,7 @@ describe("Interaction Instrumentation", () => {
         })
       );
 
-      const requests = await (await import("../shared")).getOTLPRequests();
+      const requests = await getOTLPRequests();
       const logRequests = requests.filter((r) => r.path === "/v1/logs");
       const bodies = logRequests.flatMap((r) =>
         "resourceLogs" in r.body
@@ -136,10 +147,13 @@ describe("Interaction Instrumentation", () => {
         "pre-filled secret"
       );
     });
+
+    expectNoBrowserErrors();
   });
 
   it("emits no browser.interaction logs when interactionInstrumentation is left at its default (disabled)", async () => {
-    await loadPage("/e2e/spec/10-interactions/page-disabled.html");
+    const testId = generateUniqueId(16);
+    await loadPage(`/e2e/spec/10-interactions/page-disabled.html?testId=${testId}`);
 
     const btn = await $("#save-button");
     await btn.click();
@@ -153,5 +167,7 @@ describe("Interaction Instrumentation", () => {
         })
       );
     });
+
+    expectNoBrowserErrors();
   });
 });
