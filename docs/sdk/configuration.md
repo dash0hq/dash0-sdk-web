@@ -124,7 +124,7 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
-  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr'`
+  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/interactions'`
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
 - **Ignore URLs**<br>
@@ -445,3 +445,65 @@ for `fetch`, while an `XMLHttpRequest` timeout is an error — this asymmetry is
   Additionally generate virtual page views when these url parts change.
   - "HASH" changes to the urls hash / fragment
   - "SEARCH" changes to the urls search / query parameters
+
+#### Interaction instrumentation
+
+Opt-in automatic capture of click interactions (Datadog RUM `trackUserInteractions` parity). Disabled by default --
+set `interactionInstrumentation.enabled: true` to turn it on. When enabled, a single capture-phase listener on
+`window` observes clicks anywhere on the page (no per-element wiring, no listener leakage) and emits a
+`browser.interaction` web event per click with a derived, privacy-conscious interaction name and a compact
+target-element selector.
+
+- **Enable Interaction Instrumentation**<br>
+  key: `interactionInstrumentation.enabled`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Whether the SDK should automatically capture click interactions. Also requires `'@dash0/interactions'` to be
+  present in `enabledInstrumentations` when that option is explicitly set (it is included by default when
+  `enabledInstrumentations` is left `undefined`).
+- **Action Name Attribute**<br>
+  key: `interactionInstrumentation.actionNameAttribute`<br>
+  type: `string`<br>
+  optional: `true`<br>
+  default: `"data-dash0-action-name"`<br>
+  The element attribute the SDK checks first (on the clicked element or any of its ancestors) when deriving a
+  human-readable interaction name. Set this attribute on interactive elements for full control over the captured
+  name, e.g. `<button data-dash0-action-name="Save Settings">`.
+
+**Name derivation priority** (first match wins, walking from the clicked element up to 10 ancestors, stopping at
+the first `FORM`, `BODY`, `HTML`, or `HEAD` boundary):
+
+1. `custom_attribute` -- the configured `actionNameAttribute`, on the target or a qualifying ancestor.
+2. `standard_attribute` -- attribute-derived names checked on the target then ancestors: for `button`/`submit`/`reset`
+   inputs, `.value`; then `aria-label`, `aria-labelledby` (resolved via the referenced element(s)' text), `alt`,
+   `title`, or `placeholder`.
+3. `text_content` -- visible text: first the text of clickable-tag elements (`BUTTON`, `LABEL`, `A`, or
+   `role="button"`) found while walking up from the target, then the target's own visible text. This fallback never
+   applies when the click target itself is an `INPUT`, `TEXTAREA`, `SELECT`, or `OPTION` element, since their text
+   content is user data rather than an action label.
+4. `blank` -- an empty name, if nothing above matched.
+
+Attribute-derived sources always outrank text: the full phase order is custom attribute → standard attributes
+(walk) → text content (walk, then target) → blank. Each captured event's `name_source` attribute reflects which
+phase produced the name.
+
+**Privacy defaults (not configurable):** the SDK never reads the value of `password`, `text`, `textarea`, or
+`select` elements -- only `button`/`submit`/`reset` inputs expose their value for name derivation, and the
+text-content fallback above never applies to `INPUT`/`TEXTAREA`/`SELECT`/`OPTION` targets. Derived names are
+whitespace-normalized and truncated to 100 characters. The target-element selector is independently capped at 128
+characters.
+
+Note: capturing interaction events requires both `interactionInstrumentation.enabled: true` **and**
+`'@dash0/interactions'` present in `enabledInstrumentations` if that option is explicitly set to a non-default
+list -- either gate alone is not sufficient.
+
+```ts
+init({
+  serviceName: "my-website",
+  endpoint: { url: "{OTLP via HTTP endpoint}", authToken: "{authToken}" },
+  interactionInstrumentation: {
+    enabled: true,
+  },
+});
+```
