@@ -128,6 +128,34 @@ describe("click instrumentation", () => {
       expect(selector?.value.stringValue).toBe("button.btn-primary");
     });
 
+    it("caps the selector length on the id-anchored path, same as the ancestor-walk path", () => {
+      // Regression: the tag#id fast path must go through the same
+      // MAX_SELECTOR_LENGTH (128) truncation as the ancestor-walk branch.
+      const longId = "x".repeat(200);
+      dom.body.innerHTML = `<button id="${longId}">Click</button>`;
+      handleClick(dispatchClick(dom.getElementById(longId)!));
+
+      const log = lastLog();
+      const selector = (log.body!.kvlistValue!.values as { key: string; value: { stringValue: string } }[]).find(
+        (kv) => kv.key === INTERACTION_TARGET_SELECTOR
+      );
+      expect(selector?.value.stringValue).toBe(`button#${longId}`.substring(0, 128));
+      expect(selector?.value.stringValue.length).toBe(128);
+    });
+
+    it("never includes body/html segments in the selector for a shallow element with no id", () => {
+      // Locks in SELECTOR_BOUNDARY_TAGS: the ancestor walk stops before
+      // crossing into document-structure elements.
+      dom.body.innerHTML = `<span class="lonely">x</span>`;
+      handleClick(dispatchClick(dom.querySelector(".lonely")!));
+
+      const log = lastLog();
+      const selector = (log.body!.kvlistValue!.values as { key: string; value: { stringValue: string } }[]).find(
+        (kv) => kv.key === INTERACTION_TARGET_SELECTOR
+      );
+      expect(selector?.value.stringValue).toBe("span.lonely");
+    });
+
     it("walks up to 3 ancestors joined with ' > ' when no id is present anywhere in the path", () => {
       dom.body.innerHTML = `
         <div class="outer">

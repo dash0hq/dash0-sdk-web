@@ -106,10 +106,14 @@ export function handleClick(event: Event): void {
  *   The walk never crosses a BODY/HTML boundary -- those document-structure
  *   elements are not meaningful click-target context.
  * Result is capped at MAX_SELECTOR_LENGTH characters.
+ *
+ * The selector is best-effort display telemetry, NOT guaranteed valid CSS for
+ * querySelector: ids/class names are not escaped and truncation may cut
+ * mid-token.
  */
 function buildSelector(element: Element): string {
   if (element.id) {
-    return describeElement(element);
+    return truncateSelector(describeElement(element));
   }
 
   const parts: string[] = [describeElement(element)];
@@ -121,7 +125,10 @@ function buildSelector(element: Element): string {
     if (current.id) break;
   }
 
-  const selector = parts.join(" > ");
+  return truncateSelector(parts.join(" > "));
+}
+
+function truncateSelector(selector: string): string {
   return selector.length > MAX_SELECTOR_LENGTH ? selector.substring(0, MAX_SELECTOR_LENGTH) : selector;
 }
 
