@@ -62,6 +62,8 @@ export type InteractionInstrumentationSettings = {
   /**
    * Whether the SDK should automatically capture click interactions.
    * Opt-in: disabled by default.
+   * Also requires "@dash0/interactions" to be present in enabledInstrumentations
+   * (or enabledInstrumentations left undefined).
    *
    * @default false
    */
