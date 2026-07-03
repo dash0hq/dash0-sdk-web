@@ -42,6 +42,14 @@ export const EXCEPTION_MESSAGE = "exception.message";
 export const EXCEPTION_TYPE = "exception.type";
 export const EXCEPTION_STACKTRACE = "exception.stacktrace";
 
+// Interaction Attribute Keys
+export const INTERACTION_TYPE = "type";
+export const INTERACTION_NAME = "name";
+export const INTERACTION_NAME_SOURCE = "name_source";
+export const INTERACTION_TARGET_SELECTOR = "target.selector";
+export const INTERACTION_TARGET_TAG = "target.tag";
+export const INTERACTION_TARGET_ID = "target.id";
+
 // Error Attribute Keys
 export const ERROR_TYPE = "error.type";
 
@@ -68,6 +76,7 @@ export const EVENT_NAMES = {
   NAVIGATION_TIMING: "browser.navigation_timing",
   WEB_VITAL: "browser.web_vital",
   ERROR: "browser.error",
+  INTERACTION: "browser.interaction",
 };
 export const SPAN_EVENT_NAME_EXCEPTION = "exception";
 
