@@ -263,3 +263,7 @@ Temporary Items
 /playwright/.cache/
 
 /.claude/
+
+# Sync docs test output
+.transformed-docs/
+.github/workflows/sync-docs/.venv/
