@@ -43,7 +43,7 @@ jobs:
           persist-credentials: false
 
       - name: Sync docs
-        uses: dash0hq/sync-docs-action@802854fea6967d26c38b52a41cda2a2ca94e8c4e # main @ 2026-07-08
+        uses: dash0hq/sync-docs-action@v0.1.0
         with:
           target-repository: ${{ inputs.target-repository || 'dash0hq/dash0-website' }}
           target-github-token: ${{ secrets.REPOSITORY_FULL_ACCESS_GITHUB_TOKEN }}
