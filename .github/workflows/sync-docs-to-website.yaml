@@ -7,9 +7,11 @@ name: Synchronize Web SDK docs to dash0.com/docs
 # applying the modifications declared in sync-docs/transformations.yaml, and opens a pull request against
 # the target repository.
 #
-# INSTALL.md is transformed and split into multiple documentation pages:
-# - getting-started-website-monitoring.md (installation and setup)
-# - sdk-api-reference.md (API reference, extracted from INSTALL.md)
+# INSTALL.md is transformed and split into four documentation pages in the setup/ subdirectory:
+# - installation.md (prerequisites and preparation)
+# - setup.md (installation instructions)
+# - configuration.md (configuration options)
+# - api.md (API reference)
 #
 # This workflow can be run manually (workflow_dispatch) and will also be invoked automatically when INSTALL.md
 # or the sync infrastructure changes.

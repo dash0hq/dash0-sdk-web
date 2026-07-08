@@ -16,8 +16,7 @@ modifications and opening a pull request against the documentation repository.
    - transformation declarations: `transformations.yaml`
    - output directory: `${RUNNER_TEMP}/transformed-docs`
 4. **Checks out the target repository** (the docs repo) using a fine-grained PAT.
-5. **Copies** the transformed files (`dash0/monitoring/websites/getting-started-website-monitoring.md` and
-   `dash0/monitoring/websites/sdk-api-reference.md`) into the configured target directory.
+5. **Copies** the transformed files (four pages in `dash0/monitoring/websites/setup/`) into the configured target directory.
 6. **Creates or updates a pull request** in the target repository: it stages the target directory, and if there
    is a meaningful diff, commits to the branch `sync-dash0-web-sdk-docs`, force-pushes it, and opens
    a PR against `main` (or relies on the force-push to update an already-open PR).
@@ -48,13 +47,15 @@ modifications and opening a pull request against the documentation repository.
   - `title` / `description` — rendered into the generated frontmatter.
   - `transformations` — optional list of transformations applied to this file only, after the common ones.
 
-The documentation is split from a single source file (INSTALL.md) into two pages:
+The documentation is split from a single source file (INSTALL.md) into four pages in the `setup/` subdirectory:
 
-1. **getting-started-website-monitoring.md** — Installation and setup content (lines 1-543 of INSTALL.md)
-2. **sdk-api-reference.md** — API reference content (lines 544+ of INSTALL.md)
+1. **installation.md** — Prerequisites and preparation (lines 1-22 of INSTALL.md, "## Before you begin")
+2. **setup.md** — Installation instructions (lines 23-120 of INSTALL.md, "## Setup")
+3. **configuration.md** — Configuration options (lines 121-543 of INSTALL.md, "## Configuration")
+4. **api.md** — API reference (lines 544+ of INSTALL.md, "## API")
 
-This split allows the website to have a focused "getting started" guide separate from the comprehensive
-API reference.
+This split organizes the documentation by workflow stage: prerequisites → installation → configuration → API reference.
+Each page has focused content and cross-references to related pages.
 
 ### Supported transformation types
 
@@ -84,8 +85,8 @@ UTC date/time, computed once per run so all occurrences render identically.
 
 ## When editing
 
-- **Changing INSTALL.md structure**: Update `transformations.yaml` if section boundaries change. The split point
-  is currently at "## API" (line 544).
+- **Changing INSTALL.md structure**: Update `transformations.yaml` if section boundaries change. The split points
+  are currently at "## Setup" (line 23), "## Configuration" (line 121), and "## API" (line 544).
 - **Adding new documentation pages**: Add a new `files` entry in `transformations.yaml`.
 - **Changing how docs are adapted**: Edit `transformations.yaml`, not the Python script.
 - **Verify locally** with `./test-locally.sh` and inspect the output under `.transformed-docs`.
@@ -126,9 +127,10 @@ Check the link rewriting transformations:
 
 ### Generated docs look wrong
 
-1. Check the split point in transformations.yaml (currently "## API")
+1. Check the split points in transformations.yaml (currently "## Setup", "## Configuration", "## API")
 2. Verify the regex patterns match the actual content structure
 3. Run locally to see intermediate transformation steps
+4. Verify cross-reference links between the four pages are correct
 
 ## Maintenance
 

@@ -31,20 +31,23 @@ This will generate transformed documentation in `.transformed-docs/` at the repo
 
 ## How It Works
 
-1. INSTALL.md is split into two pages:
-   - `getting-started-website-monitoring.md` - Installation and setup (lines 1-543)
-   - `sdk-api-reference.md` - API reference (lines 544+)
+1. INSTALL.md is split into four pages in `setup/` subdirectory:
+   - `installation.md` - Prerequisites (lines 1-22, "## Before you begin")
+   - `setup.md` - Installation instructions (lines 23-120, "## Setup")
+   - `configuration.md` - Configuration options (lines 121-543, "## Configuration")
+   - `api.md` - API reference (lines 544+, "## API")
 
 2. Transformations are applied:
-   - Remove heading (replaced by frontmatter)
-   - Split content at "## API" section
+   - Remove top-level heading (replaced by frontmatter)
+   - Split content at section boundaries ("## Setup", "## Configuration", "## API")
    - Add auto-generated warnings
-   - Add cross-references
-   - Rewrite links to internal paths
+   - Add cross-references between pages
+   - Rewrite external links to internal paths
+   - Update GitHub issue links to support contact
 
 3. Frontmatter is generated with title, description, and timestamp
 
-4. Files are written to target repository and a PR is created
+4. Files are written to target repository at `setup/` path and a PR is created
 
 ## Repository Secrets
 
@@ -67,9 +70,13 @@ Edit INSTALL.md directly. Changes will sync automatically when pushed to main.
 3. Review generated files in `.transformed-docs/`
 4. Commit and push
 
-### Changing Split Point
+### Changing Split Points
 
-If the "## API" section moves, update the line numbers in transformations.yaml comments and verify transformations still work.
+If section headings move (currently "## Setup" at line 23, "## Configuration" at line 121, "## API" at line 544), update:
+
+1. Line numbers in transformations.yaml comments
+2. Regex patterns if heading text changes
+3. Test locally to verify transformations still work
 
 ## Troubleshooting
 

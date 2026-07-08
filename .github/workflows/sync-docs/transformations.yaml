@@ -4,11 +4,11 @@
 # This file is the source of truth for how the Web SDK installation docs are adapted into the docs pages.
 # Edit this file whenever the required modifications change.
 #
-# INSTALL.md is split into four documentation pages:
-# - getting-started-website-monitoring.md (introduction and prerequisites, lines 1-22)
-# - web-sdk-setup.md (installation and setup, lines 23-120)
-# - web-sdk-configuration.md (configuration options, lines 121-543)
-# - sdk-api-reference.md (API reference, lines 544+)
+# INSTALL.md is split into four documentation pages in the setup/ subdirectory:
+# - setup/installation.md (introduction and prerequisites, lines 1-22)
+# - setup/setup.md (installation and setup, lines 23-120)
+# - setup/configuration.md (configuration options, lines 121-543)
+# - setup/api.md (API reference, lines 544+)
 #
 # Structure of this file:
 #
@@ -49,8 +49,8 @@ common:
 
 files:
   - source: INSTALL.md
-    target: dash0/monitoring/websites/getting-started-website-monitoring.md
-    title: Get Started with Website Monitoring
+    target: dash0/monitoring/websites/setup/installation.md
+    title: Installation
     description: Prerequisites and preparation for setting up the Dash0 Web SDK.
     transformations:
       - description: extract content before Setup section (lines 1-22)
@@ -70,7 +70,7 @@ files:
       - description: add navigation to next steps
         type: prepend
         content: |
-          Once you've completed the prerequisites, proceed to [Set Up the Web SDK](/docs/dash0/monitoring/websites/web-sdk-setup).
+          Once you've completed the prerequisites, proceed to [Setup](/docs/dash0/monitoring/websites/setup/setup).
 
 
       - description: update GitHub issue link to support contact
@@ -85,8 +85,8 @@ files:
         replace: '/docs/dash0/\1'
 
   - source: INSTALL.md
-    target: dash0/monitoring/websites/web-sdk-setup.md
-    title: Set Up the Web SDK
+    target: dash0/monitoring/websites/setup/setup.md
+    title: Setup
     description: Install and initialize the Dash0 Web SDK for website monitoring.
     transformations:
       - description: extract Setup section only (lines 23-120)
@@ -106,9 +106,9 @@ files:
       - description: add navigation links
         type: prepend
         content: |
-          Before you begin, see [Get Started with Website Monitoring](/docs/dash0/monitoring/websites/getting-started-website-monitoring).
+          Before you begin, see [Installation](/docs/dash0/monitoring/websites/setup/installation).
 
-          After setup, learn about [Web SDK Configuration](/docs/dash0/monitoring/websites/web-sdk-configuration).
+          After setup, learn about [Configuration](/docs/dash0/monitoring/websites/setup/configuration).
 
 
       - description: update GitHub issue link to support contact
@@ -124,8 +124,8 @@ files:
         required: false
 
   - source: INSTALL.md
-    target: dash0/monitoring/websites/web-sdk-configuration.md
-    title: Web SDK Configuration
+    target: dash0/monitoring/websites/setup/configuration.md
+    title: Configuration
     description: Configure the Dash0 Web SDK with options for telemetry, instrumentations, and custom behavior.
     transformations:
       - description: extract Configuration section only (lines 121-543)
@@ -147,7 +147,7 @@ files:
         content: |
           This page covers configuration options for the Dash0 Web SDK.
 
-          For installation instructions, see [Set Up the Web SDK](/docs/dash0/monitoring/websites/web-sdk-setup). For API methods, see [Web SDK API Reference](/docs/dash0/monitoring/websites/sdk-api-reference).
+          For installation instructions, see [Setup](/docs/dash0/monitoring/websites/setup/setup). For API methods, see [API](/docs/dash0/monitoring/websites/setup/api).
 
 
       - description: update GitHub issue link to support contact
@@ -163,8 +163,8 @@ files:
         required: false
 
   - source: INSTALL.md
-    target: dash0/monitoring/websites/sdk-api-reference.md
-    title: Web SDK API Reference
+    target: dash0/monitoring/websites/setup/api.md
+    title: API
     description: Complete API reference for the Dash0 Web SDK including methods and functions.
     transformations:
       - description: extract API section only (lines 544+)
@@ -186,7 +186,7 @@ files:
         content: |
           This page provides a complete reference for the Dash0 Web SDK API methods and functions.
 
-          For installation instructions, see [Set Up the Web SDK](/docs/dash0/monitoring/websites/web-sdk-setup). For configuration options, see [Web SDK Configuration](/docs/dash0/monitoring/websites/web-sdk-configuration).
+          For installation instructions, see [Setup](/docs/dash0/monitoring/websites/setup/setup). For configuration options, see [Configuration](/docs/dash0/monitoring/websites/setup/configuration).
 
 
       - description: rewrite documentation.dash0.com links to internal paths
