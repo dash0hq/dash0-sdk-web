@@ -101,7 +101,12 @@ def _process_file(file_entry, common, source_root, output_dir, placeholders):
     target = file_entry["target"]
     source_path = os.path.join(source_root, source)
 
-    with open(source_path, encoding="utf-8") as source_file:
+    base_real = os.path.realpath(source_root)
+    target_real = os.path.realpath(source_path)
+    if os.path.commonpath([base_real, target_real]) != base_real:
+        raise SystemExit("Invalid file path")
+
+    with open(target_real, encoding="utf-8") as source_file:
         content = source_file.read()
 
     for index, transformation in enumerate(common, start=1):
