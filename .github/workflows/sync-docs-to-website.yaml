@@ -3,30 +3,25 @@
 
 name: Synchronize Web SDK docs to dash0.com/docs
 
-# Copies INSTALL.md from the dash0-sdk-web repository into the documentation on https://www.dash0.com/docs,
-# applying the modifications declared in sync-docs/transformations.yaml, and opens a pull request against
-# the target repository.
+# Copies INSTALL.md from this repository into the Dash0 website documentation, applying the
+# transformations declared in .github/workflows/sync-docs/transformations.yaml and opening (or
+# updating) a pull request against the target repository.
 #
-# INSTALL.md is transformed and split into four documentation pages in the setup/ subdirectory:
-# - installation.md (prerequisites and preparation)
-# - setup.md (installation instructions)
-# - configuration.md (configuration options)
-# - api.md (API reference)
+# All engine and PR-flow logic lives in the shared action `dash0hq/sync-docs-action`; this workflow
+# is only the caller shell.
 #
-# This workflow can be run manually (workflow_dispatch) and will also be invoked automatically when INSTALL.md
-# or the sync infrastructure changes.
-#
-# The target repository and directory are configured via repository secrets:
-# - SYNC_DOCUMENTATION_TARGET_REPOSITORY (owner/repo format)
-# - SYNC_DOCUMENTATION_TARGET_DIRECTORY (path within target repo)
-#
-# Authentication to the (private) target repository uses DASH0_DOCS_REPO_GITHUB_PAT, which must be a
-# fine-grained personal access token scoped to the target repository with:
-# - Contents: Read and write (to push the branch)
-# - Pull requests: Read and write (to open the PR)
+# Prerequisites (repository secrets):
+# - REPOSITORY_FULL_ACCESS_GITHUB_TOKEN — fine-grained PAT scoped to the target repository with
+#   `Contents: Read and write` and `Pull requests: Read and write`. The secret name matches the
+#   Dash0 org convention across other source-repo callers.
 
 on:
   workflow_dispatch:
+    inputs:
+      target-repository:
+        description: "Override the target repository (production default: dash0hq/dash0-website)."
+        required: false
+        default: dash0hq/dash0-website
   push:
     branches:
       - main
@@ -34,20 +29,6 @@ on:
       - "INSTALL.md"
       - ".github/workflows/sync-docs/**"
       - ".github/workflows/sync-docs-to-website.yaml"
-  workflow_call:
-    secrets:
-      DASH0_DOCS_REPO_GITHUB_PAT:
-        description: Fine-grained PAT with contents + pull-requests write access for the documentation repository.
-        required: true
-      SYNC_DOCUMENTATION_TARGET_REPOSITORY:
-        description: The owner/name of the documentation repository to sync the docs into.
-        required: true
-      SYNC_DOCUMENTATION_TARGET_DIRECTORY:
-        description: The path of the directory holding the documentation pages within the target repository.
-        required: true
-
-env:
-  PR_BRANCH: sync-dash0-web-sdk-docs
 
 jobs:
   sync-docs:
@@ -56,75 +37,19 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: checkout dash0-sdk-web
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - name: Checkout dash0-sdk-web
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          path: dash0-sdk-web
+          persist-credentials: false
 
-      - name: set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - name: Sync docs
+        uses: dash0hq/sync-docs-action@802854fea6967d26c38b52a41cda2a2ca94e8c4e # main @ 2026-07-08
         with:
-          python-version: "3.x"
-
-      - name: install dependencies
-        run: pip install -r dash0-sdk-web/.github/workflows/sync-docs/requirements.txt
-
-      - name: apply doc transformations
-        run: |
-          python dash0-sdk-web/.github/workflows/sync-docs/apply-transformations.py \
-            dash0-sdk-web \
-            dash0-sdk-web/.github/workflows/sync-docs/transformations.yaml \
-            "${RUNNER_TEMP}/transformed-docs"
-
-      - name: checkout target repo
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
-        with:
-          repository: ${{ secrets.SYNC_DOCUMENTATION_TARGET_REPOSITORY }}
-          token: ${{ secrets.DASH0_DOCS_REPO_GITHUB_PAT }}
-          path: target-repository
-
-      - name: copy transformed docs
-        env:
-          TARGET_DIRECTORY: ${{ secrets.SYNC_DOCUMENTATION_TARGET_DIRECTORY }}
-        run: |
-          target_path="target-repository/${TARGET_DIRECTORY}"
-          mkdir -p "$target_path"
-          # Copy the transformed files into the target directory
-          cp -R "${RUNNER_TEMP}/transformed-docs/." "$target_path/"
-
-      - name: create pull request in target repository
-        working-directory: target-repository
-        env:
-          GH_TOKEN: ${{ secrets.DASH0_DOCS_REPO_GITHUB_PAT }}
-          TARGET_DIRECTORY: ${{ secrets.SYNC_DOCUMENTATION_TARGET_DIRECTORY }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          # Stage all changes within the target directory so they are visible to the diff check below
-          git add --all -- "${TARGET_DIRECTORY}"
-
-          # git diff --cached --quiet exits with 1 if there are staged differences, 0 means the docs are
-          # already up to date. The lastUpdated timestamp changes on every run, so it is ignored (via -I)
-          # when determining whether the docs are up to date.
-          if git diff --cached --quiet -I '^lastUpdated: ' -- "${TARGET_DIRECTORY}"; then
-            echo "The documentation pages are already up to date, nothing to do."
-            exit 0
-          fi
-
-          echo "The documentation pages have changed, creating/updating a pull request."
-          git checkout -B "${PR_BRANCH}"
-          git commit --message "docs: synchronize Web SDK docs"
-          git push --force origin "${PR_BRANCH}"
-
-          # Only open a new PR if there is no open one for this branch yet (otherwise the force-push
-          # above already updated the existing PR).
-          if [ -z "$(gh pr list --head "${PR_BRANCH}" --state open --json number --jq '.[].number')" ]; then
-            gh pr create \
-              --base main \
-              --head "${PR_BRANCH}" \
-              --title "docs: synchronize Web SDK documentation" \
-              --body "This PR synchronizes the content of the Web SDK documentation from [dash0hq/dash0-sdk-web](https://github.com/dash0hq/dash0-sdk-web) into the documentation on https://www.dash0.com/docs."
-          else
-            echo "An open pull request for branch ${PR_BRANCH} already exists, it was updated by the force-push above."
-          fi
+          target-repository: ${{ inputs.target-repository || 'dash0hq/dash0-website' }}
+          target-github-token: ${{ secrets.REPOSITORY_FULL_ACCESS_GITHUB_TOKEN }}
+          pr-branch: sync-dash0-web-sdk-docs
+          pr-title: "docs: synchronize Web SDK documentation"
+          pr-body: |
+            This PR synchronizes the content of the Web SDK documentation from
+            [dash0hq/dash0-sdk-web](https://github.com/dash0hq/dash0-sdk-web) into the
+            documentation on https://www.dash0.com/docs.

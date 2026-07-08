@@ -44,7 +44,7 @@
 common:
   - description: remove the leading top-level heading (the frontmatter title replaces it)
     type: replace-regex
-    find: '\A#\s+[^\n]*\n'
+    find: '^#\s+[^\n]*\n'
     replace: ""
 
 files:
