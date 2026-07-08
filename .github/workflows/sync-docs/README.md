@@ -32,12 +32,14 @@ This will generate transformed documentation in `.transformed-docs/` at the repo
 ## How It Works
 
 1. INSTALL.md is split into four pages in `setup/` subdirectory:
+
    - `installation.md` - Prerequisites (lines 1-22, "## Before you begin")
    - `setup.md` - Installation instructions (lines 23-120, "## Setup")
    - `configuration.md` - Configuration options (lines 121-543, "## Configuration")
    - `api.md` - API reference (lines 544+, "## API")
 
 2. Transformations are applied:
+
    - Remove top-level heading (replaced by frontmatter)
    - Split content at section boundaries ("## Setup", "## Configuration", "## API")
    - Add auto-generated warnings

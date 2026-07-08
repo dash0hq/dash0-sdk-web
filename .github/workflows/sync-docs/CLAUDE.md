@@ -30,12 +30,12 @@ modifications and opening a pull request against the documentation repository.
 
 ## How it is implemented in this directory
 
-| File | Role |
-| --- | --- |
-| `transformations.yaml` | **Source of truth.** Declares the common and per-file transformations, the source→target file mapping, and the frontmatter `title`/`description` for each page. |
-| `apply-transformations.py` | The engine. Reads `transformations.yaml`, applies the transformations to each source file, and writes the results to the output directory. Knows *how* to apply transformations; it does not hard-code *which* ones. |
-| `requirements.txt` | Python dependencies (PyYAML). |
-| `test-locally.sh` | Runs the transformation step locally in a throwaway venv, writing output to `.transformed-docs` for inspection — mirrors the workflow without touching the docs repo. |
+| File                       | Role                                                                                                                                                                                                                 |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `transformations.yaml`     | **Source of truth.** Declares the common and per-file transformations, the source→target file mapping, and the frontmatter `title`/`description` for each page.                                                      |
+| `apply-transformations.py` | The engine. Reads `transformations.yaml`, applies the transformations to each source file, and writes the results to the output directory. Knows _how_ to apply transformations; it does not hard-code _which_ ones. |
+| `requirements.txt`         | Python dependencies (PyYAML).                                                                                                                                                                                        |
+| `test-locally.sh`          | Runs the transformation step locally in a throwaway venv, writing output to `.transformed-docs` for inspection — mirrors the workflow without touching the docs repo.                                                |
 
 ### `transformations.yaml` structure
 

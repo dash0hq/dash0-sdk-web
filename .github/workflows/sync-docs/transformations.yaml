@@ -45,7 +45,7 @@ common:
   - description: remove the leading top-level heading (the frontmatter title replaces it)
     type: replace-regex
     find: '\A#\s+[^\n]*\n'
-    replace: ''
+    replace: ""
 
 files:
   - source: INSTALL.md
@@ -55,7 +55,7 @@ files:
     transformations:
       - description: extract content before Setup section (lines 1-22)
         type: replace-regex
-        find: '(?s)(.*?)^## Setup.*'
+        find: "(?s)(.*?)^## Setup.*"
         replace: '\1'
         flags:
           - multiline
@@ -66,17 +66,15 @@ files:
         content: |
           <!-- AUTO-GENERATED from dash0-sdk-web/INSTALL.md - Do not edit directly -->
 
-
       - description: add navigation to next steps
         type: prepend
         content: |
           Once you've completed the prerequisites, proceed to [Setup](/docs/dash0/monitoring/websites/setup/setup).
 
-
       - description: update GitHub issue link to support contact
         type: replace-regex
         find: '\[creating a GitHub issue\]\(https://github\.com/dash0hq/dash0-sdk-web/issues\)'
-        replace: '[contacting support](https://www.dash0.com/support)'
+        replace: "[contacting support](https://www.dash0.com/support)"
         required: false
 
       - description: rewrite documentation.dash0.com links to internal paths
@@ -102,7 +100,6 @@ files:
         content: |
           <!-- AUTO-GENERATED from dash0-sdk-web/INSTALL.md - Do not edit directly -->
 
-
       - description: add navigation links
         type: prepend
         content: |
@@ -110,11 +107,10 @@ files:
 
           After setup, learn about [Configuration](/docs/dash0/monitoring/websites/setup/configuration).
 
-
       - description: update GitHub issue link to support contact
         type: replace-regex
         find: '\[creating a GitHub issue\]\(https://github\.com/dash0hq/dash0-sdk-web/issues\)'
-        replace: '[contacting support](https://www.dash0.com/support)'
+        replace: "[contacting support](https://www.dash0.com/support)"
         required: false
 
       - description: rewrite documentation.dash0.com links to internal paths
@@ -141,7 +137,6 @@ files:
         content: |
           <!-- AUTO-GENERATED from dash0-sdk-web/INSTALL.md - Do not edit directly -->
 
-
       - description: add navigation links
         type: prepend
         content: |
@@ -149,11 +144,10 @@ files:
 
           For installation instructions, see [Setup](/docs/dash0/monitoring/websites/setup/setup). For API methods, see [API](/docs/dash0/monitoring/websites/setup/api).
 
-
       - description: update GitHub issue link to support contact
         type: replace-regex
         find: '\[creating a GitHub issue\]\(https://github\.com/dash0hq/dash0-sdk-web/issues\)'
-        replace: '[contacting support](https://www.dash0.com/support)'
+        replace: "[contacting support](https://www.dash0.com/support)"
         required: false
 
       - description: rewrite documentation.dash0.com links to internal paths
@@ -180,14 +174,12 @@ files:
         content: |
           <!-- AUTO-GENERATED from dash0-sdk-web/INSTALL.md - Do not edit directly -->
 
-
       - description: add introduction and navigation links
         type: prepend
         content: |
           This page provides a complete reference for the Dash0 Web SDK API methods and functions.
 
           For installation instructions, see [Setup](/docs/dash0/monitoring/websites/setup/setup). For configuration options, see [Configuration](/docs/dash0/monitoring/websites/setup/configuration).
-
 
       - description: rewrite documentation.dash0.com links to internal paths
         type: replace-regex

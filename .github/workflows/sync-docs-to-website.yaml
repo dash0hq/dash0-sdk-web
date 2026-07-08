@@ -31,9 +31,9 @@ on:
     branches:
       - main
     paths:
-      - 'INSTALL.md'
-      - '.github/workflows/sync-docs/**'
-      - '.github/workflows/sync-docs-to-website.yaml'
+      - "INSTALL.md"
+      - ".github/workflows/sync-docs/**"
+      - ".github/workflows/sync-docs-to-website.yaml"
   workflow_call:
     secrets:
       DASH0_DOCS_REPO_GITHUB_PAT:
@@ -64,7 +64,7 @@ jobs:
       - name: set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: '3.x'
+          python-version: "3.x"
 
       - name: install dependencies
         run: pip install -r dash0-sdk-web/.github/workflows/sync-docs/requirements.txt
