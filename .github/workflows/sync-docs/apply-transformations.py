@@ -123,8 +123,12 @@ def _process_file(file_entry, common, source_root, output_dir, placeholders):
     content = _prepend_frontmatter(content, file_entry, placeholders)
 
     output_path = os.path.join(output_dir, target)
-    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as output_file:
+    output_dir_real = os.path.realpath(output_dir)
+    output_path_real = os.path.realpath(output_path)
+    if os.path.commonpath([output_dir_real, output_path_real]) != output_dir_real:
+        raise Exception("Invalid file path")
+    os.makedirs(os.path.dirname(output_path_real) or ".", exist_ok=True)
+    with open(output_path_real, "w", encoding="utf-8") as output_file:
         output_file.write(content)
     print(f"[{source}] wrote transformed document to {output_path}")
 
