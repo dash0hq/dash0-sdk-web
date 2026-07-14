@@ -42,13 +42,32 @@ export const EXCEPTION_MESSAGE = "exception.message";
 export const EXCEPTION_TYPE = "exception.type";
 export const EXCEPTION_STACKTRACE = "exception.stacktrace";
 
-// Interaction Attribute Keys
-export const INTERACTION_TYPE = "type";
-export const INTERACTION_NAME = "name";
-export const INTERACTION_NAME_SOURCE = "name_source";
-export const INTERACTION_TARGET_SELECTOR = "target.selector";
-export const INTERACTION_TARGET_TAG = "target.tag";
-export const INTERACTION_TARGET_ID = "target.id";
+// Interaction Attribute Keys. These are LOG RECORD attributes (namespaced like
+// page.* / user_agent.*), NOT body keys: the browser.interaction body is a
+// plain human-readable string ("Click \"Save Part\" on /inventory/parts") so
+// UIs without a dedicated renderer for this event type display something
+// readable, while the structured fields stay individually filterable.
+export const INTERACTION_ID = "interaction.id";
+export const INTERACTION_TYPE = "interaction.type";
+export const INTERACTION_NAME = "interaction.name";
+export const INTERACTION_NAME_SOURCE = "interaction.name_source";
+export const INTERACTION_TARGET_SELECTOR = "interaction.target.selector";
+export const INTERACTION_TARGET_TAG = "interaction.target.tag";
+export const INTERACTION_TARGET_ID = "interaction.target.id";
+/** key_press events: the captured key (allow-listed control keys only). */
+export const INTERACTION_KEY = "interaction.key";
+/** scroll events: net direction of the scroll burst (up/down/left/right). */
+export const INTERACTION_DIRECTION = "interaction.direction";
+/** change events: length of the new value; the value itself is never read. */
+export const INTERACTION_VALUE_LENGTH = "interaction.value_length";
+/** change events on selects: number of selected options. */
+export const INTERACTION_SELECTED_COUNT = "interaction.selected_count";
+
+// Span attribute keys linking an HTTP request span to the user interaction
+// (click) that triggered it. Stamped on XHR/fetch spans started while an
+// interaction is active, mirroring the "user action" concept of RUM products.
+export const USER_INTERACTION_ID = "user_interaction.id";
+export const USER_INTERACTION_NAME = "user_interaction.name";
 
 // Error Attribute Keys
 export const ERROR_TYPE = "error.type";

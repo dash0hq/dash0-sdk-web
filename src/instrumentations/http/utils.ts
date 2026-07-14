@@ -11,9 +11,16 @@ import {
 } from "../../utils/otel";
 import { domHRTimestampToNanos, hasKey, isSameOrigin, PerformanceTimingNames } from "../../utils";
 import { matchesAny } from "../../utils/ignore-rules";
-import { ERROR_TYPE, HTTP_RESPONSE_BODY_SIZE, WEB_REQUEST_CANCELLED } from "../../semantic-conventions";
+import {
+  ERROR_TYPE,
+  HTTP_RESPONSE_BODY_SIZE,
+  USER_INTERACTION_ID,
+  USER_INTERACTION_NAME,
+  WEB_REQUEST_CANCELLED,
+} from "../../semantic-conventions";
 import { vars, PropagatorType } from "../../vars";
 import { sendSpan } from "../../transport";
+import { getActiveInteraction } from "../interactions/active-interaction";
 
 // SEE: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/attributes-registry/http.md?plain=1#L67
 const KNOWN_HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
@@ -21,6 +28,23 @@ export const HTTP_METHOD_OTHER = "_OTHER";
 
 export function isWellKnownHttpMethod(method: string): boolean {
   return KNOWN_HTTP_METHODS.includes(method);
+}
+
+/**
+ * Stamps `user_interaction.id` (and `.name` when one was derived) onto an HTTP
+ * request span when the request was started while a user interaction (click)
+ * is active — attributing the request to the click that caused it, the same
+ * causality RUM products surface as "user actions". Shared by the XHR and
+ * fetch instrumentations so both report identical correlation attributes.
+ */
+export function addInteractionAttributes(span: InProgressSpan) {
+  const interaction = getActiveInteraction();
+  if (!interaction) return;
+
+  addAttribute(span.attributes, USER_INTERACTION_ID, interaction.id);
+  if (interaction.name) {
+    addAttribute(span.attributes, USER_INTERACTION_NAME, interaction.name);
+  }
 }
 
 export function addResourceNetworkEvents(span: InProgressSpan, resource: PerformanceResourceTiming) {

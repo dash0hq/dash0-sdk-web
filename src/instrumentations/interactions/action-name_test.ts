@@ -19,13 +19,13 @@ describe("interaction semantic conventions", () => {
     expect(EVENT_NAMES.INTERACTION).toBe("browser.interaction");
   });
 
-  it("defines interaction attribute keys", () => {
-    expect(INTERACTION_TYPE).toBe("type");
-    expect(INTERACTION_NAME).toBe("name");
-    expect(INTERACTION_NAME_SOURCE).toBe("name_source");
-    expect(INTERACTION_TARGET_SELECTOR).toBe("target.selector");
-    expect(INTERACTION_TARGET_TAG).toBe("target.tag");
-    expect(INTERACTION_TARGET_ID).toBe("target.id");
+  it("defines namespaced interaction attribute keys (log attributes, not body keys)", () => {
+    expect(INTERACTION_TYPE).toBe("interaction.type");
+    expect(INTERACTION_NAME).toBe("interaction.name");
+    expect(INTERACTION_NAME_SOURCE).toBe("interaction.name_source");
+    expect(INTERACTION_TARGET_SELECTOR).toBe("interaction.target.selector");
+    expect(INTERACTION_TARGET_TAG).toBe("interaction.target.tag");
+    expect(INTERACTION_TARGET_ID).toBe("interaction.target.id");
   });
 });
 
@@ -240,13 +240,26 @@ describe("deriveActionName", () => {
   });
 
   describe("priority 3: text content fallback", () => {
-    it("uses whitespace-normalized textContent when no attributes match", () => {
+    it("uses whitespace-normalized textContent of a clickable-tag element", () => {
+      dom.body.innerHTML = `<button id="btn">  Save\n\n  Part   Now  </button>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Save Part Now",
+        nameSource: "text_content",
+      });
+    });
+
+    it("does NOT harvest textContent from a non-interactive container", () => {
+      // Regression guard: a click on a layout <div> with no clickable-tag
+      // ancestor and no naming attribute must fall through to blank, not dump
+      // the container's entire visible text as the action name.
       dom.body.innerHTML = `<div id="div">  Some\n\n  Text   Here  </div>`;
       const target = dom.getElementById("div")!;
 
       expect(deriveActionName(target, attributeName)).toEqual({
-        name: "Some Text Here",
-        nameSource: "text_content",
+        name: "",
+        nameSource: "blank",
       });
     });
   });

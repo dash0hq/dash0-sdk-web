@@ -13,6 +13,7 @@ import { vars } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
 import { sendSpan } from "../../transport";
 import {
+  addInteractionAttributes,
   addResourceNetworkEvents,
   addResourceSize,
   addTraceContextHttpHeaders,
@@ -129,6 +130,7 @@ function onFetchStart(
   if (!isWellKnownMethod) {
     addAttribute(span.attributes, HTTP_REQUEST_METHOD_ORIGINAL, originalMethod);
   }
+  addInteractionAttributes(span);
 
   const propagatorTypes = determinePropagatorTypes(url);
   const shouldSetCorrelationHeaders = propagatorTypes.length > 0;

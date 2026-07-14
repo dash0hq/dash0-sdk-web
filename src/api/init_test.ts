@@ -201,6 +201,9 @@ describe("init", () => {
       expect(vars.interactionInstrumentation).toEqual({
         enabled: true,
         actionNameAttribute: "data-dash0-action-name",
+        captureScrolls: true,
+        captureKeyPresses: true,
+        captureChanges: true,
       });
     });
 
@@ -213,6 +216,9 @@ describe("init", () => {
       expect(vars.interactionInstrumentation).toEqual({
         enabled: true,
         actionNameAttribute: "data-custom-name",
+        captureScrolls: true,
+        captureKeyPresses: true,
+        captureChanges: true,
       });
     });
   });

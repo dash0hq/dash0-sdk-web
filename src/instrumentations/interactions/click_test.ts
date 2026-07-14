@@ -5,6 +5,7 @@ import { doc, win } from "../../utils/globals";
 import {
   EVENT_NAME,
   EVENT_NAMES,
+  INTERACTION_ID,
   INTERACTION_NAME,
   INTERACTION_NAME_SOURCE,
   INTERACTION_TARGET_ID,
@@ -21,6 +22,7 @@ vi.mock("../../transport", () => ({
 }));
 
 import { handleClick, startClickInstrumentation, stopClickInstrumentationForTests } from "./click";
+import { clearActiveInteractionForTests, getActiveInteraction } from "./active-interaction";
 
 // Vitest runs these tests in jsdom, so the SSR-safe doc/win are always defined.
 const dom = doc!;
@@ -41,6 +43,7 @@ describe("click instrumentation", () => {
 
   afterEach(() => {
     stopClickInstrumentationForTests();
+    clearActiveInteractionForTests();
     vi.clearAllMocks();
   });
 
@@ -68,21 +71,51 @@ describe("click instrumentation", () => {
         expect.arrayContaining([
           { key: WEB_EVENT_ID, value: { stringValue: expect.any(String) } },
           { key: EVENT_NAME, value: { stringValue: EVENT_NAMES.INTERACTION } },
+          { key: INTERACTION_ID, value: { stringValue: expect.stringMatching(/^[0-9a-f]{16}$/) } },
+          { key: INTERACTION_TYPE, value: { stringValue: "click" } },
+          { key: INTERACTION_NAME, value: { stringValue: "Save Settings" } },
+          { key: INTERACTION_NAME_SOURCE, value: { stringValue: "custom_attribute" } },
+          { key: INTERACTION_TARGET_SELECTOR, value: { stringValue: "button#btn" } },
+          { key: INTERACTION_TARGET_TAG, value: { stringValue: "button" } },
+          { key: INTERACTION_TARGET_ID, value: { stringValue: "btn" } },
         ])
       );
 
-      expect(log.body).toEqual({
-        kvlistValue: {
-          values: expect.arrayContaining([
-            { key: INTERACTION_TYPE, value: { stringValue: "click" } },
-            { key: INTERACTION_NAME, value: { stringValue: "Save Settings" } },
-            { key: INTERACTION_NAME_SOURCE, value: { stringValue: "custom_attribute" } },
-            { key: INTERACTION_TARGET_SELECTOR, value: { stringValue: "button#btn" } },
-            { key: INTERACTION_TARGET_TAG, value: { stringValue: "button" } },
-            { key: INTERACTION_TARGET_ID, value: { stringValue: "btn" } },
-          ]),
-        },
-      });
+      // The body is the plain human-readable summary -- UIs without a
+      // dedicated browser.interaction renderer display it as-is.
+      expect(log.body).toEqual({ stringValue: 'Click "Save Settings" on /' });
+    });
+
+    it("titles an unnamed click with the target tag instead of dumping its text content", () => {
+      dom.body.innerHTML = `<div id="page" class="page">Lots of page prose that must not become the title</div>`;
+      handleClick(dispatchClick(dom.getElementById("page")!));
+
+      const log = lastLog();
+      expect(log.body).toEqual({ stringValue: "Click div on /" });
+      expect(log.attributes).toEqual(
+        expect.arrayContaining([
+          { key: INTERACTION_NAME, value: { stringValue: "" } },
+          { key: INTERACTION_NAME_SOURCE, value: { stringValue: "blank" } },
+        ])
+      );
+    });
+
+    it("registers the click as the active interaction so HTTP spans can be attributed to it", () => {
+      dom.body.innerHTML = `<button id="btn" data-dash0-action-name="Fire Requests">Go</button>`;
+      handleClick(dispatchClick(dom.getElementById("btn")!));
+
+      const log = lastLog();
+      const eventId = (log.attributes as { key: string; value: { stringValue: string } }[]).find(
+        (kv) => kv.key === INTERACTION_ID
+      )!.value.stringValue;
+
+      const active = getActiveInteraction();
+      expect(active).toBeDefined();
+      expect(active!.name).toBe("Fire Requests");
+      // The event's interaction.id and the id stamped onto spans are the same
+      // value -- that shared id is what joins a click to the requests it
+      // triggered.
+      expect(active!.id).toBe(eventId);
     });
 
     it("addCommonAttributes attributes come before EVENT_NAME, matching the errors/index.ts structural template", () => {
@@ -102,8 +135,8 @@ describe("click instrumentation", () => {
       handleClick(dispatchClick(dom.querySelector(".cta")!));
 
       const log = lastLog();
-      const values = (log.body!.kvlistValue!.values as { key: string }[]).map((kv) => kv.key);
-      expect(values).not.toContain(INTERACTION_TARGET_ID);
+      const keys = (log.attributes as { key: string }[]).map((kv) => kv.key);
+      expect(keys).not.toContain(INTERACTION_TARGET_ID);
     });
 
     it("derives a compact selector: tag + #id when id is present", () => {
@@ -111,7 +144,7 @@ describe("click instrumentation", () => {
       handleClick(dispatchClick(dom.getElementById("inner")!));
 
       const log = lastLog();
-      const selector = (log.body!.kvlistValue!.values as { key: string; value: { stringValue: string } }[]).find(
+      const selector = (log.attributes as { key: string; value: { stringValue: string } }[]).find(
         (kv) => kv.key === INTERACTION_TARGET_SELECTOR
       );
       expect(selector?.value.stringValue).toBe("span#inner");
@@ -122,7 +155,7 @@ describe("click instrumentation", () => {
       handleClick(dispatchClick(dom.querySelector(".btn-primary")!));
 
       const log = lastLog();
-      const selector = (log.body!.kvlistValue!.values as { key: string; value: { stringValue: string } }[]).find(
+      const selector = (log.attributes as { key: string; value: { stringValue: string } }[]).find(
         (kv) => kv.key === INTERACTION_TARGET_SELECTOR
       );
       expect(selector?.value.stringValue).toBe("button.btn-primary");
@@ -136,7 +169,7 @@ describe("click instrumentation", () => {
       handleClick(dispatchClick(dom.getElementById(longId)!));
 
       const log = lastLog();
-      const selector = (log.body!.kvlistValue!.values as { key: string; value: { stringValue: string } }[]).find(
+      const selector = (log.attributes as { key: string; value: { stringValue: string } }[]).find(
         (kv) => kv.key === INTERACTION_TARGET_SELECTOR
       );
       expect(selector?.value.stringValue).toBe(`button#${longId}`.substring(0, 128));
@@ -150,7 +183,7 @@ describe("click instrumentation", () => {
       handleClick(dispatchClick(dom.querySelector(".lonely")!));
 
       const log = lastLog();
-      const selector = (log.body!.kvlistValue!.values as { key: string; value: { stringValue: string } }[]).find(
+      const selector = (log.attributes as { key: string; value: { stringValue: string } }[]).find(
         (kv) => kv.key === INTERACTION_TARGET_SELECTOR
       );
       expect(selector?.value.stringValue).toBe("span.lonely");
@@ -166,7 +199,7 @@ describe("click instrumentation", () => {
       handleClick(dispatchClick(dom.querySelector(".inner")!));
 
       const log = lastLog();
-      const selector = (log.body!.kvlistValue!.values as { key: string; value: { stringValue: string } }[]).find(
+      const selector = (log.attributes as { key: string; value: { stringValue: string } }[]).find(
         (kv) => kv.key === INTERACTION_TARGET_SELECTOR
       );
       expect(selector?.value.stringValue).toBe("div.outer > div.middle > span.inner");

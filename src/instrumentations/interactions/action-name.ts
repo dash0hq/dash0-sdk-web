@@ -121,10 +121,14 @@ function findStandardAttributeName(path: Element[]): string | undefined {
 }
 
 /**
- * Text-content sources: first the visible text of clickable-tag elements
- * (BUTTON/[role=button]/LABEL/A) along the walk path, then the target's own
- * textContent. Skipped entirely for INPUT/TEXTAREA/SELECT/OPTION targets —
- * their text content is user data (see TEXT_FALLBACK_EXCLUDED_TAGS).
+ * Text-content source: the visible text of clickable-tag elements
+ * (BUTTON/[role=button]/LABEL/A) found along the walk path. A click that lands
+ * on a non-interactive container (e.g. a layout <div>/<footer>) with no such
+ * element in its path — and no naming attribute — deliberately yields no name,
+ * so deriveActionName falls through to "blank" + target metadata rather than
+ * dumping the container's entire textContent. Skipped entirely for
+ * INPUT/TEXTAREA/SELECT/OPTION targets — their text content is user data
+ * (see TEXT_FALLBACK_EXCLUDED_TAGS).
  */
 function findTextContentName(target: Element, path: Element[]): string | undefined {
   if (TEXT_FALLBACK_EXCLUDED_TAGS.has(target.tagName)) return undefined;
@@ -136,9 +140,6 @@ function findTextContentName(target: Element, path: Element[]): string | undefin
     }
   }
 
-  const targetText = target.textContent;
-  if (targetText && normalizeWhitespace(targetText)) return targetText;
-
   return undefined;
 }
 
@@ -147,8 +148,8 @@ function findTextContentName(target: Element, path: Element[]): string | undefin
  * Datadog RUM's action-name priority order:
  *   1. configured custom attribute (target or ancestor)
  *   2. standard attribute-based sources (target or ancestor)
- *   3. visible text (clickable-tag elements along the walk first, then the
- *      target's own text content)
+ *   3. visible text of clickable-tag elements (button/link/label/[role=button])
+ *      found along the walk path
  *   4. blank
  *
  * The ancestor walk is capped at 10 levels and stops (inclusively) at the
