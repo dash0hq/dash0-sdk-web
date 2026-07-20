@@ -80,29 +80,29 @@ export type InteractionInstrumentationSettings = {
   actionNameAttribute?: string;
 
   /**
-   * Whether scroll interactions are captured (one event per scroll burst,
+   * Opt in to capturing scroll interactions (one event per scroll burst,
    * with the net direction). Only applies when `enabled` is true.
    *
-   * @default true
+   * @default false
    */
   captureScrolls?: boolean;
 
   /**
-   * Whether key presses are captured. Only navigation/activation keys
+   * Opt in to capturing key presses. Only navigation/activation keys
    * (Enter, Tab, Escape, Space, arrows, ...) are ever recorded; printable
    * characters never are. Only applies when `enabled` is true.
    *
-   * @default true
+   * @default false
    */
   captureKeyPresses?: boolean;
 
   /**
-   * Whether form-field changes are captured. The field value is never read:
+   * Opt in to capturing form-field changes. The field value is never read:
    * text fields report only the value length, selects only the selected
    * count, and password fields report neither. Only applies when `enabled`
    * is true.
    *
-   * @default true
+   * @default false
    */
   captureChanges?: boolean;
 };
@@ -261,9 +261,9 @@ export const vars: Vars = {
   interactionInstrumentation: {
     enabled: false,
     actionNameAttribute: "data-dash0-action-name",
-    captureScrolls: true,
-    captureKeyPresses: true,
-    captureChanges: true,
+    captureScrolls: false,
+    captureKeyPresses: false,
+    captureChanges: false,
   },
   enableTransportCompression: false,
   isSessionSampled: true,

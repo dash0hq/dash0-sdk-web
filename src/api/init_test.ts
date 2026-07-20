@@ -201,9 +201,24 @@ describe("init", () => {
       expect(vars.interactionInstrumentation).toEqual({
         enabled: true,
         actionNameAttribute: "data-dash0-action-name",
+        captureScrolls: false,
+        captureKeyPresses: false,
+        captureChanges: false,
+      });
+    });
+
+    it("allows opting into scroll/key-press/change capture individually", async () => {
+      init({
+        ...baseOptions,
+        interactionInstrumentation: { enabled: true, captureScrolls: true, captureKeyPresses: true },
+      });
+
+      expect(vars.interactionInstrumentation).toEqual({
+        enabled: true,
+        actionNameAttribute: "data-dash0-action-name",
         captureScrolls: true,
         captureKeyPresses: true,
-        captureChanges: true,
+        captureChanges: false,
       });
     });
 
@@ -216,9 +231,9 @@ describe("init", () => {
       expect(vars.interactionInstrumentation).toEqual({
         enabled: true,
         actionNameAttribute: "data-custom-name",
-        captureScrolls: true,
-        captureKeyPresses: true,
-        captureChanges: true,
+        captureScrolls: false,
+        captureKeyPresses: false,
+        captureChanges: false,
       });
     });
   });
