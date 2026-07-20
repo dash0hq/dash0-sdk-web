@@ -128,3 +128,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.REPOSITORY_FULL_ACCESS_GITHUB_TOKEN }}
         uses: JoshuaKGoldberg/release-it-action@8ee87d0d30f97b452ef5d8aa9f4d0490eed439aa #0.4.0
+
+  # On every pull request, verify that the doc transformations in sync-docs/transformations.yaml still apply
+  # cleanly (including the coverage check) before anything is merged. Dry-run mode stops after the transformation
+  # step: no target repository is checked out, no PR is created, and no token is required.
+  sync_docs_dry_run:
+    name: Verify Web SDK docs sync (dry run)
+    needs: [build]
+    if: ${{ github.event_name == 'pull_request' }}
+    uses: ./.github/workflows/sync-docs-to-website.yaml
+    with:
+      dry-run: true
+
+  # After a release has been published on main, sync the Web SDK docs to the documentation on
+  # https://www.dash0.com/docs. release-it runs on every push to main but only publishes when there are
+  # releasable commits; gating on its success keeps the sync tied to the release job's outcome.
+  sync_docs_to_website:
+    name: Synchronize Web SDK docs to dash0.com/docs
+    needs: [release]
+    if: ${{ always() && needs.release.result == 'success' }}
+    uses: ./.github/workflows/sync-docs-to-website.yaml
+    secrets:
+      DASH0_DOCS_REPO_GITHUB_PAT: ${{ secrets.DASH0_DOCS_REPO_GITHUB_PAT }}
+      SYNC_DOCUMENTATION_TARGET_REPOSITORY: ${{ secrets.SYNC_DOCUMENTATION_TARGET_REPOSITORY }}
+      SYNC_DOCUMENTATION_TARGET_DIRECTORY: ${{ secrets.SYNC_DOCUMENTATION_TARGET_DIRECTORY }}
