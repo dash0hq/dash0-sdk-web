@@ -85,13 +85,50 @@ describe("key press instrumentation", () => {
     expect(sendLog).toHaveBeenCalledOnce();
   });
 
-  it("registers the key press as the active interaction for span attribution", () => {
+  it("registers Enter as the active interaction for span attribution", () => {
     dom.body.innerHTML = `<input id="q" aria-label="Search parts" />`;
 
     handleKeydown(keydownOn(dom.getElementById("q")!, "Enter"));
 
     const active = getActiveInteraction();
     expect(active).toBeDefined();
+    expect(active!.name).toBe("Search parts");
+  });
+
+  it("registers Space as the active interaction for span attribution", () => {
+    dom.body.innerHTML = `<button id="b" aria-label="Play"></button>`;
+
+    handleKeydown(keydownOn(dom.getElementById("b")!, " "));
+
+    const active = getActiveInteraction();
+    expect(active).toBeDefined();
+    expect(active!.name).toBe("Play");
+  });
+
+  it("does NOT register navigation keys for span attribution (but still emits their events)", () => {
+    dom.body.innerHTML = `<div id="list" tabindex="0" aria-label="Results"></div>`;
+    const list = dom.getElementById("list")!;
+
+    for (const key of ["ArrowDown", "Tab", "Escape", "PageDown", "Home", "Backspace"]) {
+      handleKeydown(keydownOn(list, key));
+      expect(getActiveInteraction()).toBeUndefined();
+    }
+
+    expect(sendLog).toHaveBeenCalledTimes(6);
+  });
+
+  it("a navigation key does not steal attribution from a preceding activation", () => {
+    dom.body.innerHTML = `<input id="q" aria-label="Search parts" />`;
+    const input = dom.getElementById("q")!;
+
+    handleKeydown(keydownOn(input, "Enter"));
+    const registered = getActiveInteraction()!;
+
+    handleKeydown(keydownOn(input, "ArrowDown"));
+
+    const active = getActiveInteraction();
+    expect(active).toBeDefined();
+    expect(active!.id).toBe(registered.id);
     expect(active!.name).toBe("Search parts");
   });
 });
