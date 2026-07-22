@@ -78,6 +78,13 @@ app.use((req, res, next) => {
   )
 );
 
+// Serves axios's browser UMD bundle for the XHR instrumentation e2e tests (test/e2e/spec/09-xhr-instrumentation),
+// which need a real XHR-based HTTP client (axios defaults to its XHR adapter in browsers) to prove the
+// instrumentation works transparently under a popular library, not just hand-rolled XHR calls.
+app.get("/vendor/axios.min.js", (_req, res) => {
+  res.sendFile(path.join(import.meta.dirname, "..", "..", "..", "node_modules", "axios", "dist", "axios.min.js"));
+});
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.raw({ type: "text/plain" }));

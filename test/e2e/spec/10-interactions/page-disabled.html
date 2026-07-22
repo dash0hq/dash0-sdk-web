@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>interactions disabled test</title>
+
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: {
+          url: `http://${window.location.hostname}:8011?cors=true`,
+          authToken: "auth_abc123",
+          dataset: "production",
+        },
+      });
+      dash0("addSignalAttribute", "the_answer", 42);
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+  </head>
+  <body>
+    <button id="save-button" data-dash0-action-name="Save Settings">Save</button>
+    <button id="plain-button">Continue</button>
+  </body>
+</html>

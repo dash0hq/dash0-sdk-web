@@ -1,27 +1,6 @@
-import {
-  debug,
-  observeResourcePerformance,
-  perf,
-  win,
-  setTimeout,
-  isSameOrigin,
-  wrap,
-  parseUrl,
-  clearTimeout,
-} from "../../utils";
-import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
-import {
-  addAttribute,
-  setSpanStatus,
-  addW3CTraceContextHttpHeaders,
-  addXRayTraceContextHttpHeaders,
-  endSpan,
-  errorToSpanStatus,
-  Exception,
-  InProgressSpan,
-  recordException,
-  startSpan,
-} from "../../utils/otel";
+import { debug, observeResourcePerformance, perf, win, setTimeout, wrap, parseUrl, clearTimeout } from "../../utils";
+import { isUrlIgnored } from "../../utils/ignore-rules";
+import { addAttribute, endSpan, setSpanStatus, Exception, InProgressSpan, startSpan } from "../../utils/otel";
 import {
   ERROR_TYPE,
   HTTP_REQUEST_METHOD,
@@ -29,12 +8,21 @@ import {
   HTTP_RESPONSE_STATUS_CODE,
   SPAN_STATUS_ERROR,
   SPAN_STATUS_UNSET,
-  WEB_REQUEST_CANCELLED,
 } from "../../semantic-conventions";
-import { vars, PropagatorType } from "../../vars";
+import { vars } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
 import { sendSpan } from "../../transport";
-import { addResourceNetworkEvents, addResourceSize, HTTP_METHOD_OTHER, isWellKnownHttpMethod } from "./utils";
+import {
+  addInteractionAttributes,
+  addResourceNetworkEvents,
+  addResourceSize,
+  addTraceContextHttpHeaders,
+  determinePropagatorTypes,
+  endSpanOnAbort,
+  endSpanOnError,
+  HTTP_METHOD_OTHER,
+  isWellKnownHttpMethod,
+} from "./utils";
 import { addCommonAttributes, addUrlAttributes } from "../../attributes";
 
 export function instrumentFetch() {
@@ -82,6 +70,7 @@ function wrapFetch(original: typeof fetch) {
     if (!isWellKnownMethod) {
       addAttribute(span.attributes, HTTP_REQUEST_METHOD_ORIGINAL, originalMethod);
     }
+    addInteractionAttributes(span);
 
     const propagatorTypes = determinePropagatorTypes(url);
     const shouldSetCorrelationHeaders = propagatorTypes.length > 0;
@@ -279,67 +268,6 @@ function wrapResponse(
     statusText: originalResponse.statusText,
     headers: originalResponse.headers,
   });
-}
-
-function endSpanOnError(span: InProgressSpan, error: Exception) {
-  recordException(span, error);
-  sendSpan(endSpan(span, errorToSpanStatus(error), undefined));
-}
-
-function endSpanOnAbort(span: InProgressSpan) {
-  addAttribute(span.attributes, WEB_REQUEST_CANCELLED, true);
-  sendSpan(endSpan(span, undefined, undefined));
-}
-
-function determinePropagatorTypes(url: string): PropagatorType[] {
-  const matchingTypes: PropagatorType[] = [];
-  const isUrlSameOrigin = isSameOrigin(url);
-
-  // For same-origin requests, always include traceparent + all configured propagators
-  if (isUrlSameOrigin) {
-    // Always add traceparent for same-origin requests
-    matchingTypes.push("traceparent");
-
-    // Add all other configured propagator types for same-origin requests
-    if (vars.propagators) {
-      for (const propagator of vars.propagators) {
-        if (propagator.type !== "traceparent" && !matchingTypes.includes(propagator.type)) {
-          matchingTypes.push(propagator.type);
-        }
-      }
-    }
-    return matchingTypes;
-  }
-
-  // For cross-origin requests, use new propagators config if available
-  if (vars.propagators) {
-    for (const propagator of vars.propagators) {
-      if (matchesAny(propagator.match, url)) {
-        // Avoid duplicates
-        if (!matchingTypes.includes(propagator.type)) {
-          matchingTypes.push(propagator.type);
-        }
-      }
-    }
-    return matchingTypes;
-  }
-
-  return [];
-}
-
-function addTraceContextHttpHeaders(
-  fn: (name: string, value: string) => void,
-  ctx: unknown,
-  span: InProgressSpan,
-  types: PropagatorType[]
-) {
-  for (const type of types) {
-    if (type === "xray") {
-      addXRayTraceContextHttpHeaders(fn, ctx, span);
-    } else {
-      addW3CTraceContextHttpHeaders(fn, ctx, span);
-    }
-  }
 }
 
 function responseCanHaveBody(response: Response) {
