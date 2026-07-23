@@ -117,7 +117,7 @@
   "resolutions": {
     "conventional-changelog-conventionalcommits": "8.0.0"
   },
-  "packageManager": "pnpm@9.15.1",
+  "packageManager": "pnpm@10.33.4",
   "publishConfig": {
     "access": "public"
   }
