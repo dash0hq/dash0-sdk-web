@@ -95,10 +95,16 @@
       XHR with X-Ray
     </button>
 
+    <!--
+      The failing-XHR buttons request a cross-origin URL without cors=true, so the browser
+      itself blocks the response and raises the network error. Server-side failures (killed
+      connections, closed ports) are not an option: the LambdaTest tunnel proxy converts
+      them into regular 503 responses, which never fire the XHR error event.
+    -->
     <button
       onclick="(function(){
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', '/destroy-connection?xhr=async-error');
+        xhr.open('GET', `http://${window.location.hostname}:8012/ajax?xhr=async-error`);
         xhr.send();
       })()"
     >
@@ -141,7 +147,7 @@
       onclick="(function(){
         try {
           const xhr = new XMLHttpRequest();
-          xhr.open('GET', '/destroy-connection?xhr=sync-error', false);
+          xhr.open('GET', `http://${window.location.hostname}:8012/ajax?xhr=sync-error`, false);
           xhr.send();
         } catch (e) {
           // Expected: synchronous XHR reports network errors by making send() throw.

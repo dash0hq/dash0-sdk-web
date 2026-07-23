@@ -168,7 +168,7 @@ describe("XHR Instrumentation", () => {
         expect.objectContaining({
           name: "HTTP GET",
           attributes: expect.arrayContaining([
-            { key: "url.path", value: { stringValue: "/destroy-connection" } },
+            { key: "url.path", value: { stringValue: "/ajax" } },
             { key: "url.query", value: { stringValue: "xhr=async-error" } },
             { key: "error.type", value: { stringValue: "error" } },
           ]),

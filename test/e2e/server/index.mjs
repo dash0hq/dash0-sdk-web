@@ -225,14 +225,6 @@ app.all("/delay-fetch", (_req, res) => {
   res.on("close", () => clearTimeout(timer));
 });
 
-// Kills the TCP connection without responding, giving error tests a deterministic
-// network error. Unsupported URL schemes are not an option for XHR (open() rejects
-// them synchronously), and a connection-refused port is not portable across the
-// local/LambdaTest-tunnel setups.
-app.all("/destroy-connection", (req) => {
-  req.socket.destroy();
-});
-
 // Streaming endpoint for abort-during-body tests. Sends headers and chunks at a
 // steady cadence until the client aborts. The initial chunk is large enough to
 // defeat any TCP/HTTP buffering on Windows Chrome so the browser delivers it to
