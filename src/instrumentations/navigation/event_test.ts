@@ -130,6 +130,23 @@ describe("transmitManualPageViewEvent", () => {
     );
   });
 
+  it("adds custom attributes after SDK-generated ones so they can override", () => {
+    transmitManualPageViewEvent({
+      timeUnixNano: "1700000000000000000",
+      title: "/settings",
+      url: new URL("https://example.com/real-path"),
+      attributes: { "page.url.path": "/custom-path" },
+    });
+
+    const log = sendLogMock.mock.calls[0]![0] as LogRecord;
+    const pathAttributes = (log.attributes as KeyValue[]).filter((attr) => attr.key === "page.url.path");
+    expect(pathAttributes.length).toBeGreaterThan(1);
+    expect(pathAttributes[pathAttributes.length - 1]).toEqual({
+      key: "page.url.path",
+      value: { stringValue: "/custom-path" },
+    });
+  });
+
   it("passes url through to page.url.* attributes when provided", () => {
     transmitManualPageViewEvent({
       timeUnixNano: "1700000000000000000",

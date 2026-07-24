@@ -1,4 +1,4 @@
-import { addAttribute, AttributeValueType, getTraceContextForPageLoad } from "../../utils/otel";
+import { addAttribute, addAttributes, AttributeValueType, getTraceContextForPageLoad } from "../../utils/otel";
 import {
   EVENT_NAME,
   EVENT_NAMES,
@@ -25,6 +25,7 @@ type BuildPageViewLogOptions = {
   url?: URL;
   title?: string;
   metaAttributes?: Record<string, AttributeValueType | AnyValue>;
+  customAttributes?: Record<string, AttributeValueType | AnyValue>;
   pageViewType: (typeof PAGE_VIEW_TYPE_VALUES)[keyof typeof PAGE_VIEW_TYPE_VALUES];
   changeState?: (typeof PAGE_VIEW_CHANGE_STATE_VALUES)[keyof typeof PAGE_VIEW_CHANGE_STATE_VALUES];
 };
@@ -37,6 +38,9 @@ function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
     Object.entries(opts.metaAttributes).forEach(([key, value]) => addAttribute(attributes, key, value));
   }
   addCommonAttributes(attributes, { url: opts.url });
+
+  // Add custom attributes last to allow overrides
+  addAttributes(attributes, opts.customAttributes);
 
   const bodyAttributes: KeyValue[] = [];
   addAttribute(bodyAttributes, "title", opts.title ?? doc?.title ?? NO_VALUE_FALLBACK);
@@ -96,13 +100,15 @@ export type ManualPageViewOptions = {
  * include a `change_state` body key (a manual view is neither a pushState nor replaceState).
  * The emitted `type` is PAGE_VIEW_TYPE_VALUES.VIRTUAL, matching automatic virtual page views —
  * manual views are deliberately indistinguishable from virtual ones downstream.
+ * Caller-provided attributes are added after the SDK-generated ones so they can override them,
+ * matching the sendEvent semantics.
  */
 export function transmitManualPageViewEvent(opts: ManualPageViewOptions) {
   buildAndSendPageViewLog({
     timeUnixNano: opts.timeUnixNano,
     url: opts.url,
     title: opts.title,
-    metaAttributes: opts.attributes,
+    customAttributes: opts.attributes,
     pageViewType: PAGE_VIEW_TYPE_VALUES.VIRTUAL,
   });
 }

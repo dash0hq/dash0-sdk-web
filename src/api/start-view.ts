@@ -15,6 +15,7 @@ export type StartViewOptions = {
 
   /**
    * Additional attributes to include with the page view.
+   * Added after the SDK-generated attributes, so they can override them.
    */
   attributes?: Record<string, AttributeValueType | AnyValue>;
 };

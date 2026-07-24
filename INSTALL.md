@@ -691,7 +691,8 @@ directly via the options object instead.
     `location.href`. Falls back to the real `location.href` if omitted or invalid. Display-only —
     never navigates or mutates history/location.
   - `attributes` (Record<string, AttributeValueType | AnyValue>, optional): Additional attributes
-    to include with the page view.
+    to include with the page view. Added after the SDK-generated attributes, so they can
+    override them.
 
 **Example:**
 
