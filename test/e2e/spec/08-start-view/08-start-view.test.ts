@@ -104,6 +104,38 @@ describe("Start View", () => {
     expectNoBrowserErrors();
   });
 
+  it("ignores malformed startView calls without breaking subsequent calls", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`/e2e/spec/08-start-view/page.html?testId=${testId}`);
+    await expect(await browser.getTitle()).toMatch(/start view test/);
+
+    // page.html additionally queues a malformed dash0("startView") call before the SDK loads,
+    // covering the pre-init command-queue drain as well.
+    const malformedBtn = await $("button=Start View Malformed");
+    await malformedBtn.click();
+
+    const btn = await $("button=Start View String");
+    await btn.click();
+
+    await retry(async () => {
+      await expectLogMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([{ key: "event.name", value: { stringValue: "browser.page_view" } }]),
+          body: {
+            kvlistValue: {
+              values: expect.arrayContaining([
+                { key: "type", value: { doubleValue: PAGE_VIEW_TYPE_VALUES.VIRTUAL } },
+                { key: "title", value: { stringValue: "/checkout" } },
+              ]),
+            },
+          },
+        })
+      );
+    });
+
+    expectNoBrowserErrors();
+  });
+
   it("never touches history or location", async () => {
     const testId = generateUniqueId(16);
     await loadPage(`/e2e/spec/08-start-view/page.html?testId=${testId}`);

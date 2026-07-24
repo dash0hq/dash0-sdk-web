@@ -27,6 +27,15 @@
         },
       });
 
+      // Queued malformed call: must be ignored during the queue drain without
+      // breaking the queued calls that follow it.
+      dash0("startView");
+
+      function onStartViewMalformed() {
+        dash0("startView");
+        dash0("startView", 123);
+      }
+
       function onStartViewOptions() {
         dash0("startView", "/settings", { attributes: { "app.screen": "settings" } });
       }
@@ -46,6 +55,7 @@
     <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
   </head>
   <body>
+    <button onclick="onStartViewMalformed()">Start View Malformed</button>
     <button onclick="onStartViewOptions()">Start View Options</button>
     <button onclick="onStartViewString()">Start View String</button>
     <button onclick="onStartViewWithUrl()">Start View With Url</button>
