@@ -50,10 +50,32 @@ describe("startView", () => {
     );
   });
 
-  it("falls back to no url override and logs a debug message on an invalid url", () => {
+  it("falls back to the current location on an invalid url", () => {
     startView("/settings", { url: "http://" });
 
     expect(sendLogMock).toHaveBeenCalledTimes(1);
+    const log = sendLogMock.mock.calls[0]![0] as LogRecord;
+    expect(log.attributes).toEqual(
+      expect.arrayContaining([
+        // eslint-disable-next-line no-restricted-globals
+        { key: "page.url.full", value: { stringValue: window.location.href } },
+        // eslint-disable-next-line no-restricted-globals
+        { key: "page.url.domain", value: { stringValue: window.location.hostname } },
+      ])
+    );
+  });
+
+  it("resolves an absolute cross-origin url override", () => {
+    startView("/settings", { url: "https://other-origin.example/path" });
+
+    const log = sendLogMock.mock.calls[0]![0] as LogRecord;
+    expect(log.attributes).toEqual(
+      expect.arrayContaining([
+        { key: "page.url.full", value: { stringValue: "https://other-origin.example/path" } },
+        { key: "page.url.domain", value: { stringValue: "other-origin.example" } },
+        { key: "page.url.path", value: { stringValue: "/path" } },
+      ])
+    );
   });
 
   it("does not touch history or location", () => {
