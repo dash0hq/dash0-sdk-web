@@ -7,7 +7,7 @@ Features include:
 
 - Page view instrumentation
 - Navigation timing instrumentation
-- HTTP request instrumentation
+- HTTP request instrumentation (fetch and XMLHttpRequest)
 - Error tracking
 
 ## Getting started

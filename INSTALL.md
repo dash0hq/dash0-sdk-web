@@ -125,7 +125,8 @@ These can all be passed via the Dash0 Web SDK's `init` call.
 
 ### Backend Correlation
 
-The SDK supports trace context propagation to correlate frontend requests with backend services. You can configure
+The SDK supports trace context propagation to correlate frontend requests with backend services, for both `fetch`
+and `XMLHttpRequest` (including libraries built on XHR, such as axios's default browser adapter). You can configure
 different header types (`traceparent`, `X-Amzn-Trace-Id`) for different endpoints using the `propagators` configuration.
 
 > Misconfiguration of cross origin trace correlation can lead to request failures. Please make sure to carefully
@@ -243,7 +244,7 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
-  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch'`
+  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr'`
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
 - **Ignore URLs**<br>
@@ -512,8 +513,32 @@ The SDK auto-detects VCS (version control) context from the build environment an
   type: `Array<RegExp>`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  A set of regular expressions that will be matched against HTTP request headers,
-  to be captured in `XMLHttpRequest` and `fetch` Instrumentations. These headers will be transferred as span attributes.
+  A set of regular expressions that will be matched against the HTTP request and response headers of requests made via
+  the `XMLHttpRequest` and `fetch` instrumentations. Matching headers are transferred as span attributes
+  (`http.request.header.<name>` and `http.response.header.<name>`).
+  Matching is performed against the lowercased header name, so make sure your regular expressions match lowercase names
+  (e.g. `/^x-my-header$/` instead of `/^X-My-Header$/`).
+
+  NOTE: For cross-origin requests, browsers only expose response headers that the server lists in its
+  `Access-Control-Expose-Headers` response header (besides the CORS-safelisted ones). Response headers that are not
+  exposed this way are silently omitted from the span — the browser hides them without any error or log entry.
+
+Both the `fetch` and `XMLHttpRequest` instrumentations report request outcomes on the span as follows:
+
+**Responses**: `http.response.status_code` is always set when a response was received. Status codes 200-399 leave the
+span status unset; all other status codes set the span status to error. For `fetch`, a response with status `0`
+(e.g. an opaque response) additionally sets `error.type` to the response type.
+
+**Errors and timeouts**: A failed `fetch` (rejected promise) sets the span status to error, records an `exception`
+span event, and sets `error.type` to the exception name (typically `TypeError`); no `http.response.status_code` is
+set. A failed `XMLHttpRequest` behaves the same, with `error.type` set to `error` for network errors and `timeout`
+when `xhr.timeout` elapses (including synchronous requests, where `send()` throws).
+
+**Cancellations**: Aborted requests (via `AbortController` for `fetch`, or `xhr.abort()`) are considered benign: the
+span gets `dash0.web.request.cancelled` set to `true`, the span status stays unset, and no `error.type` or exception
+event is recorded. If the response headers had already arrived (e.g. the request was aborted while the body was being
+read), `http.response.status_code` is present as well. Note that `AbortSignal.timeout()` surfaces as a cancellation
+for `fetch`, while an `XMLHttpRequest` timeout is an error — this asymmetry is inherent to the two APIs.
 
 #### Page view instrumentation
 

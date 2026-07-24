@@ -2,7 +2,12 @@ import { AttributeValueType } from "../utils/otel";
 import { AnyValue } from "./otlp";
 import { Endpoint, Vars, PropagatorConfig } from "../vars";
 
-export type InstrumentationName = "@dash0/navigation" | "@dash0/web-vitals" | "@dash0/error" | "@dash0/fetch";
+export type InstrumentationName =
+  | "@dash0/navigation"
+  | "@dash0/web-vitals"
+  | "@dash0/error"
+  | "@dash0/fetch"
+  | "@dash0/xhr";
 
 /**
  * VCS (version control) context describing the build the SDK is running
