@@ -6,11 +6,6 @@ import { vars } from "../vars";
 
 export type StartViewOptions = {
   /**
-   * The name of the view, e.g. "/settings". Transmitted as the page view's title.
-   */
-  name: string;
-
-  /**
    * Optionally override the url reflected in `page.url.*` attributes for this view.
    * Accepts an absolute or relative url; relative urls are resolved against the current
    * `location.href`. Falls back to the real `location.href` if omitted or invalid.
@@ -35,18 +30,19 @@ export type StartViewOptions = {
  * (same `browser.page_view` event name, same `type` value), with two differences: it is never
  * accompanied by a `change_state` value, since no history mutation occurred, and the
  * `pageViewInstrumentation`'s `generateMetadata` callback is not invoked for manual views —
- * supply title and attributes directly via the options object instead.
+ * supply title and attributes directly instead.
+ *
+ * @param name The name of the view, e.g. "/settings". Transmitted as the page view's title.
+ * @param opts Additional page view details.
  */
-export function startView(nameOrOptions: string | StartViewOptions) {
+export function startView(name: string, opts?: StartViewOptions) {
   if (vars.endpoints.length === 0) {
     debug("Dash0 SDK has not been initialized. Ignoring startView call.");
     return;
   }
 
-  const opts: StartViewOptions = typeof nameOrOptions === "string" ? { name: nameOrOptions } : nameOrOptions;
-
   let url: URL | undefined;
-  if (opts.url != null) {
+  if (opts?.url != null) {
     try {
       url = new URL(opts.url, win?.location.href);
     } catch (e) {
@@ -56,8 +52,8 @@ export function startView(nameOrOptions: string | StartViewOptions) {
 
   transmitManualPageViewEvent({
     timeUnixNano: nowNanos(),
-    title: opts.name,
+    title: name,
     url,
-    attributes: opts.attributes,
+    attributes: opts?.attributes,
   });
 }

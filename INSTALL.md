@@ -668,7 +668,7 @@ sendEvent("user_action", {
 dash0("sendEvent", "user_action", { data: "button_clicked", severity: "INFO" });
 ```
 
-#### `startView(nameOrOptions)`
+#### `startView(name, opts)`
 
 Manually records a page view. Side-effect free: this never calls `history.pushState` /
 `history.replaceState` and never mutates `location`. Use this for single-page applications that
@@ -684,8 +684,8 @@ directly via the options object instead.
 
 **Parameters:**
 
-- `nameOrOptions` (string | object): Either the view name directly, or an options object:
-  - `name` (string): The name of the view, e.g. `/settings`. Transmitted as the page view's title.
+- `name` (string): The name of the view, e.g. `/settings`. Transmitted as the page view's title.
+- `opts` (object, optional): Additional page view details:
   - `url` (string, optional): Overrides the url reflected in `page.url.*` attributes for this
     view. Accepts an absolute or relative url; relative urls are resolved against the current
     `location.href`. Falls back to the real `location.href` if omitted or invalid. Display-only —
@@ -699,18 +699,16 @@ directly via the options object instead.
 // Module
 import { startView } from "@dash0/sdk-web";
 
-startView({
-  name: "/settings",
+startView("/settings", {
   attributes: {
     "app.screen": "settings",
   },
 });
 
-// String shorthand
 startView("/checkout");
 
 // Script
-dash0("startView", { name: "/settings", attributes: { "app.screen": "settings" } });
+dash0("startView", "/settings", { attributes: { "app.screen": "settings" } });
 ```
 
 ### Error Reporting

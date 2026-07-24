@@ -32,8 +32,8 @@ describe("startView", () => {
     expect(bodyValues).toEqual(expect.arrayContaining([{ key: "title", value: { stringValue: "/settings" } }]));
   });
 
-  it("accepts an options object with name and attributes", () => {
-    startView({ name: "/settings", attributes: { "app.screen": "settings" } });
+  it("accepts an options object with attributes", () => {
+    startView("/settings", { attributes: { "app.screen": "settings" } });
 
     const log = sendLogMock.mock.calls[0]![0] as LogRecord;
     const bodyValues = log.body?.kvlistValue?.values as KeyValue[];
@@ -42,7 +42,7 @@ describe("startView", () => {
   });
 
   it("parses a relative url option and reflects it in page.url.path", () => {
-    startView({ name: "/settings", url: "/settings" });
+    startView("/settings", { url: "/settings" });
 
     const log = sendLogMock.mock.calls[0]![0] as LogRecord;
     expect(log.attributes).toEqual(
@@ -51,7 +51,7 @@ describe("startView", () => {
   });
 
   it("falls back to no url override and logs a debug message on an invalid url", () => {
-    startView({ name: "/settings", url: "http://" });
+    startView("/settings", { url: "http://" });
 
     expect(sendLogMock).toHaveBeenCalledTimes(1);
   });
@@ -62,7 +62,7 @@ describe("startView", () => {
     // eslint-disable-next-line no-restricted-globals
     const originalLength = window.history.length;
 
-    startView({ name: "/settings" });
+    startView("/settings");
 
     // eslint-disable-next-line no-restricted-globals
     expect(window.location.href).toBe(originalHref);

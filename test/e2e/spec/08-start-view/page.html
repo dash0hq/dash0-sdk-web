@@ -28,7 +28,7 @@
       });
 
       function onStartViewOptions() {
-        dash0("startView", { name: "/settings", attributes: { "app.screen": "settings" } });
+        dash0("startView", "/settings", { attributes: { "app.screen": "settings" } });
       }
 
       function onStartViewString() {
@@ -36,7 +36,7 @@
       }
 
       function onStartViewWithUrl() {
-        dash0("startView", { name: "/settings", url: "/settings" });
+        dash0("startView", "/settings", { url: "/settings" });
       }
 
       function onRealPushState() {

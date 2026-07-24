@@ -9,7 +9,7 @@ describe("Start View", () => {
   beforeEach(sharedBeforeEach);
   afterEach(sharedAfterEach);
 
-  it("transmits a page view with the given name and attributes (options object)", async () => {
+  it("transmits a page view with the given name and attributes", async () => {
     const testId = generateUniqueId(16);
     await loadPage(`/e2e/spec/08-start-view/page.html?testId=${testId}`);
     await expect(await browser.getTitle()).toMatch(/start view test/);
@@ -44,7 +44,7 @@ describe("Start View", () => {
     expectNoBrowserErrors();
   });
 
-  it("transmits a page view from the string shorthand", async () => {
+  it("transmits a page view from a name-only call", async () => {
     const testId = generateUniqueId(16);
     await loadPage(`/e2e/spec/08-start-view/page.html?testId=${testId}`);
     await expect(await browser.getTitle()).toMatch(/start view test/);
