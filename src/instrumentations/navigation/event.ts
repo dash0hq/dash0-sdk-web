@@ -25,8 +25,8 @@ type BuildPageViewLogOptions = {
   url?: URL;
   title?: string;
   metaAttributes?: Record<string, AttributeValueType | AnyValue>;
-  pageViewType: number;
-  changeState?: string;
+  pageViewType: (typeof PAGE_VIEW_TYPE_VALUES)[keyof typeof PAGE_VIEW_TYPE_VALUES];
+  changeState?: (typeof PAGE_VIEW_CHANGE_STATE_VALUES)[keyof typeof PAGE_VIEW_CHANGE_STATE_VALUES];
 };
 
 function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
