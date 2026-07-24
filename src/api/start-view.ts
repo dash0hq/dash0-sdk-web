@@ -32,8 +32,10 @@ export type StartViewOptions = {
  * every screen as "/").
  *
  * The emitted event is indistinguishable from an automatic virtual page view downstream
- * (same `browser.page_view` event name, same `type` value); the difference is only that it is
- * never accompanied by a `change_state` value, since no history mutation occurred.
+ * (same `browser.page_view` event name, same `type` value), with two differences: it is never
+ * accompanied by a `change_state` value, since no history mutation occurred, and the
+ * `pageViewInstrumentation`'s `generateMetadata` callback is not invoked for manual views —
+ * supply title and attributes directly via the options object instead.
  */
 export function startView(nameOrOptions: string | StartViewOptions) {
   if (vars.endpoints.length === 0) {

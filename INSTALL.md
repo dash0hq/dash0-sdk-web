@@ -677,8 +677,10 @@ app that serves the whole application from one root URL, where automatic page-vi
 would report every screen as `/`.
 
 The emitted page view is indistinguishable from an automatic virtual page view downstream (same
-`browser.page_view` event, same `type` value); the only difference is that it is never
-accompanied by a `change_state` value, since no history mutation occurred.
+`browser.page_view` event, same `type` value), with two differences: it is never accompanied by
+a `change_state` value, since no history mutation occurred, and the `pageViewInstrumentation`'s
+`generateMetadata` callback is not invoked for manual views — supply title and attributes
+directly via the options object instead.
 
 **Parameters:**
 
