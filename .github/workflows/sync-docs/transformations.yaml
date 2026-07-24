@@ -42,6 +42,10 @@ files:
         type: replace-regex
         find: '\]\(\./INSTALL\.md\)'
         replace: "](installation)"
+      - description: rewrite the propagators link into the sibling Configuration page
+        type: replace-regex
+        find: '\]\(\./docs/sdk/configuration\.md#propagators-configuration-recommended\)'
+        replace: "](configuration#propagators-configuration-recommended)"
       - description: rewrite the relative DEVELOPMENT.md link to the source repo (page is not synced)
         type: replace-regex
         find: '\]\(\./DEVELOPMENT\.md\)'

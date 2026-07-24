@@ -9,8 +9,11 @@ The SDK supports trace context propagation to correlate frontend requests with b
 and `XMLHttpRequest` (including libraries built on XHR, such as axios's default browser adapter). You can configure
 different header types (`traceparent`, `X-Amzn-Trace-Id`) for different endpoints using the `propagators` configuration.
 
-> Misconfiguration of cross origin trace correlation can lead to request failures. Please make sure to carefully
-> validate the configuration provided in the next steps
+> [!IMPORTANT]
+> To correlate frontend requests with a backend on a **different origin**, you must configure **propagators** below
+> (recommended over the deprecated legacy `propagateTraceHeadersCorsURLs` option). Same-origin requests are propagated
+> automatically. Misconfiguration of cross origin trace correlation can lead to request failures — please make sure to
+> carefully validate the configuration provided in the next steps.
 
 #### Propagators Configuration (Recommended)
 
