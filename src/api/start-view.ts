@@ -41,6 +41,14 @@ export function startView(name: string, opts?: StartViewOptions) {
     return;
   }
 
+  // The script entrypoint forwards dash0("startView", ...) arguments without type checking,
+  // so malformed calls must degrade to a logged no-op instead of throwing. An uncaught throw
+  // here would abort the command-queue drain and drop all subsequently queued api calls.
+  if (typeof name !== "string" || name.length === 0) {
+    debug("startView requires a non-empty view name. Ignoring startView call.");
+    return;
+  }
+
   let url: URL | undefined;
   if (opts?.url != null) {
     try {

@@ -70,6 +70,29 @@ describe("startView", () => {
     expect(window.history.length).toBe(originalLength);
   });
 
+  it("ignores calls without a name, as they can arrive via the untyped script entrypoint", () => {
+    // @ts-expect-error deliberately calling without arguments, mirroring dash0("startView")
+    startView();
+    startView(undefined as unknown as string);
+    startView(null as unknown as string);
+
+    expect(sendLogMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores calls with a non-string or empty name", () => {
+    startView(123 as unknown as string);
+    startView({ name: "/settings" } as unknown as string);
+    startView("");
+
+    expect(sendLogMock).not.toHaveBeenCalled();
+  });
+
+  it("tolerates a nullish options argument", () => {
+    startView("/settings", null as unknown as undefined);
+
+    expect(sendLogMock).toHaveBeenCalledTimes(1);
+  });
+
   it("is a no-op before init (no endpoints configured)", () => {
     vars.endpoints = [];
 
