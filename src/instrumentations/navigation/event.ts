@@ -1,4 +1,4 @@
-import { addAttribute, getTraceContextForPageLoad } from "../../utils/otel";
+import { addAttribute, AttributeValueType, getTraceContextForPageLoad } from "../../utils/otel";
 import {
   EVENT_NAME,
   EVENT_NAMES,
@@ -11,10 +11,8 @@ import {
 import { doc, NO_VALUE_FALLBACK } from "../../utils";
 import { addCommonAttributes } from "../../attributes";
 import { sendLog } from "../../transport";
-import { AttributeValueType } from "../../utils/otel";
-import { AnyValue } from "../../types/otlp";
 import { PageViewMeta, vars } from "../../vars";
-import { KeyValue, LogRecord } from "../../types/otlp";
+import { AnyValue, KeyValue, LogRecord } from "../../types/otlp";
 
 function getPageViewMeta(url?: URL): PageViewMeta {
   if (!url) return {};
