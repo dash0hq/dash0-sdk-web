@@ -1,27 +1,6 @@
-import {
-  debug,
-  observeResourcePerformance,
-  perf,
-  win,
-  setTimeout,
-  isSameOrigin,
-  wrap,
-  parseUrl,
-  clearTimeout,
-} from "../../utils";
-import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
-import {
-  addAttribute,
-  setSpanStatus,
-  addW3CTraceContextHttpHeaders,
-  addXRayTraceContextHttpHeaders,
-  endSpan,
-  errorToSpanStatus,
-  Exception,
-  InProgressSpan,
-  recordException,
-  startSpan,
-} from "../../utils/otel";
+import { debug, observeResourcePerformance, perf, win, setTimeout, wrap, parseUrl, clearTimeout } from "../../utils";
+import { isUrlIgnored } from "../../utils/ignore-rules";
+import { addAttribute, endSpan, setSpanStatus, Exception, InProgressSpan, startSpan } from "../../utils/otel";
 import {
   ERROR_TYPE,
   HTTP_REQUEST_METHOD,
@@ -29,12 +8,20 @@ import {
   HTTP_RESPONSE_STATUS_CODE,
   SPAN_STATUS_ERROR,
   SPAN_STATUS_UNSET,
-  WEB_REQUEST_CANCELLED,
 } from "../../semantic-conventions";
-import { vars, PropagatorType } from "../../vars";
+import { vars } from "../../vars";
 import { httpRequestHeaderKey, httpResponseHeaderKey } from "../../utils/otel/http";
 import { sendSpan } from "../../transport";
-import { addResourceNetworkEvents, addResourceSize, HTTP_METHOD_OTHER, isWellKnownHttpMethod } from "./utils";
+import {
+  addResourceNetworkEvents,
+  addResourceSize,
+  addTraceContextHttpHeaders,
+  determinePropagatorTypes,
+  endSpanOnAbort,
+  endSpanOnError,
+  HTTP_METHOD_OTHER,
+  isWellKnownHttpMethod,
+} from "./utils";
 import { addCommonAttributes, addUrlAttributes } from "../../attributes";
 
 export function instrumentFetch() {
@@ -45,83 +32,53 @@ export function instrumentFetch() {
   wrap(win, "fetch", wrapFetch);
 }
 
+type FetchInstrumentation = {
+  copyOfInit?: RequestInit;
+  span: InProgressSpan;
+  performanceObserver: ReturnType<typeof observeResourcePerformance>;
+};
+
 // eslint-disable-next-line no-restricted-globals -- only used as type here
 function wrapFetch(original: typeof fetch) {
   return async function fetchWithInstrumentation(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    let copyOfInit = init ? Object.assign({}, init) : init;
-
-    let body: BodyInit | null = null;
-    if (copyOfInit?.body) {
-      body = copyOfInit.body;
-      copyOfInit.body = undefined;
-    }
-
-    const request = new Request(input, copyOfInit);
-    if (body && copyOfInit) {
-      copyOfInit.body = body;
-    }
-
-    const url = request.url;
-    if (isUrlIgnored(url)) {
-      debug(`Not creating span for fetch call because the url is ignored, URL: ${url}`);
-      return original(input instanceof Request ? request : input, init);
-    }
-
-    // https://fetch.spec.whatwg.org/#concept-request-method
-    // We'll match methods case insensitive here to make the user experience a bit less painful
-    const originalMethod = request.method ?? "GET";
-    const isWellKnownMethod = isWellKnownHttpMethod(originalMethod);
-    const isWellKnownMethodMatchingLeniently = isWellKnownHttpMethod(originalMethod.toUpperCase());
-    const method = isWellKnownMethodMatchingLeniently ? originalMethod.toUpperCase() : HTTP_METHOD_OTHER;
-
-    const span = startSpan(`HTTP ${method}`);
-    addCommonAttributes(span.attributes);
-    addUrlAttributes(span.attributes, url);
-    addGraphQlProperties(input, init, span);
-    addAttribute(span.attributes, HTTP_REQUEST_METHOD, method);
-    if (!isWellKnownMethod) {
-      addAttribute(span.attributes, HTTP_REQUEST_METHOD_ORIGINAL, originalMethod);
-    }
-
-    const propagatorTypes = determinePropagatorTypes(url);
-    const shouldSetCorrelationHeaders = propagatorTypes.length > 0;
-    if (shouldSetCorrelationHeaders) {
-      if (copyOfInit?.headers) {
-        // ensure we have a unified container for the headers
-        copyOfInit.headers = new Headers(copyOfInit.headers);
-        addTraceContextHttpHeaders(copyOfInit.headers.append, copyOfInit.headers, span, propagatorTypes);
-      } else if (input instanceof Request) {
-        addTraceContextHttpHeaders(request.headers.append, request.headers, span, propagatorTypes);
-      } else {
-        if (!copyOfInit) {
-          copyOfInit = {};
-        }
-        copyOfInit.headers = new Headers();
-        addTraceContextHttpHeaders(copyOfInit.headers.append, copyOfInit.headers, span, propagatorTypes);
-      }
-    }
-
-    tryCaptureHttpHeaders(request.headers, span, (k) => httpRequestHeaderKey(k));
-
-    const performanceObserver = observeResourcePerformance({
-      // We match on both fetch and XHR here to support polyfills
-      resourceMatcher: ({ initiatorType, name }) =>
-        (initiatorType === "fetch" || initiatorType === "xmlhttprequest") && name === parseUrl(url).href,
-      maxWaitForResourceMillis: vars.maxWaitForResourceTimingsMillis,
-      maxToleranceForResourceTimingsMillis: vars.maxToleranceForResourceTimingsMillis,
-      onEnd: ({ duration, resource }) => {
-        if (resource) {
-          addResourceNetworkEvents(span, resource);
-          addResourceSize(span, resource);
-        }
-        // duration is millis we need to convert to nanos
-        sendSpan(endSpan(span, undefined, duration * 1000000));
-      },
-    });
-
-    performanceObserver.start();
+    let fetchInput: RequestInfo | URL = input;
+    let request: Request | undefined;
+    let instrumentation: FetchInstrumentation | undefined;
     try {
-      const origResponse = await original(input instanceof Request ? request : input, copyOfInit);
+      let copyOfInit = init ? Object.assign({}, init) : init;
+
+      let body: BodyInit | null = null;
+      if (copyOfInit?.body) {
+        body = copyOfInit.body;
+        copyOfInit.body = undefined;
+      }
+
+      request = new Request(input, copyOfInit);
+      if (body && copyOfInit) {
+        copyOfInit.body = body;
+      }
+      // Constructing the Request above disturbs the body of a Request input, so from here on the
+      // copy has to be handed to the original fetch in place of the input -- including on the
+      // ignored and instrumentation-failure paths below.
+      fetchInput = input instanceof Request ? request : input;
+
+      if (isUrlIgnored(request.url)) {
+        debug(`Not creating span for fetch call because the url is ignored, URL: ${request.url}`);
+        // Note: the rejection of the returned promise does not route through the catch below --
+        // only synchronous throws do, so the original fetch cannot be invoked twice.
+        return original(fetchInput, init);
+      }
+
+      instrumentation = onFetchStart(input, init, request, copyOfInit);
+    } catch (e) {
+      debug("failed to instrument fetch call", e);
+      return original(fetchInput, init);
+    }
+
+    const { copyOfInit, span, performanceObserver } = instrumentation;
+
+    try {
+      const origResponse = await original(fetchInput, copyOfInit);
       addResponseData(span, origResponse);
 
       return wrapResponse(
@@ -130,7 +87,7 @@ function wrapFetch(original: typeof fetch) {
         () => performanceObserver.end(),
         (e) => {
           performanceObserver.cancel();
-          if (request.signal?.aborted) {
+          if (request?.signal?.aborted) {
             endSpanOnAbort(span);
           } else {
             endSpanOnError(span, e);
@@ -139,7 +96,7 @@ function wrapFetch(original: typeof fetch) {
       );
     } catch (e) {
       performanceObserver.cancel();
-      if (request.signal?.aborted) {
+      if (request?.signal?.aborted) {
         endSpanOnAbort(span);
       } else {
         endSpanOnError(span, e as Exception);
@@ -147,6 +104,71 @@ function wrapFetch(original: typeof fetch) {
       throw e;
     }
   };
+}
+
+function onFetchStart(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  request: Request,
+  copyOfInit: RequestInit | undefined
+): FetchInstrumentation {
+  const url = request.url;
+
+  // https://fetch.spec.whatwg.org/#concept-request-method
+  // We'll match methods case insensitive here to make the user experience a bit less painful
+  const originalMethod = request.method ?? "GET";
+  const isWellKnownMethod = isWellKnownHttpMethod(originalMethod);
+  const isWellKnownMethodMatchingLeniently = isWellKnownHttpMethod(originalMethod.toUpperCase());
+  const method = isWellKnownMethodMatchingLeniently ? originalMethod.toUpperCase() : HTTP_METHOD_OTHER;
+
+  const span = startSpan(`HTTP ${method}`);
+  addCommonAttributes(span.attributes);
+  addUrlAttributes(span.attributes, url);
+  addGraphQlProperties(input, init, span);
+  addAttribute(span.attributes, HTTP_REQUEST_METHOD, method);
+  if (!isWellKnownMethod) {
+    addAttribute(span.attributes, HTTP_REQUEST_METHOD_ORIGINAL, originalMethod);
+  }
+
+  const propagatorTypes = determinePropagatorTypes(url);
+  const shouldSetCorrelationHeaders = propagatorTypes.length > 0;
+  if (shouldSetCorrelationHeaders) {
+    if (copyOfInit?.headers) {
+      // ensure we have a unified container for the headers
+      copyOfInit.headers = new Headers(copyOfInit.headers);
+      addTraceContextHttpHeaders(copyOfInit.headers.append, copyOfInit.headers, span, propagatorTypes);
+    } else if (input instanceof Request) {
+      addTraceContextHttpHeaders(request.headers.append, request.headers, span, propagatorTypes);
+    } else {
+      if (!copyOfInit) {
+        copyOfInit = {};
+      }
+      copyOfInit.headers = new Headers();
+      addTraceContextHttpHeaders(copyOfInit.headers.append, copyOfInit.headers, span, propagatorTypes);
+    }
+  }
+
+  tryCaptureHttpHeaders(request.headers, span, (k) => httpRequestHeaderKey(k));
+
+  const performanceObserver = observeResourcePerformance({
+    // We match on both fetch and XHR here to support polyfills
+    resourceMatcher: ({ initiatorType, name }) =>
+      (initiatorType === "fetch" || initiatorType === "xmlhttprequest") && name === parseUrl(url).href,
+    maxWaitForResourceMillis: vars.maxWaitForResourceTimingsMillis,
+    maxToleranceForResourceTimingsMillis: vars.maxToleranceForResourceTimingsMillis,
+    onEnd: ({ duration, resource }) => {
+      if (resource) {
+        addResourceNetworkEvents(span, resource);
+        addResourceSize(span, resource);
+      }
+      // duration is millis we need to convert to nanos
+      sendSpan(endSpan(span, undefined, duration * 1000000));
+    },
+  });
+
+  performanceObserver.start();
+
+  return { copyOfInit, span, performanceObserver };
 }
 
 // @ts-expect-error -- WIP
@@ -182,8 +204,8 @@ function tryCaptureHttpHeaders(headers: Headers, span: InProgressSpan, getAttrib
         addAttribute(span.attributes, getAttributeKey(key), value);
       }
     });
-  } catch (_e) {
-    debug("unable to capture http headers due to CORS policy");
+  } catch (e) {
+    debug("unable to capture http headers", e);
   }
 }
 
@@ -279,67 +301,6 @@ function wrapResponse(
     statusText: originalResponse.statusText,
     headers: originalResponse.headers,
   });
-}
-
-function endSpanOnError(span: InProgressSpan, error: Exception) {
-  recordException(span, error);
-  sendSpan(endSpan(span, errorToSpanStatus(error), undefined));
-}
-
-function endSpanOnAbort(span: InProgressSpan) {
-  addAttribute(span.attributes, WEB_REQUEST_CANCELLED, true);
-  sendSpan(endSpan(span, undefined, undefined));
-}
-
-function determinePropagatorTypes(url: string): PropagatorType[] {
-  const matchingTypes: PropagatorType[] = [];
-  const isUrlSameOrigin = isSameOrigin(url);
-
-  // For same-origin requests, always include traceparent + all configured propagators
-  if (isUrlSameOrigin) {
-    // Always add traceparent for same-origin requests
-    matchingTypes.push("traceparent");
-
-    // Add all other configured propagator types for same-origin requests
-    if (vars.propagators) {
-      for (const propagator of vars.propagators) {
-        if (propagator.type !== "traceparent" && !matchingTypes.includes(propagator.type)) {
-          matchingTypes.push(propagator.type);
-        }
-      }
-    }
-    return matchingTypes;
-  }
-
-  // For cross-origin requests, use new propagators config if available
-  if (vars.propagators) {
-    for (const propagator of vars.propagators) {
-      if (matchesAny(propagator.match, url)) {
-        // Avoid duplicates
-        if (!matchingTypes.includes(propagator.type)) {
-          matchingTypes.push(propagator.type);
-        }
-      }
-    }
-    return matchingTypes;
-  }
-
-  return [];
-}
-
-function addTraceContextHttpHeaders(
-  fn: (name: string, value: string) => void,
-  ctx: unknown,
-  span: InProgressSpan,
-  types: PropagatorType[]
-) {
-  for (const type of types) {
-    if (type === "xray") {
-      addXRayTraceContextHttpHeaders(fn, ctx, span);
-    } else {
-      addW3CTraceContextHttpHeaders(fn, ctx, span);
-    }
-  }
 }
 
 function responseCanHaveBody(response: Response) {

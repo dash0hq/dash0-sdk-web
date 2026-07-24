@@ -1,0 +1,81 @@
+# Transformations applied to the dash0-sdk-web docs before they are copied into the Dash0 documentation
+# repository. See ../sync-docs-to-website.yaml for the workflow that consumes this file.
+#
+# `files:` is the sole opt-in list — the sync ignores anything in the source repo that is not declared
+# here. The `coverage:` block guards against forgetting to wire up a new page: every file matching an
+# `include` glob must appear as a `files[].source` or be listed under `ignore`, otherwise the run fails.
+#
+# The `nav:` block emits a matching nav.json alongside the synced pages. The pages all live under
+# dash0/miscellaneous/tooling/web-sdk/, a sibling of the existing dash0-cli/ tree, so the generated
+# nav fragment attaches under the "Tooling" section label (parentPath: Tooling) with an order just
+# after dash0-cli (72.6). The website's build-navigation script merges this fragment into the tree.
+#
+# See https://github.com/dash0hq/sync-docs-action for the transformation-engine reference.
+
+common:
+  - description: strip the leading top-level heading (the frontmatter title replaces it)
+    type: replace-regex
+    find: '^# [^\n]*\n'
+    replace: ""
+
+coverage:
+  include:
+    - README.md
+    - INSTALL.md
+    - docs/sdk/*.md
+  ignore: []
+
+nav:
+  target: dash0/miscellaneous/tooling/web-sdk/nav.json
+  order: 72.7
+  id: web-sdk
+  parentPath: Tooling
+  title: Web SDK
+
+files:
+  - source: README.md
+    target: dash0/miscellaneous/tooling/web-sdk/overview.md
+    title: About the Web SDK
+    description: Introduction to the Dash0 Web SDK — what it instruments, its features, and how to get started capturing frontend telemetry.
+    transformations:
+      - description: rewrite the relative INSTALL.md link to the Installation sub-page
+        type: replace-regex
+        find: '\]\(\./INSTALL\.md\)'
+        replace: "](installation)"
+      - description: rewrite the relative DEVELOPMENT.md link to the source repo (page is not synced)
+        type: replace-regex
+        find: '\]\(\./DEVELOPMENT\.md\)'
+        replace: "](https://github.com/dash0hq/dash0-sdk-web/blob/main/DEVELOPMENT.md)"
+
+  - source: INSTALL.md
+    target: dash0/miscellaneous/tooling/web-sdk/installation.md
+    title: Installation
+    description: Prerequisites for the Dash0 Web SDK and an index of the setup, configuration, and API guides.
+    transformations:
+      - description: rewrite the Setup doc link to the sibling page
+        type: replace-regex
+        find: '\]\(docs/sdk/setup\.md\)'
+        replace: "](setup)"
+      - description: rewrite the Configuration doc link to the sibling page
+        type: replace-regex
+        find: '\]\(docs/sdk/configuration\.md\)'
+        replace: "](configuration)"
+      - description: rewrite the API doc link to the sibling page
+        type: replace-regex
+        find: '\]\(docs/sdk/api\.md\)'
+        replace: "](api)"
+
+  - source: docs/sdk/setup.md
+    target: dash0/miscellaneous/tooling/web-sdk/setup.md
+    title: Setup
+    description: Add the Dash0 Web SDK via modules or script tags, initialize it, and configure Content Security Policy.
+
+  - source: docs/sdk/configuration.md
+    target: dash0/miscellaneous/tooling/web-sdk/configuration.md
+    title: Configuration
+    description: All Dash0 Web SDK init options — backend correlation, auto-detection, website attributes, telemetry transmission, session and error tracking, and instrumentation.
+
+  - source: docs/sdk/api.md
+    target: dash0/miscellaneous/tooling/web-sdk/api.md
+    title: API Reference
+    description: Runtime API functions of the Dash0 Web SDK for managing signal attributes, user identification, custom events, error reporting, and sessions.

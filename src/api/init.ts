@@ -29,6 +29,7 @@ import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { startErrorInstrumentation } from "../instrumentations/errors";
 import { addAttribute } from "../utils/otel";
 import { instrumentFetch } from "../instrumentations/http/fetch";
+import { instrumentXhr } from "../instrumentations/http/xhr";
 import { startNavigationInstrumentation } from "../instrumentations/navigation";
 import { initializeTabId } from "../utils/tab-id";
 import { InitOptions, InstrumentationName } from "../types/options";
@@ -119,6 +120,9 @@ export function init(opts: InitOptions) {
   }
   if (isInstrumentationEnabled("@dash0/fetch", opts)) {
     instrumentFetch();
+  }
+  if (isInstrumentationEnabled("@dash0/xhr", opts)) {
+    instrumentXhr();
   }
 
   hasBeenInitialised = true;

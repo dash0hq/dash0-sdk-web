@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.23.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.22.1...0.23.0) (2026-07-24)
+
+### Features
+
+- add XMLHttpRequest instrumentation with trace-context propagation ([#99](https://github.com/dash0hq/dash0-sdk-web/issues/99)) ([56b3dde](https://github.com/dash0hq/dash0-sdk-web/commit/56b3dde13fe0f3d02231ae2550b17f254736608d)), closes [#93](https://github.com/dash0hq/dash0-sdk-web/issues/93) [#96](https://github.com/dash0hq/dash0-sdk-web/issues/96) [#98](https://github.com/dash0hq/dash0-sdk-web/issues/98)
+
 ## [0.22.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.22.0...0.22.1) (2026-06-25)
 
 ### Bug Fixes

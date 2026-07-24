@@ -1,0 +1,82 @@
+# SPDX-FileCopyrightText: Copyright 2026 Dash0 Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+name: Synchronize Web SDK docs to dash0.com/docs
+
+# Copies the Dash0 Web SDK documentation (README.md, INSTALL.md, and the topic files under docs/sdk/) into the
+# documentation on https://www.dash0.com/docs, applying the transformations declared in
+# sync-docs/transformations.yaml, and opens a pull request against the target repository.
+#
+# The pages are written under dash0/miscellaneous/tooling/web-sdk/ (a sibling of the dash0-cli/ tree). The
+# generated nav.json attaches under the "Tooling" section via parentPath.
+#
+# Two modes, both a single invocation of the shared dash0hq/sync-docs-action composite action:
+#
+#   - dry-run (workflow_dispatch default): the action applies the transformations and the coverage check,
+#     then stops — the target repository is not checked out, nothing is copied, and no PR is created, so no
+#     token is required. Useful as a drift/coverage guard.
+#
+#   - full sync (workflow_call, or workflow_dispatch with dry-run unchecked): runs the action end to end and
+#     opens/updates a PR on the target repository.
+#
+# The target repository and directory are supplied from the SYNC_DOCUMENTATION_TARGET_REPOSITORY and
+# SYNC_DOCUMENTATION_TARGET_DIRECTORY secrets, so the (non-public) target repo name and its internal layout
+# are not hardcoded here. Authentication uses the DASH0_DOCS_REPO_GITHUB_PAT secret: a fine-grained PAT scoped
+# to the target repository with Contents: Read and write and Pull requests: Read and write.
+
+# sync-docs-action pinned to v0.4.0, the first release to include the built-in dry-run, coverage guard, and
+# reviewer/assignee inputs (from https://github.com/dash0hq/sync-docs-action/pull/6).
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Only verify that the doc transformations still apply cleanly, do not create a pull request in the target repository.
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      dry-run:
+        description: Only verify that the doc transformations still apply cleanly, do not create a pull request in the target repository.
+        type: boolean
+        default: false
+    secrets:
+      DASH0_DOCS_REPO_GITHUB_PAT:
+        description: Fine-grained PAT with contents + pull-requests write access for the documentation repository. Only required when dry-run is false.
+        required: false
+      SYNC_DOCUMENTATION_TARGET_REPOSITORY:
+        description: owner/name of the target documentation repository. Only required when dry-run is false.
+        required: false
+      SYNC_DOCUMENTATION_TARGET_DIRECTORY:
+        description: Directory within the target repository that receives the transformed pages. Only required when dry-run is false.
+        required: false
+
+jobs:
+  sync-docs:
+    name: Synchronize Web SDK docs with dash0.com/docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: checkout dash0-sdk-web
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+
+      # Single invocation for both modes. On a dry run the action applies the transformations and the coverage
+      # check, then stops before touching the target repository; the target-side inputs are ignored, so they
+      # can be supplied unconditionally. source-root and transformations-file inherit their defaults (`.` and
+      # `.github/workflows/sync-docs/transformations.yaml`).
+      - name: synchronize docs to the website
+        uses: dash0hq/sync-docs-action@3fbe55fed800da21ee24d6b6dba1a86435f61565 # v0.4.0
+        with:
+          dry-run: ${{ inputs.dry-run }}
+          target-repository: ${{ secrets.SYNC_DOCUMENTATION_TARGET_REPOSITORY }}
+          target-directory: ${{ secrets.SYNC_DOCUMENTATION_TARGET_DIRECTORY }}
+          target-github-token: ${{ secrets.DASH0_DOCS_REPO_GITHUB_PAT }}
+          pr-branch: sync-dash0-sdk-web-docs
+          pr-title: "docs: synchronize Dash0 Web SDK documentation"
+          pr-body: >-
+            This PR synchronizes the content of the Dash0 Web SDK documentation from
+            [dash0hq/dash0-sdk-web](https://github.com/dash0hq/dash0-sdk-web) into the documentation on
+            https://www.dash0.com/docs.
+          commit-message: "docs: synchronize Dash0 Web SDK docs"
+          pr-reviewers: dash0hq/engineering-docs

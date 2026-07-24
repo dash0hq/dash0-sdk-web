@@ -130,6 +130,15 @@ export const config: WebdriverIO.Config = {
   connectionRetryTimeout: 120000,
   connectionRetryCount: 3,
 
+  // LambdaTest intermittently times out the new-session POST to its hub (a tunnel/capacity hiccup, not a
+  // product failure). That aborts session creation before any test runs, so neither connectionRetryCount
+  // (command-level) nor mochaOpts.retries (test-level, needs a live session) can recover it — the worker
+  // dies with an "isMultiremote" TypeError. specFileRetries re-runs the whole spec file with a fresh
+  // session, which clears these session-creation flakes; a genuine product break still fails every attempt.
+  specFileRetries: 2,
+  specFileRetriesDelay: 5,
+  specFileRetriesDeferred: true,
+
   services: [
     ["lambdatest", { tunnel: true, sessionNameOmitTestTitle: true, sessionNamePrependTopLevelSuiteTitle: true }],
   ],

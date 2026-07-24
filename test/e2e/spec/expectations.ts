@@ -54,27 +54,32 @@ function withFullDepthDiff(received: unknown, assert: () => void) {
   }
 }
 
+function getSpanMatcher(matcher: ExpectWebdriverIO.PartialMatcher) {
+  return expect.arrayContaining([
+    expect.objectContaining({
+      body: expect.objectContaining({
+        resourceSpans: expect.arrayContaining([
+          expect.objectContaining({
+            scopeSpans: expect.arrayContaining([expect.objectContaining({ spans: expect.arrayContaining([matcher]) })]),
+          }),
+        ]),
+      }),
+    }),
+  ]);
+}
+
 export async function expectSpanMatching(matcher: ExpectWebdriverIO.PartialMatcher) {
   const requests = await getOTLPRequests();
   const traceRequests = requests.filter((r) => r.path === "/v1/traces");
 
-  withFullDepthDiff(traceRequests, () =>
-    expect(traceRequests).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          body: expect.objectContaining({
-            resourceSpans: expect.arrayContaining([
-              expect.objectContaining({
-                scopeSpans: expect.arrayContaining([
-                  expect.objectContaining({ spans: expect.arrayContaining([matcher]) }),
-                ]),
-              }),
-            ]),
-          }),
-        }),
-      ])
-    )
-  );
+  withFullDepthDiff(traceRequests, () => expect(traceRequests).toEqual(getSpanMatcher(matcher)));
+}
+
+export async function expectNoSpanMatching(matcher: ExpectWebdriverIO.PartialMatcher) {
+  const requests = await getOTLPRequests();
+  const traceRequests = requests.filter((r) => r.path === "/v1/traces");
+
+  withFullDepthDiff(traceRequests, () => expect(traceRequests).not.toEqual(getSpanMatcher(matcher)));
 }
 
 export async function expectSpanCount(n: number) {

@@ -1,4 +1,4 @@
-import { debug } from "./debug";
+import { debug, warn } from "./debug";
 
 const INSTRUMENTED_BY_DASH0_SYMBOL = Symbol.for("INSTRUMENTED_BY_DASH0");
 
@@ -29,6 +29,18 @@ export function wrap<ModuleType extends object, TargetNameType extends keyof Mod
     return;
   }
 
-  markAsInstrumented(original);
-  module[target] = wrapper(original);
+  try {
+    const wrapped = wrapper(original);
+    // Mark the replacement as well: a later wrap() call reads the replacement from module[target],
+    // so marking only the original would let repeated instrumentation wrap the wrapper.
+    markAsInstrumented(original);
+    if (wrapped) {
+      markAsInstrumented(wrapped);
+    }
+    module[target] = wrapped;
+  } catch (e) {
+    // Pages can lock properties via Object.defineProperty/Object.freeze -- failing to install
+    // one instrumentation must not throw out of init() and abort the remaining ones.
+    warn(`failed to instrument ${String(target)}, the page may have locked the property`, e);
+  }
 }

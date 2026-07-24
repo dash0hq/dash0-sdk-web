@@ -1,6 +1,6 @@
 {
   "name": "@dash0/sdk-web",
-  "version": "0.22.1",
+  "version": "0.23.0",
   "description": "Dash0's Web SDK to collect telemetry from end-users' web browsers",
   "type": "module",
   "main": "dist/dash0.umd.cjs",
@@ -92,6 +92,7 @@
     "@wdio/mocha-framework": "^9.12.5",
     "@wdio/sauce-service": "^9.12.5",
     "@wdio/spec-reporter": "^9.12.3",
+    "axios": "^1.18.1",
     "body-parser": "^2.2.0",
     "dotenv-cli": "^8.0.0",
     "eslint": "^9.24.0",
@@ -116,7 +117,7 @@
   "resolutions": {
     "conventional-changelog-conventionalcommits": "8.0.0"
   },
-  "packageManager": "pnpm@9.15.1",
+  "packageManager": "pnpm@10.33.4",
   "publishConfig": {
     "access": "public"
   }
