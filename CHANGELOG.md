@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.24.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.23.0...0.24.0) (2026-07-27)
+
+### Features
+
+- add side-effect-free startView API for manual page views ([#101](https://github.com/dash0hq/dash0-sdk-web/issues/101)) ([b0ccbb1](https://github.com/dash0hq/dash0-sdk-web/commit/b0ccbb17d5591e026641fce46bfe9cd4fcebe889))
+
 ## [0.23.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.22.1...0.23.0) (2026-07-24)
 
 ### Features
