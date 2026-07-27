@@ -13,8 +13,8 @@ import {
   INTERACTION_TARGET_TAG,
   INTERACTION_TYPE,
   LOG_SEVERITIES,
+  WEB_EVENT_ID,
 } from "../../semantic-conventions";
-import { WEB_EVENT_ID } from "../../semantic-conventions";
 import type { LogRecord } from "../../types/otlp";
 
 vi.mock("../../transport", () => ({

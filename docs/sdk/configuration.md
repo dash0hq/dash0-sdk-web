@@ -448,20 +448,45 @@ for `fetch`, while an `XMLHttpRequest` timeout is an error — this asymmetry is
 
 #### Interaction instrumentation
 
-Opt-in automatic capture of click interactions (Datadog RUM `trackUserInteractions` parity). Disabled by default --
-set `interactionInstrumentation.enabled: true` to turn it on. When enabled, a single capture-phase listener on
-`window` observes clicks anywhere on the page (no per-element wiring, no listener leakage) and emits a
-`browser.interaction` web event per click with a derived, privacy-conscious interaction name and a compact
-target-element selector.
+Opt-in automatic capture of user interactions. Disabled by default --
+set `interactionInstrumentation.enabled: true` to turn it on. When enabled, the SDK attaches capture-phase listeners
+on `window` (no per-element wiring, no listener leakage) and emits one `browser.interaction` web event per
+interaction, carrying a derived, privacy-conscious interaction name and a compact target-element selector.
+
+Clicks are captured whenever the instrumentation is enabled. Scroll, key-press and form-change capture are each
+_additionally_ opt-in via their own flags below.
 
 - **Enable Interaction Instrumentation**<br>
   key: `interactionInstrumentation.enabled`<br>
   type: `boolean`<br>
   optional: `true`<br>
   default: `false`<br>
-  Whether the SDK should automatically capture click interactions. Also requires `'@dash0/interactions'` to be
-  present in `enabledInstrumentations` when that option is explicitly set (it is included by default when
+  Whether the SDK should automatically capture user interactions. Enables click capture; the three capture flags
+  below have no effect unless this is `true`. Also requires `'@dash0/interactions'` to be present in
+  `enabledInstrumentations` when that option is explicitly set (it is included by default when
   `enabledInstrumentations` is left `undefined`).
+- **Capture Scrolls**<br>
+  key: `interactionInstrumentation.captureScrolls`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Emit one `scroll` interaction per scroll burst, with the burst's net direction in `interaction.direction`.
+  Consecutive scroll events are coalesced; bursts smaller than a few pixels are discarded.
+- **Capture Key Presses**<br>
+  key: `interactionInstrumentation.captureKeyPresses`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Emit a `key_press` interaction for allow-listed navigation and activation keys only (e.g. `Enter`, `Tab`,
+  `Escape`, arrow keys). Printable characters are never recorded -- see the privacy note below.
+- **Capture Changes**<br>
+  key: `interactionInstrumentation.captureChanges`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Emit a `change` interaction when a form control's value is committed. Reports only `interaction.value_length`
+  for text fields and `interaction.selected_count` for selects -- never the value itself, and neither for
+  password fields.
 - **Action Name Attribute**<br>
   key: `interactionInstrumentation.actionNameAttribute`<br>
   type: `string`<br>
@@ -478,21 +503,37 @@ the first `FORM`, `BODY`, `HTML`, or `HEAD` boundary):
 2. `standard_attribute` -- attribute-derived names checked on the target then ancestors: for `button`/`submit`/`reset`
    inputs, `.value`; then `aria-label`, `aria-labelledby` (resolved via the referenced element(s)' text), `alt`,
    `title`, or `placeholder`.
-3. `text_content` -- visible text: first the text of clickable-tag elements (`BUTTON`, `LABEL`, `A`, or
-   `role="button"`) found while walking up from the target, then the target's own visible text. This fallback never
-   applies when the click target itself is an `INPUT`, `TEXTAREA`, `SELECT`, or `OPTION` element, since their text
-   content is user data rather than an action label.
+3. `text_content` -- the visible text of clickable-tag elements (`BUTTON`, `LABEL`, `A`, or `role="button"`) found
+   while walking up from the target. The target's own text is only read when the target is itself one of those
+   clickable tags: a click landing on a plain container (a layout `<div>`, `<footer>`, …) with no clickable element
+   in its ancestor path deliberately yields a blank name plus target metadata, rather than the container's entire
+   visible text. This phase is skipped entirely when the click target is an `INPUT`, `TEXTAREA`, `SELECT`, or
+   `OPTION` element, since their text content is user data rather than an action label.
 4. `blank` -- an empty name, if nothing above matched.
 
 Attribute-derived sources always outrank text: the full phase order is custom attribute → standard attributes
-(walk) → text content (walk, then target) → blank. Each captured event's `name_source` attribute reflects which
+(walk) → text content (walk) → blank. Each captured event's `interaction.name_source` attribute reflects which
 phase produced the name.
 
 **Privacy defaults (not configurable):** the SDK never reads the value of `password`, `text`, `textarea`, or
 `select` elements -- only `button`/`submit`/`reset` inputs expose their value for name derivation, and the
-text-content fallback above never applies to `INPUT`/`TEXTAREA`/`SELECT`/`OPTION` targets. Derived names are
-whitespace-normalized and truncated to 100 characters. The target-element selector is independently capped at 128
-characters.
+text-content phase above never applies to `INPUT`/`TEXTAREA`/`SELECT`/`OPTION` click targets. Key-press capture
+records only allow-listed control keys, never printable characters. Change capture records value length and
+selected count, never values. Derived names are whitespace-normalized and truncated to 100 characters (plus a
+` [...]` marker when truncation occurred). The target-element selector is independently capped at 128 characters.
+
+**Emitted attributes.** Every `browser.interaction` event carries `interaction.id`, `interaction.type` (`click`,
+`scroll`, `key_press`, or `change`), `interaction.name`, `interaction.name_source`, `interaction.target.tag`,
+`interaction.target.selector`, and `interaction.target.id` when the element has one. Type-specific attributes:
+`interaction.direction` (scroll), `interaction.key` (key press), and `interaction.value_length` /
+`interaction.selected_count` (change). The event body is a human-readable string such as
+`Click "Save Settings" on /settings`; treat the attributes, not the body, as the stable contract.
+
+**Click-to-request correlation.** A click registers a short-lived (2 second) active interaction before the page's
+own handlers run. Any `fetch` or `XMLHttpRequest` span started inside that window is stamped with
+`user_interaction.id` and, when a name was derived, `user_interaction.name` -- joining a user action to the HTTP
+requests it triggered. Join a span to its interaction event by matching the span's `user_interaction.id` against
+the event's `interaction.id`. Key presses open the window only for activation keys (`Enter` and `Space`).
 
 Note: capturing interaction events requires both `interactionInstrumentation.enabled: true` **and**
 `'@dash0/interactions'` present in `enabledInstrumentations` if that option is explicitly set to a non-default
