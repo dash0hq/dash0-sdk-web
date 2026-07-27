@@ -125,6 +125,52 @@ sendEvent("user_action", {
 dash0("sendEvent", "user_action", { data: "button_clicked", severity: "INFO" });
 ```
 
+### Page Views
+
+#### `startView(name, opts)`
+
+Manually records a page view. Side-effect free: this never calls `history.pushState` /
+`history.replaceState` and never mutates `location`. Use this for single-page applications that
+own their own router and cannot let the SDK touch navigation state — for example, an Electron
+app that serves the whole application from one root URL, where automatic page-view tracking
+would report every screen as `/`.
+
+The emitted page view is indistinguishable from an automatic virtual page view downstream (same
+`browser.page_view` event, same `type` value), with two differences: it is never accompanied by
+a `change_state` value, since no history mutation occurred, and the `pageViewInstrumentation`'s
+`generateMetadata` callback is not invoked for manual views — supply title and attributes
+directly via the options object instead.
+
+**Parameters:**
+
+- `name` (string): The name of the view, e.g. `/settings`. Transmitted as the page view's title.
+- `opts` (object, optional): Additional page view details:
+  - `url` (string, optional): Overrides the url reflected in `page.url.*` attributes for this
+    view. Accepts an absolute or relative url; relative urls are resolved against the current
+    `location.href`. Falls back to the real `location.href` if omitted or invalid. Display-only —
+    never navigates or mutates history/location.
+  - `attributes` (Record<string, AttributeValueType | AnyValue>, optional): Additional attributes
+    to include with the page view. Added after the SDK-generated attributes, so they can
+    override them.
+
+**Example:**
+
+```js
+// Module
+import { startView } from "@dash0/sdk-web";
+
+startView("/settings", {
+  attributes: {
+    "app.screen": "settings",
+  },
+});
+
+startView("/checkout");
+
+// Script
+dash0("startView", "/settings", { attributes: { "app.screen": "settings" } });
+```
+
 ### Error Reporting
 
 #### `reportError(error, opts)`

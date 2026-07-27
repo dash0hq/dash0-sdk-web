@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>start view test</title>
+
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: {
+          url: `http://${window.location.hostname}:8011?cors=true`,
+          authToken: "auth_abc123",
+          dataset: "production",
+        },
+      });
+
+      // Queued malformed call: must be ignored during the queue drain without
+      // breaking the queued calls that follow it.
+      dash0("startView");
+
+      function onStartViewMalformed() {
+        dash0("startView");
+        dash0("startView", 123);
+      }
+
+      function onStartViewOptions() {
+        dash0("startView", "/settings", { attributes: { "app.screen": "settings" } });
+      }
+
+      function onStartViewString() {
+        dash0("startView", "/checkout");
+      }
+
+      function onStartViewWithUrl() {
+        dash0("startView", "/settings", { url: "/settings" });
+      }
+
+      function onRealPushState() {
+        history.pushState(undefined, "", new URL("./virtual-page", window.location.href));
+      }
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+  </head>
+  <body>
+    <button onclick="onStartViewMalformed()">Start View Malformed</button>
+    <button onclick="onStartViewOptions()">Start View Options</button>
+    <button onclick="onStartViewString()">Start View String</button>
+    <button onclick="onStartViewWithUrl()">Start View With Url</button>
+    <button onclick="onRealPushState()">Real Push State</button>
+  </body>
+</html>
