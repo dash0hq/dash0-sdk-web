@@ -220,9 +220,11 @@ describe("click instrumentation", () => {
     it("swallows errors from a throwing scenario and does not propagate", () => {
       dom.body.innerHTML = `<button id="btn">Click</button>`;
       const target = dom.getElementById("btn")!;
-      // Force an internal error by making textContent throw.
-      Object.defineProperty(target, "textContent", {
-        get() {
+      // Force an internal error by making the first DOM read of the derivation
+      // throw (name derivation no longer touches textContent -- see labelText
+      // in action-name.ts).
+      Object.defineProperty(target, "getAttribute", {
+        value() {
           throw new Error("boom");
         },
       });

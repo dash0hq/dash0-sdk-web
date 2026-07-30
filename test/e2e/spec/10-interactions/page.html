@@ -37,5 +37,18 @@
     <button id="plain-button">Continue</button>
     <button id="icon-button" aria-label="Close Dialog">&times;</button>
     <input id="text-input" type="text" value="pre-filled secret" placeholder="Type here" />
+
+    <!--
+      Privacy fixtures. A <label> wrapping its control is the dominant form
+      markup, so label.textContent contains the control's value; the click target
+      is a dedicated inner span so WebDriver's centre-click cannot land on the
+      textarea itself.
+    -->
+    <label id="notes-label"
+      ><span id="notes-label-text">Notes</span>
+      <textarea id="notes">TEXTAREA-SECRET-4471</textarea>
+    </label>
+    <span id="upload-label">Upload <textarea id="upload-draft">LABELLEDBY-SECRET-8814</textarea></span>
+    <button id="upload-button" aria-labelledby="upload-label">&uarr;</button>
   </body>
 </html>

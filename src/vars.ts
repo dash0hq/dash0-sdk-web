@@ -1,6 +1,7 @@
 import { AttributeValueType } from "./utils/otel";
 import { AnyValue, InstrumentationScope, KeyValue, Resource } from "./types/otlp";
 import { UrlAttributeScrubber } from "./attributes";
+import type { ActionNameScrubber } from "./instrumentations/interactions/action-name";
 import { identity } from "./utils";
 
 export type PropagatorType = "traceparent" | "xray";
@@ -58,6 +59,13 @@ export type PageViewInstrumentationSettings = {
   includeParts?: Array<"HASH" | "SEARCH">;
 };
 
+/**
+ * Fallback for `InteractionInstrumentationSettings.actionNameAttribute`. Lives
+ * here rather than in the interactions module so that module can import it
+ * without vars.ts needing a runtime import back (which would be a cycle).
+ */
+export const DEFAULT_ACTION_NAME_ATTRIBUTE = "data-dash0-action-name";
+
 export type InteractionInstrumentationSettings = {
   /**
    * Whether the SDK should automatically capture click interactions.
@@ -105,6 +113,27 @@ export type InteractionInstrumentationSettings = {
    * @default false
    */
   captureChanges?: boolean;
+
+  /**
+   * Last-chance hook to replace or drop a derived interaction name. Runs as the
+   * final step of name derivation, so it covers every place the name is
+   * emitted: the `interaction.name` attribute, the human-readable event body,
+   * and `user_interaction.name` on correlated HTTP spans.
+   *
+   * Receives the name the SDK would otherwise emit (already whitespace
+   * normalized and truncated), how it was derived, and the interaction target.
+   * Return a replacement, or an empty string to drop the name entirely. The
+   * return value is normalized and truncated again.
+   *
+   * Only invoked when a name was actually derived -- it cannot invent a name
+   * for an interaction the SDK could not name.
+   *
+   * Fails closed: if the scrubber throws or returns a non-string, the name is
+   * dropped rather than emitted unscrubbed.
+   *
+   * @default undefined
+   */
+  actionNameScrubber?: ActionNameScrubber;
 };
 
 export type Vars = {
@@ -260,7 +289,7 @@ export const vars: Vars = {
   },
   interactionInstrumentation: {
     enabled: false,
-    actionNameAttribute: "data-dash0-action-name",
+    actionNameAttribute: DEFAULT_ACTION_NAME_ATTRIBUTE,
     captureScrolls: false,
     captureKeyPresses: false,
     captureChanges: false,

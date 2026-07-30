@@ -1,9 +1,18 @@
+import { DEFAULT_ACTION_NAME_ATTRIBUTE, vars } from "../../vars";
+import { warn } from "../../utils/debug";
+
 export type ActionNameSource = "custom_attribute" | "standard_attribute" | "text_content" | "blank";
 
 export type ActionNameResult = {
   name: string;
   nameSource: ActionNameSource;
 };
+
+/**
+ * Last-chance hook to replace or drop a derived interaction name before it is
+ * emitted. See `InteractionInstrumentationSettings.actionNameScrubber`.
+ */
+export type ActionNameScrubber = (name: string, source: ActionNameSource, target: Element) => string;
 
 const MAX_ANCESTOR_WALK = 10;
 const MAX_NAME_LENGTH = 100;
@@ -13,14 +22,86 @@ const VALUE_READABLE_INPUT_TYPES = new Set(["button", "submit", "reset"]);
 // Elements whose visible text is read during the text-content phase because their
 // text is an action label rather than page content.
 const CLICKABLE_TEXT_TAGS = new Set(["BUTTON", "LABEL", "A"]);
-// Never derive a name from the text content of these click targets: an OPTION's /
-// SELECT's visible text is the user's chosen value and a TEXTAREA's text IS its
-// value — all user data, not an action label. (They may still be named via
-// attribute sources such as aria-label or placeholder.)
-const TEXT_FALLBACK_EXCLUDED_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT", "OPTION"]);
+// Never read text from these elements OR their descendants: an OPTION's / SELECT's
+// visible text is the user's chosen value, a TEXTAREA's text IS its value, an
+// OUTPUT holds a computed result, and SCRIPT/STYLE/NOSCRIPT hold source code
+// rather than a label. Crucial for keeping such text out of the label collected
+// from ANY element, because a label almost always WRAPS its control. (Controls may
+// still be named via attribute sources such as aria-label or placeholder.)
+//
+// Matched against `localName`, which is lowercase for HTML elements in both HTML
+// and XHTML documents; `tagName` is uppercase only in HTML documents, so an
+// uppercase set silently never matches in an XHTML document.
+const TEXT_EXCLUDED_TAGS = new Set(["input", "textarea", "select", "option", "output", "script", "style", "noscript"]);
+// labelText budgets. The name is capped at MAX_NAME_LENGTH anyway, so 1024
+// characters leaves ~10x headroom for markup whitespace. The node bound is the
+// one that matters for pathological subtrees: characters only accumulate on text
+// nodes, so a virtualized grid of empty elements never reaches the char budget.
+const MAX_TEXT_SCAN_LENGTH = 1024;
+const MAX_TEXT_SCAN_NODES = 1000;
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function isTextExcluded(el: Element): boolean {
+  if (TEXT_EXCLUDED_TAGS.has(el.localName)) return true;
+  // A contenteditable region holds user-typed content. The attribute is read
+  // directly rather than via `isContentEditable`: that property is unimplemented
+  // in jsdom and is false for elements outside a rendered document. An empty
+  // value means editable per spec; only an explicit "false" opts out.
+  const editable = el.getAttribute("contenteditable");
+  return editable != null && editable.toLowerCase() !== "false";
+}
+
+/**
+ * Collects the author-written label text of `el`: like `textContent`, but never
+ * descends into an element whose text is user data rather than a label (see
+ * TEXT_EXCLUDED_TAGS / contenteditable), and returns "" when `el` is itself such
+ * an element. `textContent` cannot be used for naming because a label almost
+ * always wraps its control -- `<label>Notes <textarea>...</textarea></label>` --
+ * so the control's value would end up in the interaction name and, from there, in
+ * the log body and on `user_interaction.name` of correlated HTTP spans.
+ *
+ * Shadow roots are never traversed, matching `textContent`.
+ *
+ * Bounded by MAX_TEXT_SCAN_LENGTH collected characters and MAX_TEXT_SCAN_NODES
+ * visited nodes. Traverses via firstChild/nextSibling rather than childNodes so
+ * that a node with 50k children cannot cost 50k pushes before a budget is
+ * consulted. The result is whitespace-normalized.
+ */
+function labelText(el: Element): string {
+  let text = "";
+  let visited = 0;
+  const pending: Node[] = [];
+  let node: Node | null = isTextExcluded(el) ? null : el.firstChild;
+
+  while (node && text.length < MAX_TEXT_SCAN_LENGTH && visited < MAX_TEXT_SCAN_NODES) {
+    visited++;
+    // Queued before descending, which keeps the traversal in document order.
+    // Since we start at el.firstChild and only ever queue a visited node's
+    // sibling, the walk cannot escape el's subtree.
+    if (node.nextSibling) {
+      pending.push(node.nextSibling);
+    }
+
+    let child: Node | null = null;
+    if (node.nodeType === 3) {
+      text += (node as Text).data;
+    } else if (node.nodeType === 1) {
+      if (isTextExcluded(node as Element)) {
+        // A separator, so dropping a control cannot glue its neighbours into one
+        // word: "Qty<input>units" -> "Qty units", not "Qtyunits".
+        text += " ";
+      } else {
+        child = node.firstChild;
+      }
+    }
+
+    node = child || pending.pop() || null;
+  }
+
+  return normalizeWhitespace(text);
 }
 
 function truncate(name: string): string {
@@ -77,8 +158,12 @@ function resolveAriaLabelledBy(el: Element): string | undefined {
   const doc = el.ownerDocument;
   const parts = labelledBy
     .split(/\s+/)
-    .map((id) => doc.getElementById(id)?.textContent ?? "")
-    .map((text) => normalizeWhitespace(text))
+    .map((id) => {
+      const ref = doc.getElementById(id);
+      // labelText, not textContent: an aria-labelledby target routinely wraps a
+      // form control -- or is one -- in which case it contributes nothing.
+      return ref ? labelText(ref) : "";
+    })
     .filter((text) => text.length > 0);
 
   return parts.length > 0 ? parts.join(" ") : undefined;
@@ -121,34 +206,72 @@ function findStandardAttributeName(path: Element[]): string | undefined {
 }
 
 /**
- * Text-content source: the visible text of clickable-tag elements
+ * Text-content source: the label text of clickable-tag elements
  * (BUTTON/[role=button]/LABEL/A) found along the walk path. A click that lands
  * on a non-interactive container (e.g. a layout <div>/<footer>) with no such
  * element in its path — and no naming attribute — deliberately yields no name,
  * so deriveActionName falls through to "blank" + target metadata rather than
- * dumping the container's entire textContent. Skipped entirely for
- * INPUT/TEXTAREA/SELECT/OPTION targets — their text content is user data
- * (see TEXT_FALLBACK_EXCLUDED_TAGS).
+ * dumping the container's entire text.
+ *
+ * The text is collected with `labelText`, never `textContent`, so a control
+ * nested inside the named element (the `<label>Notes <textarea>` shape) never
+ * contributes its value. That exclusion is what makes it safe to read an
+ * ancestor's text for a click that landed on the control itself.
  */
-function findTextContentName(target: Element, path: Element[]): string | undefined {
-  if (TEXT_FALLBACK_EXCLUDED_TAGS.has(target.tagName)) return undefined;
-
+function findTextContentName(path: Element[]): string | undefined {
   for (const el of path) {
     if (CLICKABLE_TEXT_TAGS.has(el.tagName) || el.getAttribute("role") === "button") {
-      const text = el.textContent;
-      if (text && normalizeWhitespace(text)) return text;
+      const text = labelText(el);
+      if (text) return text;
     }
   }
 
   return undefined;
 }
 
+let scrubberWarned = false;
+
 /**
- * Derives a human-readable interaction name for a clicked element, following
+ * Applies the consumer-configured scrubber, fail-closed: if it throws or returns
+ * a non-string the name is dropped entirely rather than emitted unscrubbed --
+ * matching how `addUrlAttributes` drops URL attributes when a custom
+ * `urlAttributeScrubber` misbehaves. Warns at most once, since a throwing
+ * scrubber would otherwise fire on every interaction.
+ *
+ * Only invoked for a derived, non-empty name: a scrubber must not be able to
+ * invent a name where the SDK derived none.
+ */
+function applyScrubber(result: ActionNameResult, target: Element, scrubber?: ActionNameScrubber): ActionNameResult {
+  if (!scrubber || !result.name) {
+    return result;
+  }
+
+  try {
+    const scrubbed = scrubber(result.name, result.nameSource, target);
+    if (typeof scrubbed !== "string") {
+      if (!scrubberWarned) {
+        scrubberWarned = true;
+        warn("Dash0 actionNameScrubber did not return a string. Dropping the interaction name.");
+      }
+      return { name: "", nameSource: "blank" };
+    }
+    // finalize again so a scrubber cannot bypass normalization or the length cap.
+    return finalize(scrubbed, result.nameSource);
+  } catch (err) {
+    if (!scrubberWarned) {
+      scrubberWarned = true;
+      warn("Dash0 actionNameScrubber threw. Dropping the interaction name.", err);
+    }
+    return { name: "", nameSource: "blank" };
+  }
+}
+
+/**
+ * Derives a human-readable interaction name for an interaction target, following
  * Datadog RUM's action-name priority order:
  *   1. configured custom attribute (target or ancestor)
  *   2. standard attribute-based sources (target or ancestor)
- *   3. visible text of clickable-tag elements (button/link/label/[role=button])
+ *   3. label text of clickable-tag elements (button/link/label/[role=button])
  *      found along the walk path
  *   4. blank
  *
@@ -156,27 +279,49 @@ function findTextContentName(target: Element, path: Element[]): string | undefin
  * first FORM/BODY/HTML/HEAD boundary.
  *
  * Privacy: never reads the value of password/text/textarea/select elements --
- * only button/submit/reset inputs expose `.value` -- and never derives a name
- * from the text content of INPUT/TEXTAREA/SELECT/OPTION targets. Whitespace is
- * always normalized and the result is truncated to 100 characters.
+ * only button/submit/reset inputs expose `.value` -- and never reads text from a
+ * form control, `<output>`, contenteditable region, or `<script>`/`<style>`
+ * anywhere inside the element it names, including via `aria-labelledby` (see
+ * `labelText`). Whitespace is always normalized and the result is truncated to
+ * 100 characters. Whatever survives is passed through the optional consumer
+ * scrubber as the final step.
  */
-export function deriveActionName(target: Element, actionNameAttribute: string): ActionNameResult {
+export function deriveActionName(
+  target: Element,
+  actionNameAttribute: string,
+  scrubber?: ActionNameScrubber
+): ActionNameResult {
   const path = collectWalkPath(target);
 
   const customName = findCustomAttributeName(path, actionNameAttribute);
   if (customName) {
-    return finalize(customName, "custom_attribute");
+    return applyScrubber(finalize(customName, "custom_attribute"), target, scrubber);
   }
 
   const standardName = findStandardAttributeName(path);
   if (standardName) {
-    return finalize(standardName, "standard_attribute");
+    return applyScrubber(finalize(standardName, "standard_attribute"), target, scrubber);
   }
 
-  const textName = findTextContentName(target, path);
+  const textName = findTextContentName(path);
   if (textName) {
-    return finalize(textName, "text_content");
+    return applyScrubber(finalize(textName, "text_content"), target, scrubber);
   }
 
   return { name: "", nameSource: "blank" };
+}
+
+/**
+ * The single choke point every interaction type goes through to name its target.
+ * Reads the naming configuration from `vars` so that no handler can accidentally
+ * bypass the configured scrubber; `deriveActionName` stays pure and takes its
+ * configuration explicitly so it remains directly unit-testable.
+ */
+export function resolveActionName(target: Element): ActionNameResult {
+  const settings = vars.interactionInstrumentation;
+  return deriveActionName(
+    target,
+    settings.actionNameAttribute ?? DEFAULT_ACTION_NAME_ATTRIBUTE,
+    settings.actionNameScrubber
+  );
 }

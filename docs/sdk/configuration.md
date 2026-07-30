@@ -495,32 +495,52 @@ _additionally_ opt-in via their own flags below.
   The element attribute the SDK checks first (on the clicked element or any of its ancestors) when deriving a
   human-readable interaction name. Set this attribute on interactive elements for full control over the captured
   name, e.g. `<button data-dash0-action-name="Save Settings">`.
+- **Action Name Scrubber**<br>
+  key: `interactionInstrumentation.actionNameScrubber`<br>
+  type: `(name: string, source: ActionNameSource, target: Element) => string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  Last-chance hook to replace or drop a derived interaction name. It runs as the final step of name derivation,
+  so it covers every place the name is emitted: the `interaction.name` attribute, the human-readable event body,
+  and `user_interaction.name` on correlated HTTP spans. It receives the name the SDK would otherwise emit
+  (already whitespace-normalized and truncated), which phase derived it, and the interaction target; return a
+  replacement, or an empty string to drop the name entirely. The return value is normalized and truncated again.
+  It is only invoked when a name was actually derived, so it cannot invent a name for an interaction the SDK
+  could not name. It **fails closed**: if the scrubber throws or returns a non-string, the name is dropped rather
+  than emitted unscrubbed.
 
 **Name derivation priority** (first match wins, walking from the clicked element up to 10 ancestors, stopping at
 the first `FORM`, `BODY`, `HTML`, or `HEAD` boundary):
 
 1. `custom_attribute` -- the configured `actionNameAttribute`, on the target or a qualifying ancestor.
 2. `standard_attribute` -- attribute-derived names checked on the target then ancestors: for `button`/`submit`/`reset`
-   inputs, `.value`; then `aria-label`, `aria-labelledby` (resolved via the referenced element(s)' text), `alt`,
-   `title`, or `placeholder`.
-3. `text_content` -- the visible text of clickable-tag elements (`BUTTON`, `LABEL`, `A`, or `role="button"`) found
-   while walking up from the target. The target's own text is only read when the target is itself one of those
-   clickable tags: a click landing on a plain container (a layout `<div>`, `<footer>`, …) with no clickable element
-   in its ancestor path deliberately yields a blank name plus target metadata, rather than the container's entire
-   visible text. This phase is skipped entirely when the click target is an `INPUT`, `TEXTAREA`, `SELECT`, or
-   `OPTION` element, since their text content is user data rather than an action label.
+   inputs, `.value`; then `aria-label`, `aria-labelledby` (resolved via the privacy-aware label text of the
+   referenced element(s) -- a reference to, or wrapping, a form control contributes nothing), `alt`, `title`, or
+   `placeholder`.
+3. `text_content` -- the label text of clickable-tag elements (`BUTTON`, `LABEL`, `A`, or `role="button"`) found
+   while walking up from the target. This is _not_ `textContent`: the collector never descends into a nested
+   `input`, `textarea`, `select`, `option`, `output`, `script`, `style`, `noscript`, or `contenteditable` element,
+   because a `<label>` or `<button>` normally _wraps_ its control, so its raw `textContent` would contain the
+   user's entered value. `<label>Notes <textarea>my private note</textarea></label>` therefore yields `Notes`,
+   never the note -- whether the click landed on the label or on the textarea inside it. Shadow roots are never
+   traversed. A click landing on a plain container (a layout `<div>`, `<footer>`, …) with no clickable element in
+   its ancestor path deliberately yields a blank name plus target metadata, rather than the container's entire
+   visible text.
 4. `blank` -- an empty name, if nothing above matched.
 
 Attribute-derived sources always outrank text: the full phase order is custom attribute → standard attributes
 (walk) → text content (walk) → blank. Each captured event's `interaction.name_source` attribute reflects which
 phase produced the name.
 
-**Privacy defaults (not configurable):** the SDK never reads the value of `password`, `text`, `textarea`, or
-`select` elements -- only `button`/`submit`/`reset` inputs expose their value for name derivation, and the
-text-content phase above never applies to `INPUT`/`TEXTAREA`/`SELECT`/`OPTION` click targets. Key-press capture
-records only allow-listed control keys, never printable characters. Change capture records value length and
-selected count, never values. Derived names are whitespace-normalized and truncated to 100 characters (plus a
-` [...]` marker when truncation occurred). The target-element selector is independently capped at 128 characters.
+**Privacy defaults.** The SDK never reads the value of `password`, `text`, `textarea`, or `select` elements --
+only `button`/`submit`/`reset` inputs expose their value for name derivation -- and it never reads text from a
+form control, `<output>`, `contenteditable` region, or `<script>`/`<style>` **nested anywhere inside** the element
+it names, including via `aria-labelledby`. Key-press capture records only allow-listed control keys, never
+printable characters. Change capture records value length and selected count, never values. Derived names are
+whitespace-normalized and truncated to 100 characters (plus a ` [...]` marker when truncation occurred); the text
+scan itself is bounded to 1024 characters and 1000 DOM nodes. The target-element selector is independently capped
+at 128 characters. None of these limits is configurable -- use `actionNameScrubber` for cases the heuristics
+cannot know about, such as a `title` or `alt` attribute your application interpolates user data into.
 
 **Emitted attributes.** Every `browser.interaction` event carries `interaction.id`, `interaction.type` (`click`,
 `scroll`, `key_press`, or `change`), `interaction.name`, `interaction.name_source`, `interaction.target.tag`,
@@ -545,6 +565,8 @@ init({
   endpoint: { url: "{OTLP via HTTP endpoint}", authToken: "{authToken}" },
   interactionInstrumentation: {
     enabled: true,
+    // Optional: redact anything the derivation heuristics cannot know about.
+    actionNameScrubber: (name) => name.replace(/[^\s@]+@[^\s@]+/g, "[email]"),
   },
 });
 ```

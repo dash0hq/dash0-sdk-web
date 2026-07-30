@@ -107,10 +107,11 @@ describe("Interaction Instrumentation", () => {
             { key: "interaction.target.id", value: { stringValue: "text-input" } },
             { key: "interaction.target.tag", value: { stringValue: "input" } },
             // The input's only available name source is its `placeholder` attribute
-            // (INPUT targets never fall back to reading their own value or text
-            // content -- see TEXT_FALLBACK_EXCLUDED_TAGS / VALUE_READABLE_INPUT_TYPES
-            // in src/instrumentations/interactions/action-name.ts). The pre-filled
-            // `value="pre-filled secret"` must never leak into the emitted log.
+            // (an input's value is only ever read for button/submit/reset types, and
+            // its text is never collected -- see VALUE_READABLE_INPUT_TYPES /
+            // TEXT_EXCLUDED_TAGS in src/instrumentations/interactions/action-name.ts).
+            // The pre-filled `value="pre-filled secret"` must never leak into the
+            // emitted log.
             { key: "interaction.name", value: { stringValue: "Type here" } },
             { key: "interaction.name_source", value: { stringValue: "standard_attribute" } },
           ]),
@@ -128,6 +129,64 @@ describe("Interaction Instrumentation", () => {
 
       expect(interactionRecord.attributes.map((kv: any) => kv.value?.stringValue)).not.toContain("pre-filled secret");
       expect(interactionRecord.body?.stringValue).not.toContain("pre-filled secret");
+    });
+
+    expectNoBrowserErrors();
+  });
+
+  it("never leaks a wrapped control's value when the name comes from an ancestor label's text", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`${PAGE_PATH}?testId=${testId}`);
+
+    const labelText = await $("#notes-label-text");
+    await labelText.click();
+
+    await retry(async () => {
+      // Positive signal FIRST: retry() resolves on the first success, so a bare
+      // negative assertion would pass vacuously before any log arrived. The
+      // exact-match body assertion is itself part of the privacy check.
+      await expectLogMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "interaction.target.id", value: { stringValue: "notes-label-text" } },
+            { key: "interaction.name", value: { stringValue: "Notes" } },
+            { key: "interaction.name_source", value: { stringValue: "text_content" } },
+          ]),
+          body: { stringValue: `Click "Notes" on ${PAGE_PATH}` },
+        })
+      );
+
+      // Only meaningful now that the expected record has been received: the
+      // wrapped textarea's value must appear nowhere we transmitted -- not in a
+      // log attribute, not in a body, and not on a span's user_interaction.name.
+      const requests = await getOTLPRequests();
+      expect(JSON.stringify(requests)).not.toContain("TEXTAREA-SECRET-4471");
+    });
+
+    expectNoBrowserErrors();
+  });
+
+  it("never leaks a control nested inside an aria-labelledby target", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`${PAGE_PATH}?testId=${testId}`);
+
+    const btn = await $("#upload-button");
+    await btn.click();
+
+    await retry(async () => {
+      await expectLogMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "interaction.target.id", value: { stringValue: "upload-button" } },
+            { key: "interaction.name", value: { stringValue: "Upload" } },
+            { key: "interaction.name_source", value: { stringValue: "standard_attribute" } },
+          ]),
+          body: { stringValue: `Click "Upload" on ${PAGE_PATH}` },
+        })
+      );
+
+      const requests = await getOTLPRequests();
+      expect(JSON.stringify(requests)).not.toContain("LABELLEDBY-SECRET-8814");
     });
 
     expectNoBrowserErrors();

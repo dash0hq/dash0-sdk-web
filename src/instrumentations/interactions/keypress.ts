@@ -3,8 +3,7 @@ import { debug } from "../../utils/debug";
 import { addAttribute } from "../../utils/otel";
 import { INTERACTION_KEY } from "../../semantic-conventions";
 import { KeyValue } from "../../types/otlp";
-import { vars } from "../../vars";
-import { deriveActionName } from "./action-name";
+import { resolveActionName } from "./action-name";
 import { registerActiveInteraction } from "./active-interaction";
 import { emitInteractionEvent, pagePath } from "./emit";
 
@@ -76,7 +75,7 @@ export function handleKeydown(event: KeyboardEvent): void {
     const element = target as Element;
 
     const key = event.key === " " ? "Space" : event.key;
-    const { name, nameSource } = deriveActionName(element, vars.interactionInstrumentation.actionNameAttribute!);
+    const { name, nameSource } = resolveActionName(element);
 
     // Enter/Space activate a control or submit a form, so they register for
     // HTTP span attribution just like a click; navigation keys only get an

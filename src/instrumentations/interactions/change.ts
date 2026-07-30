@@ -3,8 +3,7 @@ import { debug } from "../../utils/debug";
 import { addAttribute } from "../../utils/otel";
 import { INTERACTION_SELECTED_COUNT, INTERACTION_VALUE_LENGTH } from "../../semantic-conventions";
 import { KeyValue } from "../../types/otlp";
-import { vars } from "../../vars";
-import { deriveActionName } from "./action-name";
+import { resolveActionName } from "./action-name";
 import { registerActiveInteraction } from "./active-interaction";
 import { emitInteractionEvent, pagePath } from "./emit";
 
@@ -18,9 +17,10 @@ import { emitInteractionEvent, pagePath } from "./emit";
  *   - checkbox / radio: the fact that it was toggled, nothing else
  *   - password inputs: not even the length (length is itself a weak secret)
  *   - file inputs: the fact that files were chosen; never a filename
- * Field names come from deriveActionName, which for form controls only uses
- * naming attributes (aria-label, placeholder, the custom attribute), never
- * user-entered content.
+ * Field names come from resolveActionName, which for form controls uses naming
+ * attributes (aria-label, placeholder, the custom attribute) or the enclosing
+ * label's text with the control's own text excluded -- never user-entered
+ * content.
  */
 const CHANGE_TAGS = new Set(["INPUT", "SELECT", "TEXTAREA"]);
 const NO_LENGTH_INPUT_TYPES = new Set(["password", "hidden"]);
@@ -58,7 +58,7 @@ export function handleChange(event: Event): void {
     const element = target as Element;
     if (!CHANGE_TAGS.has(element.tagName)) return;
 
-    const { name, nameSource } = deriveActionName(element, vars.interactionInstrumentation.actionNameAttribute!);
+    const { name, nameSource } = resolveActionName(element);
     const tag = element.tagName.toLowerCase();
     const label = name ? `"${name}"` : tag;
 

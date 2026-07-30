@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   EVENT_NAMES,
   INTERACTION_TYPE,
@@ -9,10 +9,12 @@ import {
   INTERACTION_TARGET_ID,
 } from "../../semantic-conventions";
 import { doc } from "../../utils/globals";
-import { deriveActionName } from "./action-name";
+import { vars } from "../../vars";
+import { deriveActionName, resolveActionName } from "./action-name";
 
 // Vitest runs these tests in jsdom, so the SSR-safe doc is always defined.
 const dom = doc!;
+const defaultInteractionSettings = { ...vars.interactionInstrumentation };
 
 describe("interaction semantic conventions", () => {
   it("defines the browser.interaction event name", () => {
@@ -438,6 +440,371 @@ describe("deriveActionName", () => {
 
       const result = deriveActionName(target, attributeName);
       expect(result.name).toBe(exactText);
+    });
+  });
+
+  // Regression coverage for the P1 leak: the exclusion list used to be checked
+  // against the CLICK TARGET's tag only, while the text itself was read with
+  // `Element.textContent` from an ANCESTOR -- and `textContent` concatenates the
+  // whole subtree, including the wrapped control's value. A <label> wrapping its
+  // control is the dominant form markup, so this was the default shape.
+  describe("privacy: text is never harvested from a nested control or editable region", () => {
+    it("does not read a wrapped textarea's value from the enclosing label's text", () => {
+      dom.body.innerHTML = `<label id="lbl">Notes <textarea>MY PRIVATE SAVED NOTE</textarea></label>`;
+      const target = dom.getElementById("lbl")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Notes",
+        nameSource: "text_content",
+      });
+    });
+
+    it("does not read a wrapped select's option text from the enclosing button's text", () => {
+      dom.body.innerHTML = `<button id="btn">Filter <select><option>Acme Corp Invoice 4471</option></select></button>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Filter",
+        nameSource: "text_content",
+      });
+    });
+
+    it("names a control click from its enclosing label, without the control's own value", () => {
+      // The text phase now applies to form-control targets too: with the
+      // control's text excluded from collection, the enclosing label's text is
+      // the correct name and carries no user data.
+      dom.body.innerHTML = `<label id="lbl">Notes <textarea id="ta">MY PRIVATE SAVED NOTE</textarea></label>`;
+      const target = dom.getElementById("ta")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Notes",
+        nameSource: "text_content",
+      });
+    });
+
+    it("excludes a control nested more than one level deep", () => {
+      dom.body.innerHTML = `<a id="lnk" href="#"><span><textarea>SECRET</textarea></span> Open</a>`;
+      const target = dom.getElementById("lnk")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Open",
+        nameSource: "text_content",
+      });
+    });
+
+    it("separates the text around a removed control instead of gluing it together", () => {
+      dom.body.innerHTML = `<label id="lbl">Qty<input value="99" />units</label>`;
+      const target = dom.getElementById("lbl")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Qty units",
+        nameSource: "text_content",
+      });
+    });
+
+    it("does not read an output element's computed value", () => {
+      dom.body.innerHTML = `<label id="lbl">Total <output>4,271.33</output></label>`;
+      const target = dom.getElementById("lbl")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Total",
+        nameSource: "text_content",
+      });
+    });
+
+    it("does not read a contenteditable region's text", () => {
+      dom.body.innerHTML = `<div id="btn" role="button">Post <div contenteditable="true">USER TYPED DRAFT</div></div>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Post",
+        nameSource: "text_content",
+      });
+    });
+
+    it("skips a whole contenteditable region including a nested contenteditable=false chip", () => {
+      // Conservative on purpose: a `false` chip inside an editor is typically an
+      // app-inserted mention widget holding user data ("Jane Doe").
+      dom.body.innerHTML = `
+        <div id="btn" role="button">Post
+          <div contenteditable="true">Hi <span contenteditable="false">Jane Doe</span></div>
+        </div>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Post",
+        nameSource: "text_content",
+      });
+    });
+
+    it("treats an empty contenteditable attribute as editable", () => {
+      dom.body.innerHTML = `<button id="btn">Comment <span contenteditable="">USER TYPED DRAFT</span></button>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Comment",
+        nameSource: "text_content",
+      });
+    });
+
+    it("still reads the text of an element explicitly marked contenteditable=false", () => {
+      dom.body.innerHTML = `<label id="lbl" contenteditable="false">Notes</label>`;
+      const target = dom.getElementById("lbl")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Notes",
+        nameSource: "text_content",
+      });
+    });
+
+    it("does not read datalist option text", () => {
+      dom.body.innerHTML = `
+        <label id="lbl">Search
+          <datalist id="dl"><option>ACME Invoice 992</option></datalist>
+          <input list="dl" />
+        </label>`;
+      const target = dom.getElementById("lbl")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Search",
+        nameSource: "text_content",
+      });
+    });
+
+    it("does not read inline script source", () => {
+      dom.body.innerHTML = `<button id="btn">Save<script>var token = "tok_live_abc";</script></button>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Save",
+        nameSource: "text_content",
+      });
+    });
+
+    it("does not read inline style rules", () => {
+      dom.body.innerHTML = `<button id="btn">Save<style>.x{color:red}</style></button>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Save",
+        nameSource: "text_content",
+      });
+    });
+
+    it("does not cross a shadow boundary", () => {
+      // Documents a boundary the SDK deliberately does not cross: traversing
+      // into shadow roots would open a new leak surface, not close one.
+      dom.body.innerHTML = `<div id="host" role="button">Publish</div>`;
+      const target = dom.getElementById("host")!;
+      target.attachShadow({ mode: "open" }).innerHTML = `<textarea>SECRET DRAFT</textarea>`;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Publish",
+        nameSource: "text_content",
+      });
+    });
+  });
+
+  describe("privacy: aria-labelledby resolution", () => {
+    it("does not read a control nested inside the referenced element", () => {
+      // The worse half of the P1 leak: this path had no exclusion at all, and
+      // reported `standard_attribute`, so consumers filtering out text-derived
+      // names were still exposed.
+      dom.body.innerHTML = `
+        <span id="lbl">Upload <textarea>SECRET DRAFT</textarea></span>
+        <button id="btn" aria-labelledby="lbl">&uarr;</button>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Upload",
+        nameSource: "standard_attribute",
+      });
+    });
+
+    it("ignores a reference to an element that is itself a form control, falling through to title", () => {
+      dom.body.innerHTML = `
+        <textarea id="lbl">SECRET DRAFT</textarea>
+        <button id="btn" aria-labelledby="lbl" title="Send">x</button>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Send",
+        nameSource: "standard_attribute",
+      });
+    });
+
+    it("falls through to blank when aria-labelledby only references a form control", () => {
+      dom.body.innerHTML = `
+        <textarea id="lbl">SECRET DRAFT</textarea>
+        <div id="btn" aria-labelledby="lbl"></div>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "",
+        nameSource: "blank",
+      });
+    });
+  });
+
+  describe("text scan budget", () => {
+    it("stops the walk at MAX_TEXT_SCAN_NODES rather than scanning an unbounded subtree", () => {
+      // Characters only accumulate on text nodes, so a subtree of empty
+      // elements would never hit the character budget -- the node bound is what
+      // keeps a click inside a virtualized grid cheap.
+      dom.body.innerHTML = `<div id="btn" role="button">${"<span></span>".repeat(1200)}Save</div>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "",
+        nameSource: "blank",
+      });
+    });
+
+    it("still reaches label text just inside the node budget", () => {
+      dom.body.innerHTML = `<div id="btn" role="button">${"<span></span>".repeat(900)}Save</div>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName)).toEqual({
+        name: "Save",
+        nameSource: "text_content",
+      });
+    });
+
+    it("still normalizes and truncates when the character budget is exhausted", () => {
+      dom.body.innerHTML = `<button id="btn">${"<span>word </span>".repeat(300)}</button>`;
+      const target = dom.getElementById("btn")!;
+
+      const result = deriveActionName(target, attributeName);
+      expect(result.nameSource).toBe("text_content");
+      expect(result.name).toBe("word ".repeat(20) + " [...]");
+    });
+  });
+
+  describe("actionNameScrubber", () => {
+    it("replaces the derived name", () => {
+      dom.body.innerHTML = `<button id="btn">Delete jane@acme.com</button>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName, () => "Delete User")).toEqual({
+        name: "Delete User",
+        nameSource: "text_content",
+      });
+    });
+
+    it("receives the derived name, its source and the interaction target", () => {
+      dom.body.innerHTML = `<button id="btn" aria-label="Close Dialog">x</button>`;
+      const target = dom.getElementById("btn")!;
+      const scrubber = vi.fn(() => "scrubbed");
+
+      deriveActionName(target, attributeName, scrubber);
+
+      expect(scrubber).toHaveBeenCalledTimes(1);
+      expect(scrubber).toHaveBeenCalledWith("Close Dialog", "standard_attribute", target);
+    });
+
+    it("is not called when no name was derived, so it cannot invent one", () => {
+      dom.body.innerHTML = `<div id="div"></div>`;
+      const target = dom.getElementById("div")!;
+      const scrubber = vi.fn(() => "invented");
+
+      expect(deriveActionName(target, attributeName, scrubber)).toEqual({
+        name: "",
+        nameSource: "blank",
+      });
+      expect(scrubber).not.toHaveBeenCalled();
+    });
+
+    it("drops the name when the scrubber returns an empty string", () => {
+      dom.body.innerHTML = `<button id="btn">Delete</button>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName, () => "")).toEqual({
+        name: "",
+        nameSource: "blank",
+      });
+    });
+
+    it("fails closed when the scrubber throws: drops the name, does not propagate", () => {
+      dom.body.innerHTML = `<button id="btn">Delete jane@acme.com</button>`;
+      const target = dom.getElementById("btn")!;
+      const scrubber = () => {
+        throw new Error("boom");
+      };
+
+      expect(() => deriveActionName(target, attributeName, scrubber)).not.toThrow();
+      expect(deriveActionName(target, attributeName, scrubber)).toEqual({
+        name: "",
+        nameSource: "blank",
+      });
+    });
+
+    it("fails closed when the scrubber returns a non-string", () => {
+      dom.body.innerHTML = `<button id="btn">Delete jane@acme.com</button>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName, () => undefined as unknown as string)).toEqual({
+        name: "",
+        nameSource: "blank",
+      });
+    });
+
+    it("normalizes and truncates the scrubber's return value", () => {
+      dom.body.innerHTML = `<button id="btn">Save</button>`;
+      const target = dom.getElementById("btn")!;
+
+      const result = deriveActionName(target, attributeName, () => `  ${"C".repeat(150)}  `);
+      expect(result.name).toBe("C".repeat(100) + " [...]");
+    });
+
+    it("also applies to a name that came from the custom attribute", () => {
+      dom.body.innerHTML = `<button id="btn" data-dash0-action-name="Save jane@acme.com">Save</button>`;
+      const target = dom.getElementById("btn")!;
+
+      expect(deriveActionName(target, attributeName, (name) => name.replace(/\S+@\S+/, "[email]"))).toEqual({
+        name: "Save [email]",
+        nameSource: "custom_attribute",
+      });
+    });
+  });
+
+  describe("resolveActionName (the configuration choke point)", () => {
+    afterEach(() => {
+      vars.interactionInstrumentation = { ...defaultInteractionSettings };
+    });
+
+    it("reads the configured action name attribute", () => {
+      vars.interactionInstrumentation = { ...defaultInteractionSettings, actionNameAttribute: "data-track-name" };
+      dom.body.innerHTML = `<button id="btn" data-track-name="Custom Attr">Save</button>`;
+
+      expect(resolveActionName(dom.getElementById("btn")!)).toEqual({
+        name: "Custom Attr",
+        nameSource: "custom_attribute",
+      });
+    });
+
+    it("falls back to the default attribute when the option is explicitly undefined", () => {
+      // merge() in init.ts spreads source over destination, so a consumer
+      // passing `{ actionNameAttribute: undefined }` overwrites the default.
+      vars.interactionInstrumentation = { ...defaultInteractionSettings, actionNameAttribute: undefined };
+      dom.body.innerHTML = `<button id="btn" data-dash0-action-name="Save Settings">Save</button>`;
+
+      expect(resolveActionName(dom.getElementById("btn")!)).toEqual({
+        name: "Save Settings",
+        nameSource: "custom_attribute",
+      });
+    });
+
+    it("applies the configured scrubber, so no interaction type can bypass it", () => {
+      vars.interactionInstrumentation = {
+        ...defaultInteractionSettings,
+        actionNameScrubber: (name) => name.replace(/\S+@\S+/, "[email]"),
+      };
+      dom.body.innerHTML = `<button id="btn">Delete jane@acme.com</button>`;
+
+      expect(resolveActionName(dom.getElementById("btn")!)).toEqual({
+        name: "Delete [email]",
+        nameSource: "text_content",
+      });
     });
   });
 });

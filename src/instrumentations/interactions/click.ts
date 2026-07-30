@@ -1,7 +1,6 @@
 import { win } from "../../utils";
 import { debug } from "../../utils/debug";
-import { vars } from "../../vars";
-import { deriveActionName } from "./action-name";
+import { resolveActionName } from "./action-name";
 import { registerActiveInteraction } from "./active-interaction";
 import { emitInteractionEvent, pagePath } from "./emit";
 
@@ -47,7 +46,7 @@ export function handleClick(event: Event): void {
     }
 
     const element = target as Element;
-    const { name, nameSource } = deriveActionName(element, vars.interactionInstrumentation.actionNameAttribute!);
+    const { name, nameSource } = resolveActionName(element);
     const tag = element.tagName.toLowerCase();
 
     // Register this click as the active interaction BEFORE the application's
