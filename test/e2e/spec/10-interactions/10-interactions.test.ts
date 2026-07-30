@@ -216,6 +216,43 @@ describe("Interaction Instrumentation", () => {
     expectNoBrowserErrors();
   });
 
+  it("emits one interaction event per label click, not one per browser-synthesized click", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`${PAGE_PATH}?testId=${testId}`);
+
+    // #notes-label wraps a <textarea>, so activating the label makes the browser
+    // fire a second, also trusted, click at the labeled control -- one gesture,
+    // two clicks reaching the SDK's window-level capture listener.
+    const labelText = await $("#notes-label-text");
+    await labelText.click();
+
+    await retry(async () => {
+      // Positive gate first: retry() resolves on the first success, so the
+      // absence check below would pass vacuously before any log arrived. The
+      // forwarded click is dispatched in the same task as the label's own, so by
+      // the time this record has arrived its duplicate would have arrived with it.
+      await expectLogMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "event.name", value: { stringValue: "browser.interaction" } },
+            { key: "interaction.target.id", value: { stringValue: "notes-label-text" } },
+          ]),
+        })
+      );
+
+      const targetIds = (await getLogRecords())
+        .filter((lr: any) => getStringAttribute(lr, "event.name") === "browser.interaction")
+        .map((lr: any) => getStringAttribute(lr, "interaction.target.id"));
+
+      // The click forwarded to the <textarea> must have been dropped: the event
+      // describes the element the user actually clicked.
+      expect(targetIds).not.toContain("notes");
+      expect(targetIds.filter((id: string | undefined) => id === "notes-label-text")).toHaveLength(1);
+    });
+
+    expectNoBrowserErrors();
+  });
+
   it("attributes a fetch fired from a click handler to the interaction that caused it", async () => {
     const testId = generateUniqueId(16);
     await loadPage(`${PAGE_PATH}?testId=${testId}`);

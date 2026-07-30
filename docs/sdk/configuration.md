@@ -552,6 +552,13 @@ body is the same scrubbed value as the event's `page.url.path` attribute, so a c
 applies to it too -- if the scrubber drops `url.path`, the body omits the ` on <path>` suffix entirely rather than
 falling back to the raw location.
 
+**One event per gesture.** Clicking a `<label>` makes the browser fire a second click at the label's control, so a
+single user action reaches the SDK twice. Only the click the user actually made is reported: the forwarded
+duplicate is dropped, for both `<label>Text <input></label>` and `<label for="…">`. This means
+`interaction.target.tag` / `.selector` / `.id` describe the label (or the element inside it that was clicked)
+rather than the control it activates -- enable `captureChanges` if you also need a record naming the control whose
+value changed.
+
 **Click-to-request correlation.** A click registers a short-lived (2 second) active interaction before the page's
 own handlers run. Any `fetch` or `XMLHttpRequest` span started inside that window is stamped with
 `user_interaction.id` and, when a name was derived, `user_interaction.name` -- joining a user action to the HTTP

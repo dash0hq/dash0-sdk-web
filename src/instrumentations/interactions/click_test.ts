@@ -42,6 +42,31 @@ function dispatchClick(target: Element) {
   return event;
 }
 
+/**
+ * Dispatches one click and feeds every click event it produces to `handleClick`,
+ * in dispatch order -- exactly what the production listener does, minus the
+ * `isTrusted` gate. jsdom implements a `<label>`'s activation behavior, so a
+ * click inside a label really does produce a second event at the labeled
+ * control here, the same duplicate every browser emits. Returns the events seen
+ * so a test can assert the duplication happened at all.
+ */
+function dispatchClickThroughListener(target: Element): Event[] {
+  const seen: Event[] = [];
+  const collect = (event: Event) => {
+    seen.push(event);
+    handleClick(event);
+  };
+
+  globalWindow.addEventListener("click", collect, { capture: true });
+  try {
+    target.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  } finally {
+    globalWindow.removeEventListener("click", collect, { capture: true } as EventListenerOptions);
+  }
+
+  return seen;
+}
+
 describe("click instrumentation", () => {
   beforeEach(() => {
     dom.body.innerHTML = "";
@@ -239,6 +264,144 @@ describe("click instrumentation", () => {
 
       expect(() => handleClick(dispatchClick(target))).not.toThrow();
       expect(sendLog).not.toHaveBeenCalled();
+    });
+  });
+
+  // Clicking a <label> makes the browser fire a second, also trusted, click at
+  // the labeled control: one gesture, two events reaching a window-level
+  // capture listener. Both the wrapping shape and <label for="..."> are covered
+  // because the control is a descendant of the label in the first and not in
+  // the second -- a containment test would only ever see the first, and only
+  // when the click landed on the label element itself rather than on something
+  // inside it.
+  describe("label-forwarded duplicate clicks", () => {
+    function logCount(): number {
+      return (sendLog as ReturnType<typeof vi.fn>).mock.calls.length;
+    }
+
+    function attribute(log: LogRecord, key: string): string | undefined {
+      return (log.attributes as { key: string; value: { stringValue: string } }[]).find((kv) => kv.key === key)?.value
+        .stringValue;
+    }
+
+    it("emits one event for a click on a span inside a label wrapping its control", () => {
+      // The shape of the e2e fixture: the click target is an inner span, so the
+      // forwarded target (the textarea) is its sibling, not its descendant.
+      dom.body.innerHTML = `
+        <label id="notes-label"
+          ><span id="notes-label-text">Notes</span>
+          <textarea id="notes"></textarea>
+        </label>`;
+
+      const seen = dispatchClickThroughListener(dom.getElementById("notes-label-text")!);
+
+      // Guards the premise: without two events there is nothing to coalesce and
+      // the rest of this test would pass for the wrong reason.
+      expect(seen.map((event) => (event.target as Element).id)).toEqual(["notes-label-text", "notes"]);
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(attribute(lastLog(), INTERACTION_TARGET_ID)).toBe("notes-label-text");
+    });
+
+    it("emits one event for a label whose control lives outside it (label for=)", () => {
+      dom.body.innerHTML = `
+        <label id="terms-label" for="terms">Accept terms</label>
+        <div><input id="terms" type="checkbox" /></div>`;
+
+      const seen = dispatchClickThroughListener(dom.getElementById("terms-label")!);
+
+      expect(seen.map((event) => (event.target as Element).id)).toEqual(["terms-label", "terms"]);
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(attribute(lastLog(), INTERACTION_TARGET_ID)).toBe("terms-label");
+    });
+
+    it("keeps the surviving event's id as the active interaction, so spans join to a log that exists", () => {
+      dom.body.innerHTML = `
+        <label id="terms-label" for="terms">Accept terms</label>
+        <div><input id="terms" type="checkbox" /></div>`;
+
+      dispatchClickThroughListener(dom.getElementById("terms-label")!);
+
+      // The suppressed click must not have overwritten the registration: the
+      // forwarded control click never calls registerActiveInteraction.
+      expect(getActiveInteraction()!.id).toBe(attribute(lastLog(), INTERACTION_ID));
+      expect(getActiveInteraction()!.name).toBe("Accept terms");
+    });
+
+    it("emits for a click that lands on the control itself, which is never forwarded again", () => {
+      dom.body.innerHTML = `
+        <label id="terms-label"><input id="terms" type="checkbox" /> Accept terms</label>`;
+
+      const seen = dispatchClickThroughListener(dom.getElementById("terms")!);
+
+      // A label's activation behavior does nothing for events targeted at its
+      // interactive content descendants, so there is no duplicate to drop here.
+      expect(seen).toHaveLength(1);
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(attribute(lastLog(), INTERACTION_TARGET_ID)).toBe("terms");
+    });
+
+    it("does not latch: each successive gesture on the same label emits its own event", () => {
+      dom.body.innerHTML = `
+        <label id="terms-label" for="terms">Accept terms</label>
+        <div><input id="terms" type="checkbox" /></div>`;
+      const label = dom.getElementById("terms-label")!;
+
+      dispatchClickThroughListener(label);
+      const firstId = attribute(lastLog(), INTERACTION_ID);
+      dispatchClickThroughListener(label);
+
+      expect(logCount()).toBe(2);
+      expect(attribute(lastLog(), INTERACTION_ID)).not.toBe(firstId);
+    });
+
+    it("emits a genuine click on the control once the forward window has elapsed", () => {
+      dom.body.innerHTML = `
+        <label id="terms-label" for="terms">Accept terms</label>
+        <div><input id="terms" type="checkbox" /></div>`;
+      const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1_000);
+
+      try {
+        // dispatchClick (not the listener helper) so only the label's own click
+        // is handled -- the forwarded one is dropped by the browser here, as it
+        // would be for a disabled control.
+        handleClick(dispatchClick(dom.getElementById("terms-label")!));
+        // Later than any same-task forward could be: a deliberate second click.
+        nowSpy.mockReturnValue(1_051);
+        handleClick(dispatchClick(dom.getElementById("terms")!));
+      } finally {
+        nowSpy.mockRestore();
+      }
+
+      expect(logCount()).toBe(2);
+      expect(attribute(lastLog(), INTERACTION_TARGET_ID)).toBe("terms");
+    });
+
+    it("leaves no marker behind for a label with no labeled control", () => {
+      dom.body.innerHTML = `
+        <label id="orphan-label" for="missing">Nothing to activate</label>
+        <button id="btn">Go</button>`;
+
+      dispatchClickThroughListener(dom.getElementById("orphan-label")!);
+      dispatchClickThroughListener(dom.getElementById("btn")!);
+
+      expect(logCount()).toBe(2);
+      expect(attribute(lastLog(), INTERACTION_TARGET_ID)).toBe("btn");
+    });
+
+    it("emits a keyboard-activated click on a labeled control, which carries no preceding label click", () => {
+      // Keyboard activation of a button produces a click with detail 0, the same
+      // marker a label-forwarded click carries in some browsers -- which is why
+      // the suppression keys off the preceding label click rather than `detail`.
+      dom.body.innerHTML = `
+        <label id="submit-label" for="submit-button">Submit</label>
+        <button id="submit-button">Go</button>`;
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 0 });
+      dom.getElementById("submit-button")!.dispatchEvent(event);
+
+      handleClick(event);
+
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(attribute(lastLog(), INTERACTION_TARGET_ID)).toBe("submit-button");
     });
   });
 
