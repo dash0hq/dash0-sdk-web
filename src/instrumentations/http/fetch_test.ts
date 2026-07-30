@@ -3,6 +3,8 @@ import { vars } from "../../vars";
 import { instrumentFetch } from "./fetch";
 import { sendSpan } from "../../transport";
 import type { Span } from "../../types/otlp";
+import { USER_INTERACTION_ID, USER_INTERACTION_NAME } from "../../semantic-conventions";
+import { clearActiveInteractionForTests, registerActiveInteraction } from "../interactions/active-interaction";
 
 vi.mock("../../transport", () => ({
   sendSpan: vi.fn(),
@@ -10,6 +12,18 @@ vi.mock("../../transport", () => ({
 
 describe("fetch test", () => {
   let fetchMock: any;
+
+  const sendSpanMock = sendSpan as unknown as ReturnType<typeof vi.fn>;
+
+  const lastSpan = (): Span => {
+    const calls = sendSpanMock.mock.calls;
+    return calls[calls.length - 1]![0] as Span;
+  };
+
+  const hasAttribute = (span: Span, key: string, expectedValue: unknown) =>
+    span.attributes.some((a) => a.key === key && JSON.stringify(a.value) === JSON.stringify(expectedValue));
+
+  const hasAttributeKey = (span: Span, key: string) => span.attributes.some((a) => a.key === key);
 
   beforeEach(() => {
     fetchMock = vi.fn(() => ({
@@ -225,16 +239,7 @@ describe("fetch test", () => {
   });
 
   describe("aborted requests", () => {
-    const sendSpanMock = sendSpan as unknown as ReturnType<typeof vi.fn>;
     const NativeRequest = Request;
-
-    const lastSpan = (): Span => {
-      const calls = sendSpanMock.mock.calls;
-      return calls[calls.length - 1]![0] as Span;
-    };
-
-    const hasAttribute = (span: Span, key: string, expectedValue: unknown) =>
-      span.attributes.some((a) => a.key === key && JSON.stringify(a.value) === JSON.stringify(expectedValue));
 
     beforeEach(() => {
       sendSpanMock.mockClear();
@@ -367,6 +372,66 @@ describe("fetch test", () => {
       expect(hasAttribute(span, "dash0.web.request.cancelled", { boolValue: true })).toBe(false);
       expect(span.events.some((e) => e.name === "exception")).toBe(true);
       expect(hasAttribute(span, "error.type", { stringValue: "TypeError" })).toBe(true);
+    });
+  });
+
+  // Drives a real fetch call through the instrumentation so the addInteractionAttributes() call
+  // site in onFetchStart() is actually reached -- asserting on addInteractionAttributes() in
+  // isolation (see interaction-attribution_test.ts) would stay green even if the call moved to an
+  // unreachable branch.
+  describe("interaction attribution", () => {
+    beforeEach(() => {
+      sendSpanMock.mockClear();
+      // The success path completes the span through observeResourcePerformance, which resolves
+      // asynchronously. Holding the wait at 0 keeps these tests fast; see the equivalent comment
+      // in xhr_test.ts.
+      vars.maxWaitForResourceTimingsMillis = 0;
+    });
+
+    afterEach(() => {
+      clearActiveInteractionForTests();
+      vars.maxWaitForResourceTimingsMillis = 10000;
+    });
+
+    async function fetchAndAwaitSpan(): Promise<Span> {
+      instrumentFetch();
+      // eslint-disable-next-line no-restricted-globals
+      await fetch("http://localhost:3000/api/test");
+
+      await vi.waitFor(() => expect(sendSpanMock).toHaveBeenCalledTimes(1));
+      return lastSpan();
+    }
+
+    it("stamps the active interaction onto the fetch span", async () => {
+      const interaction = registerActiveInteraction("Save Part");
+
+      const span = await fetchAndAwaitSpan();
+
+      expect(hasAttribute(span, USER_INTERACTION_ID, { stringValue: interaction.id })).toBe(true);
+      expect(hasAttribute(span, USER_INTERACTION_NAME, { stringValue: "Save Part" })).toBe(true);
+    });
+
+    it("leaves the fetch span unattributed when no interaction is active", async () => {
+      const span = await fetchAndAwaitSpan();
+
+      expect(hasAttributeKey(span, USER_INTERACTION_ID)).toBe(false);
+      expect(hasAttributeKey(span, USER_INTERACTION_NAME)).toBe(false);
+    });
+
+    it("leaves the fetch span unattributed once the attribution window has elapsed", async () => {
+      // Back-date the registration instead of freezing the clock for the whole test: vi.waitFor
+      // below relies on real time passing. active-interaction.ts is the SDK's only Date.now()
+      // consumer (span timestamps go through new Date().getTime() in utils/time.ts), so this
+      // shifts nothing else.
+      const t0 = Date.now();
+      const nowSpy = vi.spyOn(Date, "now").mockReturnValueOnce(t0 - 2001);
+      registerActiveInteraction("Save Part");
+      nowSpy.mockRestore();
+
+      const span = await fetchAndAwaitSpan();
+
+      expect(hasAttributeKey(span, USER_INTERACTION_ID)).toBe(false);
+      expect(hasAttributeKey(span, USER_INTERACTION_NAME)).toBe(false);
     });
   });
 });

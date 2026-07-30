@@ -4,6 +4,8 @@ import { instrumentXhr } from "./xhr";
 import { doc } from "../../utils/globals";
 import { sendSpan } from "../../transport";
 import type { Span } from "../../types/otlp";
+import { USER_INTERACTION_ID, USER_INTERACTION_NAME } from "../../semantic-conventions";
+import { clearActiveInteractionForTests, registerActiveInteraction } from "../interactions/active-interaction";
 
 vi.mock("../../transport", () => ({
   sendSpan: vi.fn(),
@@ -846,5 +848,66 @@ describe("xhr test", () => {
     vi.stubGlobal("XMLHttpRequest", LockedXhr);
 
     expect(() => instrumentXhr()).not.toThrow();
+  });
+
+  // Drives a real XMLHttpRequest through the instrumentation so the addInteractionAttributes()
+  // call site in onSend() is actually reached -- asserting on addInteractionAttributes() in
+  // isolation (see interaction-attribution_test.ts) would stay green even if the call moved to an
+  // unreachable branch.
+  describe("interaction attribution", () => {
+    const sendSpanMock = sendSpan as unknown as ReturnType<typeof vi.fn>;
+
+    const hasAttribute = (span: Span, key: string, expectedValue: unknown) =>
+      span.attributes.some((a) => a.key === key && JSON.stringify(a.value) === JSON.stringify(expectedValue));
+
+    const hasAttributeKey = (span: Span, key: string) => span.attributes.some((a) => a.key === key);
+
+    afterEach(() => {
+      clearActiveInteractionForTests();
+    });
+
+    async function sendAndAwaitSpan(): Promise<Span> {
+      instrumentXhr();
+
+      const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+      xhr.open("GET", "/api/test");
+      xhr.send();
+      xhr.respond(200);
+
+      await vi.waitFor(() => expect(sendSpanMock).toHaveBeenCalledTimes(1));
+      return sendSpanMock.mock.calls[0]![0] as Span;
+    }
+
+    it("stamps the active interaction onto the XHR span", async () => {
+      const interaction = registerActiveInteraction("Save Part");
+
+      const span = await sendAndAwaitSpan();
+
+      expect(hasAttribute(span, USER_INTERACTION_ID, { stringValue: interaction.id })).toBe(true);
+      expect(hasAttribute(span, USER_INTERACTION_NAME, { stringValue: "Save Part" })).toBe(true);
+    });
+
+    it("leaves the XHR span unattributed when no interaction is active", async () => {
+      const span = await sendAndAwaitSpan();
+
+      expect(hasAttributeKey(span, USER_INTERACTION_ID)).toBe(false);
+      expect(hasAttributeKey(span, USER_INTERACTION_NAME)).toBe(false);
+    });
+
+    it("leaves the XHR span unattributed once the attribution window has elapsed", async () => {
+      // Back-date the registration instead of freezing the clock for the whole test: vi.waitFor
+      // below relies on real time passing. active-interaction.ts is the SDK's only Date.now()
+      // consumer (span timestamps go through new Date().getTime() in utils/time.ts), so this
+      // shifts nothing else.
+      const t0 = Date.now();
+      const nowSpy = vi.spyOn(Date, "now").mockReturnValueOnce(t0 - 2001);
+      registerActiveInteraction("Save Part");
+      nowSpy.mockRestore();
+
+      const span = await sendAndAwaitSpan();
+
+      expect(hasAttributeKey(span, USER_INTERACTION_ID)).toBe(false);
+      expect(hasAttributeKey(span, USER_INTERACTION_NAME)).toBe(false);
+    });
   });
 });

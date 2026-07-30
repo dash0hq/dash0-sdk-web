@@ -2,9 +2,37 @@ import { getOTLPRequests, sharedAfterEach, sharedBeforeEach } from "../shared";
 import { generateUniqueId } from "../../../../src/utils";
 import { browser } from "@wdio/globals";
 import { loadPage, retry } from "../utils";
-import { expectLogMatching, expectNoBrowserErrors, expectNoLogMatching } from "../expectations";
+import {
+  expectLogMatching,
+  expectNoBrowserErrors,
+  expectNoLogMatching,
+  expectSpanMatching,
+  getLogRecords,
+  getSpans,
+  getStringAttribute,
+} from "../expectations";
 
 const PAGE_PATH = "/e2e/spec/10-interactions/page.html";
+const DISABLED_PAGE_PATH = "/e2e/spec/10-interactions/page-disabled.html";
+
+/**
+ * Resolves the `interaction.id` the `browser.interaction` event for a given
+ * click target carried, throwing when the event has not arrived yet so the
+ * caller's retry() keeps polling.
+ */
+async function getInteractionIdForTarget(targetId: string): Promise<string> {
+  const record = (await getLogRecords()).find(
+    (lr: any) =>
+      getStringAttribute(lr, "event.name") === "browser.interaction" &&
+      getStringAttribute(lr, "interaction.target.id") === targetId
+  );
+
+  const interactionId = record && getStringAttribute(record, "interaction.id");
+  if (!interactionId) {
+    throw new Error(`No browser.interaction event with an interaction.id for target #${targetId} received yet`);
+  }
+  return interactionId;
+}
 
 describe("Interaction Instrumentation", () => {
   beforeEach(sharedBeforeEach);
@@ -118,13 +146,9 @@ describe("Interaction Instrumentation", () => {
         })
       );
 
-      const requests = await getOTLPRequests();
-      const logRequests = requests.filter((r) => r.path === "/v1/logs");
-      const logRecords = logRequests.flatMap((r) =>
-        "resourceLogs" in r.body ? r.body.resourceLogs.flatMap((rl) => rl.scopeLogs.flatMap((sl) => sl.logRecords)) : []
-      );
-      const interactionRecord = logRecords.find((lr: any) =>
-        lr.attributes?.some((kv: any) => kv.key === "interaction.target.id" && kv.value.stringValue === "text-input")
+      const logRecords = await getLogRecords();
+      const interactionRecord = logRecords.find(
+        (lr: any) => getStringAttribute(lr, "interaction.target.id") === "text-input"
       ) as any;
 
       expect(interactionRecord.attributes.map((kv: any) => kv.value?.stringValue)).not.toContain("pre-filled secret");
@@ -192,9 +216,86 @@ describe("Interaction Instrumentation", () => {
     expectNoBrowserErrors();
   });
 
+  it("attributes a fetch fired from a click handler to the interaction that caused it", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`${PAGE_PATH}?testId=${testId}`);
+
+    const btn = await $("#fetch-button");
+    await btn.click();
+
+    await retry(async () => {
+      // Both halves are positive assertions, so retry() cannot succeed before the
+      // interaction event and its request span have both arrived.
+      const interactionId = await getInteractionIdForTarget("fetch-button");
+
+      await expectSpanMatching(
+        expect.objectContaining({
+          name: "HTTP GET",
+          attributes: expect.arrayContaining([
+            { key: "url.path", value: { stringValue: "/ajax" } },
+            { key: "user_interaction.id", value: { stringValue: interactionId } },
+            { key: "user_interaction.name", value: { stringValue: "Load Report" } },
+          ]),
+        })
+      );
+    });
+
+    expectNoBrowserErrors();
+  });
+
+  it("attributes an XMLHttpRequest fired from a click handler to the interaction that caused it", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`${PAGE_PATH}?testId=${testId}`);
+
+    const btn = await $("#xhr-button");
+    await btn.click();
+
+    await retry(async () => {
+      const interactionId = await getInteractionIdForTarget("xhr-button");
+
+      await expectSpanMatching(
+        expect.objectContaining({
+          name: "HTTP GET",
+          attributes: expect.arrayContaining([
+            { key: "url.path", value: { stringValue: "/ajax" } },
+            { key: "user_interaction.id", value: { stringValue: interactionId } },
+            { key: "user_interaction.name", value: { stringValue: "Refresh Table" } },
+          ]),
+        })
+      );
+    });
+
+    expectNoBrowserErrors();
+  });
+
+  it("stamps no user_interaction attributes on request spans when interactionInstrumentation is disabled", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`${DISABLED_PAGE_PATH}?testId=${testId}`);
+
+    const btn = await $("#fetch-button");
+    await btn.click();
+
+    await retry(async () => {
+      // Positive gate first: without waiting for the request span to actually
+      // arrive, the absence check below would pass vacuously.
+      await expectSpanMatching(
+        expect.objectContaining({
+          name: "HTTP GET",
+          attributes: expect.arrayContaining([{ key: "url.path", value: { stringValue: "/ajax" } }]),
+        })
+      );
+
+      const attributeKeys = (await getSpans()).flatMap((span: any) => (span.attributes ?? []).map((kv: any) => kv.key));
+      expect(attributeKeys).not.toContain("user_interaction.id");
+      expect(attributeKeys).not.toContain("user_interaction.name");
+    });
+
+    expectNoBrowserErrors();
+  });
+
   it("emits no browser.interaction logs when interactionInstrumentation is left at its default (disabled)", async () => {
     const testId = generateUniqueId(16);
-    await loadPage(`/e2e/spec/10-interactions/page-disabled.html?testId=${testId}`);
+    await loadPage(`${DISABLED_PAGE_PATH}?testId=${testId}`);
 
     const btn = await $("#save-button");
     await btn.click();

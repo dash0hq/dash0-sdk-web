@@ -28,9 +28,18 @@
       dash0("addSignalAttribute", "the_answer", 42);
     </script>
     <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+    <script>
+      function onFetchClick() {
+        return fetch(`/ajax?cacheBust=${Date.now()}`).catch(() => {});
+      }
+    </script>
   </head>
   <body>
     <button id="save-button" data-dash0-action-name="Save Settings">Save</button>
     <button id="plain-button">Continue</button>
+
+    <!-- With interaction instrumentation off, this request's span must carry no
+         user_interaction.* attributes at all. -->
+    <button id="fetch-button" data-dash0-action-name="Load Report" onclick="onFetchClick()">Load</button>
   </body>
 </html>

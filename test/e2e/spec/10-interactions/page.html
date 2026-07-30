@@ -31,6 +31,21 @@
       dash0("addSignalAttribute", "the_answer", 42);
     </script>
     <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+    <script>
+      // Requests fired from a click handler. The cache bust keeps every click's
+      // request distinct so each one produces its own resource timing, and the
+      // rejections are swallowed so a failed request cannot show up as a browser
+      // error in expectNoBrowserErrors().
+      function onFetchClick() {
+        return fetch(`/ajax?cacheBust=${Date.now()}`).catch(() => {});
+      }
+
+      function onXhrClick() {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", `/ajax?cacheBust=${Date.now()}`);
+        xhr.send();
+      }
+    </script>
   </head>
   <body>
     <button id="save-button" data-dash0-action-name="Save Settings">Save</button>
@@ -50,5 +65,10 @@
     </label>
     <span id="upload-label">Upload <textarea id="upload-draft">LABELLEDBY-SECRET-8814</textarea></span>
     <button id="upload-button" aria-labelledby="upload-label">&uarr;</button>
+
+    <!-- Click-to-request attribution: the span of the request fired by the handler
+         must carry the id of the click that caused it. -->
+    <button id="fetch-button" data-dash0-action-name="Load Report" onclick="onFetchClick()">Load</button>
+    <button id="xhr-button" data-dash0-action-name="Refresh Table" onclick="onXhrClick()">Refresh</button>
   </body>
 </html>
