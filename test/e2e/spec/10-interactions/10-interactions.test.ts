@@ -303,6 +303,19 @@ describe("Interaction Instrumentation", () => {
     await otherBtn.click();
 
     await retry(async () => {
+      // Positive gates first. Each button's own onclick sends a marker event, which the
+      // capture-phase interaction listener would have preceded within the same dispatch
+      // task and hence the same log batch (see page-disabled.html). Once both markers have
+      // arrived, a browser.interaction log would have arrived alongside them -- without
+      // this the absence check below succeeds on retry()'s first probe and proves nothing.
+      for (const marker of ["e2e.marker.save", "e2e.marker.plain"]) {
+        await expectLogMatching(
+          expect.objectContaining({
+            attributes: expect.arrayContaining([{ key: "event.name", value: { stringValue: marker } }]),
+          })
+        );
+      }
+
       await expectNoLogMatching(
         expect.objectContaining({
           attributes: expect.arrayContaining([{ key: "event.name", value: { stringValue: "browser.interaction" } }]),
