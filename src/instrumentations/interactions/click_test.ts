@@ -13,9 +13,17 @@ import {
   INTERACTION_TARGET_TAG,
   INTERACTION_TYPE,
   LOG_SEVERITIES,
+  PAGE_URL_ATTR_PREFIX,
+  URL_FULL,
+  URL_PATH,
   WEB_EVENT_ID,
 } from "../../semantic-conventions";
 import type { LogRecord } from "../../types/otlp";
+import type { UrlAttributeScrubber } from "../../attributes/url";
+import { identity } from "../../utils";
+import { withPrefix } from "../../utils/otel";
+
+const PAGE_URL_PATH = withPrefix(PAGE_URL_ATTR_PREFIX)(URL_PATH);
 
 vi.mock("../../transport", () => ({
   sendLog: vi.fn(),
@@ -288,6 +296,77 @@ describe("click instrumentation", () => {
 
       expect(addSpy).toHaveBeenCalledOnce();
       addSpy.mockRestore();
+    });
+  });
+
+  // The page path in the body must come from the scrubbed `page.url.path`
+  // attribute, never from a raw `location.pathname` read -- otherwise a
+  // consumer's urlAttributeScrubber redacts the attribute while the free-text
+  // body still leaks the segment, and free text cannot be scrubbed downstream.
+  describe("page path in the body", () => {
+    const RAW_PATH = "/invoices/acme-corp/4471";
+
+    beforeEach(() => {
+      globalWindow.history.pushState({}, "", RAW_PATH);
+    });
+
+    afterEach(() => {
+      globalWindow.history.pushState({}, "", "/");
+      vars.urlAttributeScrubber = identity;
+      vars.signalAttributes = [];
+    });
+
+    function clickAndGetBody(): string {
+      dom.body.innerHTML = `<button id="btn" data-dash0-action-name="Save">Save</button>`;
+      handleClick(dispatchClick(dom.getElementById("btn")!));
+      return (lastLog().body as { stringValue: string }).stringValue;
+    }
+
+    it("renders the scrubbed path rather than the raw location.pathname", () => {
+      vars.urlAttributeScrubber = ((attrs) => ({
+        ...attrs,
+        [URL_PATH]: "/invoices/REDACTED/4471",
+      })) satisfies UrlAttributeScrubber;
+
+      // Sanity check: the raw path really is present on `location`, so the
+      // assertions below prove the body did not read it.
+      expect(globalWindow.location.pathname).toBe(RAW_PATH);
+
+      const body = clickAndGetBody();
+
+      expect(body).toBe('Click "Save" on /invoices/REDACTED/4471');
+      expect(body).not.toContain("acme-corp");
+      // The body and the attribute must agree -- both come from one scrub.
+      expect(lastLog().attributes).toEqual(
+        expect.arrayContaining([{ key: PAGE_URL_PATH, value: { stringValue: "/invoices/REDACTED/4471" } }])
+      );
+    });
+
+    it("omits the path suffix entirely when the scrubber drops url.path", () => {
+      vars.urlAttributeScrubber = ((attrs) => ({ [URL_FULL]: attrs[URL_FULL] })) satisfies UrlAttributeScrubber;
+
+      // A scrubber that dropped the path asked for it gone; there is no
+      // fallback to location.pathname.
+      expect(clickAndGetBody()).toBe('Click "Save"');
+    });
+
+    it("omits the path suffix when the scrubber throws", () => {
+      vars.urlAttributeScrubber = (() => {
+        throw new Error("scrubber boom");
+      }) satisfies UrlAttributeScrubber;
+
+      const body = clickAndGetBody();
+
+      expect(body).toBe('Click "Save"');
+      expect(body).not.toContain("acme-corp");
+    });
+
+    it("prefers the derived page.url.path over a same-keyed signal attribute", () => {
+      // signalAttributes are spliced in *before* the url block, so a forward
+      // scan would pick this up instead of the real, scrubbed value.
+      vars.signalAttributes = [{ key: PAGE_URL_PATH, value: { stringValue: "/spoofed" } }];
+
+      expect(clickAndGetBody()).toBe(`Click "Save" on ${RAW_PATH}`);
     });
   });
 });

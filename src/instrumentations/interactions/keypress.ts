@@ -5,7 +5,7 @@ import { INTERACTION_KEY } from "../../semantic-conventions";
 import { KeyValue } from "../../types/otlp";
 import { resolveActionName } from "./action-name";
 import { registerActiveInteraction } from "./active-interaction";
-import { emitInteractionEvent, pagePath } from "./emit";
+import { emitInteractionEvent } from "./emit";
 
 /**
  * Only these navigation/activation keys are ever captured. Printable
@@ -89,9 +89,9 @@ export function handleKeydown(event: KeyboardEvent): void {
 
     emitInteractionEvent({
       type: "key_press",
-      // Press Enter in "Search parts" on /inventory/parts
-      // Press Escape on /playground              (no derivable target name)
-      title: name ? `Press ${key} in "${name}" on ${pagePath()}` : `Press ${key} on ${pagePath()}`,
+      // Press Enter in "Search parts"   (emit appends ` on <scrubbed page path>`)
+      // Press Escape                     (no derivable target name)
+      title: name ? `Press ${key} in "${name}"` : `Press ${key}`,
       id,
       name,
       nameSource,

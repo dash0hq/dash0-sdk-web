@@ -5,7 +5,7 @@ import { INTERACTION_SELECTED_COUNT, INTERACTION_VALUE_LENGTH } from "../../sema
 import { KeyValue } from "../../types/otlp";
 import { resolveActionName } from "./action-name";
 import { registerActiveInteraction } from "./active-interaction";
-import { emitInteractionEvent, pagePath } from "./emit";
+import { emitInteractionEvent } from "./emit";
 
 /**
  * Form-change capture, privacy-first: the VALUE of a field is never read.
@@ -67,23 +67,24 @@ export function handleChange(event: Event): void {
     const interaction = registerActiveInteraction(name);
 
     const extraAttributes: KeyValue[] = [];
+    // Titles carry no page path -- emit appends the scrubbed one.
     let title: string;
 
     if (element.tagName === "SELECT") {
       const selectedCount = (element as HTMLSelectElement).selectedOptions?.length ?? 0;
       addAttribute(extraAttributes, INTERACTION_SELECTED_COUNT, selectedCount);
-      title = `Change ${label} to ${selectedCount} selected on ${pagePath()}`;
+      title = `Change ${label} to ${selectedCount} selected`;
     } else if (element.tagName === "INPUT" && TOGGLE_INPUT_TYPES.has((element as HTMLInputElement).type)) {
-      title = `Toggle ${label} on ${pagePath()}`;
+      title = `Toggle ${label}`;
     } else if (element.tagName === "INPUT" && (element as HTMLInputElement).type === "file") {
-      title = `Change ${label} on ${pagePath()}`;
+      title = `Change ${label}`;
     } else if (element.tagName === "INPUT" && NO_LENGTH_INPUT_TYPES.has((element as HTMLInputElement).type)) {
       // password/hidden: even the length stays private
-      title = `Change ${label} on ${pagePath()}`;
+      title = `Change ${label}`;
     } else {
       const valueLength = (element as HTMLInputElement | HTMLTextAreaElement).value?.length ?? 0;
       addAttribute(extraAttributes, INTERACTION_VALUE_LENGTH, valueLength);
-      title = `Change ${label} to ${valueLength} characters on ${pagePath()}`;
+      title = `Change ${label} to ${valueLength} characters`;
     }
 
     emitInteractionEvent({

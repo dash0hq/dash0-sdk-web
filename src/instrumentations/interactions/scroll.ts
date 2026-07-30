@@ -4,7 +4,7 @@ import { setTimeout, clearTimeout } from "../../utils/timers";
 import { addAttribute } from "../../utils/otel";
 import { INTERACTION_DIRECTION } from "../../semantic-conventions";
 import { KeyValue } from "../../types/otlp";
-import { emitInteractionEvent, pagePath } from "./emit";
+import { emitInteractionEvent } from "./emit";
 
 /**
  * Scroll events fire per frame, so emitting one telemetry event per DOM event
@@ -131,8 +131,8 @@ function finalizeBurst(): void {
 
     emitInteractionEvent({
       type: "scroll",
-      // Scroll down on /inventory/parts
-      title: `Scroll ${direction} on ${pagePath()}`,
+      // Scroll down   (emit appends ` on <scrubbed page path>`)
+      title: `Scroll ${direction}`,
       id: generateUniqueId(WEB_EVENT_ID_BYTES),
       name: "",
       nameSource: "blank",

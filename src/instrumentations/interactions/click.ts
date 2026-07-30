@@ -2,7 +2,7 @@ import { win } from "../../utils";
 import { debug } from "../../utils/debug";
 import { resolveActionName } from "./action-name";
 import { registerActiveInteraction } from "./active-interaction";
-import { emitInteractionEvent, pagePath } from "./emit";
+import { emitInteractionEvent } from "./emit";
 
 let listenerAttached = false;
 
@@ -56,9 +56,9 @@ export function handleClick(event: Event): void {
 
     emitInteractionEvent({
       type: "click",
-      // Click "Save Part" on /inventory/parts
-      // Click button on /playground          (no derivable name)
-      title: name ? `Click "${name}" on ${pagePath()}` : `Click ${tag} on ${pagePath()}`,
+      // Click "Save Part"   (emit appends ` on <scrubbed page path>`)
+      // Click button        (no derivable name)
+      title: name ? `Click "${name}"` : `Click ${tag}`,
       id: interaction.id,
       name,
       nameSource,

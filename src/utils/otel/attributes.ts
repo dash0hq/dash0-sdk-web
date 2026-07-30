@@ -92,6 +92,23 @@ export function removeAttribute(attributes: KeyValue[], key: string) {
   }
 }
 
+/**
+ * Finds an attribute in the provided attributes array by its key.
+ *
+ * Scans backwards, so the most recently added value wins over any earlier entry
+ * carrying the same key. That matters for arrays assembled by
+ * `addCommonAttributes`, which splices in user-supplied `signalAttributes`
+ * before deriving the SDK's own attributes.
+ */
+export function findLastAttribute(attributes: KeyValue[], key: string): KeyValue | undefined {
+  for (let i = attributes.length - 1; i >= 0; i--) {
+    if (attributes[i]!["key"] === key) {
+      return attributes[i];
+    }
+  }
+  return undefined;
+}
+
 export type AttrPrefix = string | string[];
 export function withPrefix(prefix?: AttrPrefix): (attr: string) => string {
   if (!prefix) return (attr) => attr;

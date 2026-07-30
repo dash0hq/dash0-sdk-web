@@ -1,4 +1,4 @@
-import { loc, nowNanos } from "../../utils";
+import { nowNanos } from "../../utils";
 import { sendLog } from "../../transport";
 import {
   EVENT_NAME,
@@ -11,8 +11,10 @@ import {
   INTERACTION_TARGET_TAG,
   INTERACTION_TYPE,
   LOG_SEVERITIES,
+  PAGE_URL_ATTR_PREFIX,
+  URL_PATH,
 } from "../../semantic-conventions";
-import { addAttribute } from "../../utils/otel";
+import { addAttribute, findLastAttribute, withPrefix } from "../../utils/otel";
 import { addCommonAttributes } from "../../attributes";
 import { KeyValue, LogRecord } from "../../types/otlp";
 
@@ -20,12 +22,19 @@ const MAX_SELECTOR_LENGTH = 128;
 const MAX_SELECTOR_ANCESTORS = 3;
 const SELECTOR_BOUNDARY_TAGS = new Set(["BODY", "HTML"]);
 
+/** The attribute key `addCommonAttributes` emits the scrubbed page path under. */
+const PAGE_URL_PATH = withPrefix(PAGE_URL_ATTR_PREFIX)(URL_PATH);
+
 export type InteractionType = "click" | "scroll" | "key_press" | "change";
 
 export type InteractionEvent = {
   /** Discriminator emitted as `interaction.type`. */
   type: InteractionType;
-  /** Human-readable one-line summary; becomes the log body. */
+  /**
+   * Human-readable one-line summary *without* the page path; becomes the log
+   * body once `emitInteractionEvent` has appended ` on <path>`, using the
+   * scrubbed `page.url.path` rather than a raw `location.pathname` read.
+   */
   title: string;
   /** Correlation id (shared with `user_interaction.id` on attributed spans). */
   id: string;
@@ -39,11 +48,6 @@ export type InteractionEvent = {
   extraAttributes?: KeyValue[];
 };
 
-/** The current page path, used in every interaction title. */
-export function pagePath(): string {
-  return loc?.pathname || "/";
-}
-
 /**
  * Shared emit path for every interaction type: identical envelope
  * (browser.interaction event, INFO severity), a plain-string human-readable
@@ -53,6 +57,15 @@ export function pagePath(): string {
 export function emitInteractionEvent(evt: InteractionEvent): void {
   const attributes: KeyValue[] = [];
   addCommonAttributes(attributes);
+
+  // Read the page path back out of the attributes we just derived rather than
+  // re-reading location.pathname: addCommonAttributes has already run it
+  // through vars.urlAttributeScrubber, so the body cannot leak a segment the
+  // consumer redacted. Missing key means the scrubber dropped url.path, threw,
+  // or the url failed to parse -- in every one of those cases the path is meant
+  // to stay out of the telemetry, so the suffix is omitted entirely.
+  const scrubbedPath = findLastAttribute(attributes, PAGE_URL_PATH)?.value?.stringValue;
+
   addAttribute(attributes, EVENT_NAME, EVENT_NAMES.INTERACTION);
   addAttribute(attributes, INTERACTION_ID, evt.id);
   addAttribute(attributes, INTERACTION_TYPE, evt.type);
@@ -73,7 +86,7 @@ export function emitInteractionEvent(evt: InteractionEvent): void {
     severityNumber: LOG_SEVERITIES.INFO,
     severityText: "INFO",
     body: {
-      stringValue: evt.title,
+      stringValue: scrubbedPath ? `${evt.title} on ${scrubbedPath}` : evt.title,
     },
   };
 

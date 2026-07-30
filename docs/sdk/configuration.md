@@ -547,7 +547,10 @@ cannot know about, such as a `title` or `alt` attribute your application interpo
 `interaction.target.selector`, and `interaction.target.id` when the element has one. Type-specific attributes:
 `interaction.direction` (scroll), `interaction.key` (key press), and `interaction.value_length` /
 `interaction.selected_count` (change). The event body is a human-readable string such as
-`Click "Save Settings" on /settings`; treat the attributes, not the body, as the stable contract.
+`Click "Save Settings" on /settings`; treat the attributes, not the body, as the stable contract. The path in the
+body is the same scrubbed value as the event's `page.url.path` attribute, so a configured `urlAttributeScrubber`
+applies to it too -- if the scrubber drops `url.path`, the body omits the ` on <path>` suffix entirely rather than
+falling back to the raw location.
 
 **Click-to-request correlation.** A click registers a short-lived (2 second) active interaction before the page's
 own handlers run. Any `fetch` or `XMLHttpRequest` span started inside that window is stamped with
