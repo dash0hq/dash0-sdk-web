@@ -49,10 +49,13 @@ export function startScrollInstrumentation() {
 }
 
 export function stopScrollInstrumentationForTests() {
-  if (!listenerAttached || !win) return;
-  win.removeEventListener("scroll", onWindowScroll, { capture: true } as EventListenerOptions);
+  // Before the guard below: module state has to be reset even for test cases
+  // that never attached the real listener, otherwise an in-flight burst and its
+  // pending settle timer leak into the next test.
   if (burst?.settleTimeout != null) clearTimeout(burst.settleTimeout);
   burst = undefined;
+  if (!listenerAttached || !win) return;
+  win.removeEventListener("scroll", onWindowScroll, { capture: true } as EventListenerOptions);
   listenerAttached = false;
 }
 

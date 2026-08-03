@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { vars } from "../../vars";
 import { sendLog } from "../../transport";
-import { doc } from "../../utils/globals";
+import { doc, win } from "../../utils/globals";
 import { INTERACTION_KEY, INTERACTION_TYPE } from "../../semantic-conventions";
 import type { LogRecord } from "../../types/otlp";
 
@@ -9,10 +9,12 @@ vi.mock("../../transport", () => ({
   sendLog: vi.fn(),
 }));
 
-import { handleKeydown } from "./keypress";
+import { handleKeydown, startKeyPressInstrumentation, stopKeyPressInstrumentationForTests } from "./keypress";
 import { clearActiveInteractionForTests, getActiveInteraction } from "./active-interaction";
 
+// Vitest runs these tests in jsdom, so the SSR-safe doc/win are always defined.
 const dom = doc!;
+const globalWindow = win!;
 
 function keydownOn(el: Element, key: string, repeat = false): KeyboardEvent {
   const event = new KeyboardEvent("keydown", { key, repeat, bubbles: true });
@@ -38,7 +40,11 @@ describe("key press instrumentation", () => {
   });
 
   afterEach(() => {
+    stopKeyPressInstrumentationForTests();
     clearActiveInteractionForTests();
+    // Restores any addEventListener spy even when an assertion failed before the
+    // test reached its own mockRestore, so the spy cannot leak into the next case.
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -130,5 +136,76 @@ describe("key press instrumentation", () => {
     expect(active).toBeDefined();
     expect(active!.id).toBe(registered.id);
     expect(active!.name).toBe("Search parts");
+  });
+
+  it("swallows errors from a throwing scenario and does not propagate", () => {
+    dom.body.innerHTML = `<input id="q" aria-label="Search parts" />`;
+    const input = dom.getElementById("q")!;
+    // Force an internal error in the name derivation, the deepest DOM surface
+    // the handler touches (same lever as click_test.ts).
+    Object.defineProperty(input, "getAttribute", {
+      value() {
+        throw new Error("boom");
+      },
+    });
+
+    expect(() => handleKeydown(keydownOn(input, "Enter"))).not.toThrow();
+
+    expect(sendLog).not.toHaveBeenCalled();
+    // Name derivation runs before registerActiveInteraction, so a throw must not
+    // leave an interaction id behind for HTTP spans to join to.
+    expect(getActiveInteraction()).toBeUndefined();
+  });
+
+  describe("startKeyPressInstrumentation (real capture-phase listener + isTrusted gate)", () => {
+    it("registers exactly one window-level capture-phase keydown listener", () => {
+      const addSpy = vi.spyOn(globalWindow, "addEventListener");
+
+      startKeyPressInstrumentation();
+
+      expect(addSpy).toHaveBeenCalledOnce();
+      expect(addSpy).toHaveBeenCalledWith("keydown", expect.any(Function), { capture: true });
+
+      addSpy.mockRestore();
+    });
+
+    it("does not register a second listener if called twice (idempotent start)", () => {
+      const addSpy = vi.spyOn(globalWindow, "addEventListener");
+
+      startKeyPressInstrumentation();
+      startKeyPressInstrumentation();
+
+      expect(addSpy).toHaveBeenCalledOnce();
+      addSpy.mockRestore();
+    });
+
+    it("ignores untrusted (synthetic) key presses -- jsdom's dispatchEvent always yields isTrusted: false", () => {
+      dom.body.innerHTML = `<input id="q" aria-label="Search parts" />`;
+      startKeyPressInstrumentation();
+
+      const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+      dom.getElementById("q")!.dispatchEvent(event);
+
+      expect(event.isTrusted).toBe(false);
+      expect(sendLog).not.toHaveBeenCalled();
+    });
+
+    it("processes a key press when isTrusted is stubbed true, proving the gate is the only thing blocking synthetic key presses", () => {
+      // jsdom defines `isTrusted` as a non-configurable accessor on its Event
+      // prototype, so there is no way to construct a pre-trusted event -- see the
+      // long-form explanation in click_test.ts. Capture the real listener
+      // registered by startKeyPressInstrumentation and invoke it directly instead.
+      dom.body.innerHTML = `<input id="q" aria-label="Search parts" />`;
+      const addSpy = vi.spyOn(globalWindow, "addEventListener");
+      startKeyPressInstrumentation();
+
+      const target = dom.getElementById("q")!;
+      const listener = addSpy.mock.calls.find((call) => call[0] === "keydown")![1] as EventListener;
+      listener({ isTrusted: true, target, key: "Enter", repeat: false } as unknown as Event);
+
+      addSpy.mockRestore();
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(attr(lastLog(), INTERACTION_KEY)).toEqual({ stringValue: "Enter" });
+    });
   });
 });

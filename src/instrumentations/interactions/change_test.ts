@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { vars } from "../../vars";
 import { sendLog } from "../../transport";
-import { doc } from "../../utils/globals";
+import { doc, win } from "../../utils/globals";
 import {
   INTERACTION_NAME,
   INTERACTION_NAME_SOURCE,
@@ -15,10 +15,12 @@ vi.mock("../../transport", () => ({
   sendLog: vi.fn(),
 }));
 
-import { handleChange } from "./change";
+import { handleChange, startChangeInstrumentation, stopChangeInstrumentationForTests } from "./change";
 import { clearActiveInteractionForTests, getActiveInteraction } from "./active-interaction";
 
+// Vitest runs these tests in jsdom, so the SSR-safe doc/win are always defined.
 const dom = doc!;
+const globalWindow = win!;
 
 function changeEventFor(el: Element): Event {
   const event = new Event("change", { bubbles: true });
@@ -44,7 +46,11 @@ describe("change instrumentation", () => {
   });
 
   afterEach(() => {
+    stopChangeInstrumentationForTests();
     clearActiveInteractionForTests();
+    // Restores any addEventListener spy even when an assertion failed before the
+    // test reached its own mockRestore, so the spy cannot leak into the next case.
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -132,5 +138,74 @@ describe("change instrumentation", () => {
     expect(attr(log, INTERACTION_NAME)).toEqual({ stringValue: "Notes" });
     expect(attr(log, INTERACTION_NAME_SOURCE)).toEqual({ stringValue: "standard_attribute" });
     expect(attr(log, INTERACTION_VALUE_LENGTH)).toEqual({ doubleValue: 3 });
+  });
+
+  it("swallows errors from a throwing scenario and does not propagate", () => {
+    dom.body.innerHTML = `<input id="email" type="text" aria-label="Email" />`;
+    const input = dom.getElementById("email")!;
+    // The length read is the last DOM access in the handler, so a throwing value
+    // getter exercises the catch without short-circuiting anything before it.
+    Object.defineProperty(input, "value", {
+      get() {
+        throw new Error("boom");
+      },
+    });
+
+    expect(() => handleChange(changeEventFor(input))).not.toThrow();
+
+    expect(sendLog).not.toHaveBeenCalled();
+  });
+
+  describe("startChangeInstrumentation (real capture-phase listener + isTrusted gate)", () => {
+    it("registers exactly one window-level capture-phase change listener", () => {
+      const addSpy = vi.spyOn(globalWindow, "addEventListener");
+
+      startChangeInstrumentation();
+
+      expect(addSpy).toHaveBeenCalledOnce();
+      expect(addSpy).toHaveBeenCalledWith("change", expect.any(Function), { capture: true });
+
+      addSpy.mockRestore();
+    });
+
+    it("does not register a second listener if called twice (idempotent start)", () => {
+      const addSpy = vi.spyOn(globalWindow, "addEventListener");
+
+      startChangeInstrumentation();
+      startChangeInstrumentation();
+
+      expect(addSpy).toHaveBeenCalledOnce();
+      addSpy.mockRestore();
+    });
+
+    it("ignores untrusted (synthetic) changes -- jsdom's dispatchEvent always yields isTrusted: false", () => {
+      dom.body.innerHTML = `<input id="email" type="text" aria-label="Email" />`;
+      startChangeInstrumentation();
+
+      const event = new Event("change", { bubbles: true });
+      dom.getElementById("email")!.dispatchEvent(event);
+
+      expect(event.isTrusted).toBe(false);
+      expect(sendLog).not.toHaveBeenCalled();
+    });
+
+    it("processes a change when isTrusted is stubbed true, proving the gate is the only thing blocking synthetic changes", () => {
+      // jsdom defines `isTrusted` as a non-configurable accessor on its Event
+      // prototype, so there is no way to construct a pre-trusted event -- see the
+      // long-form explanation in click_test.ts. Capture the real listener
+      // registered by startChangeInstrumentation and invoke it directly instead.
+      dom.body.innerHTML = `<input id="email" type="text" aria-label="Email" />`;
+      const input = dom.getElementById("email") as HTMLInputElement;
+      input.value = "abc";
+      const addSpy = vi.spyOn(globalWindow, "addEventListener");
+      startChangeInstrumentation();
+
+      const listener = addSpy.mock.calls.find((call) => call[0] === "change")![1] as EventListener;
+      listener({ isTrusted: true, target: input } as unknown as Event);
+
+      addSpy.mockRestore();
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(attr(lastLog(), INTERACTION_VALUE_LENGTH)).toEqual({ doubleValue: 3 });
+    });
   });
 });
