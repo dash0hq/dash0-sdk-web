@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>interactions disabled test</title>
+
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: {
+          url: `http://${window.location.hostname}:8011?cors=true`,
+          authToken: "auth_abc123",
+          dataset: "production",
+        },
+      });
+      dash0("addSignalAttribute", "the_answer", 42);
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+    <script>
+      function onFetchClick() {
+        return fetch(`/ajax?cacheBust=${Date.now()}`).catch(() => {});
+      }
+
+      // Marker event emitted from the bubble phase of the very click whose capture-phase
+      // browser.interaction log the test asserts the absence of. Both go through the same
+      // log batcher within the same event-dispatch task, so they end up in the same OTLP
+      // request: once the marker has arrived at the test server, an interaction log would
+      // have arrived with it. Without such a positive gate the absence assertion inside
+      // retry() succeeds on the first probe and proves nothing.
+      function onMarkerClick(name) {
+        dash0("sendEvent", name);
+      }
+    </script>
+  </head>
+  <body>
+    <button id="save-button" data-dash0-action-name="Save Settings" onclick="onMarkerClick('e2e.marker.save')">
+      Save
+    </button>
+    <button id="plain-button" onclick="onMarkerClick('e2e.marker.plain')">Continue</button>
+
+    <!-- With interaction instrumentation off, this request's span must carry no
+         user_interaction.* attributes at all. -->
+    <button id="fetch-button" data-dash0-action-name="Load Report" onclick="onFetchClick()">Load</button>
+  </body>
+</html>

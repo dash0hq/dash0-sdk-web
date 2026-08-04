@@ -14,8 +14,9 @@ export { startView } from "../api/start-view";
 // Additional utility types
 export type { AttributeValueType } from "../utils/otel";
 export type { AnyValue } from "../types/otlp";
-export type { PageViewMeta, PropagatorConfig, PropagatorType } from "../vars";
+export type { PageViewMeta, PropagatorConfig, PropagatorType, InteractionInstrumentationSettings } from "../vars";
 export type { UrlAttributeScrubber, UrlAttributeRecord } from "../attributes/url";
+export type { ActionNameScrubber, ActionNameSource } from "../instrumentations/interactions/action-name";
 export type { StartViewOptions } from "../api/start-view";
 
 export function init(opts: InitOptions): void {

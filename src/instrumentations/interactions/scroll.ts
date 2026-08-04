@@ -1,0 +1,239 @@
+import { doc, generateUniqueId, win, WEB_EVENT_ID_BYTES } from "../../utils";
+import { debug } from "../../utils/debug";
+import { onLastChance } from "../../utils/on-last-chance";
+import { setTimeout, clearTimeout } from "../../utils/timers";
+import { addAttribute } from "../../utils/otel";
+import { INTERACTION_DIRECTION } from "../../semantic-conventions";
+import { KeyValue } from "../../types/otlp";
+import { emitInteractionEvent } from "./emit";
+
+/**
+ * Scroll events fire per frame, so emitting one telemetry event per DOM event
+ * would be pure noise. Instead a contiguous burst of scrolling is collapsed
+ * into ONE `browser.interaction` (type "scroll"): the burst starts on the
+ * first scroll event, and finalizes after SCROLL_SETTLE_MILLIS without
+ * further scrolling. The emitted direction is derived from the net position
+ * delta over the whole burst.
+ *
+ * Both endpoints of that delta are sampled inside the event handler, never at
+ * finalize time:
+ *
+ * - The end position is the last position the handler observed. Re-reading the
+ *   element 300 ms later would report 0 for an element detached or reset in the
+ *   meantime (modal closed, route change), inverting the direction.
+ * - The start position is the last position observed for that element *before*
+ *   the burst. A scroll event fires after the offset has already changed, so
+ *   the burst's own first event is already too late to be its baseline; using
+ *   it would net a delta of 0 for single-event bursts (instant `scrollTo`,
+ *   anchor jump, `scrollIntoView`, Home/End) and drop them as micro-scrolls.
+ */
+export const SCROLL_SETTLE_MILLIS = 300;
+
+/**
+ * Net movement (px) below which a burst is dropped entirely -- sub-pixel and
+ * micro-scrolls (trackpad jitter, momentum tails) are not meaningful user
+ * interactions.
+ */
+const MIN_SCROLL_DELTA_PX = 8;
+
+type ScrollPosition = { x: number; y: number };
+
+type ScrollBurst = {
+  element: Element;
+  startX: number;
+  startY: number;
+  lastX: number;
+  lastY: number;
+  settleTimeout: ReturnType<typeof setTimeout> | null;
+};
+
+let listenerAttached = false;
+let unloadHookRegistered = false;
+let burst: ScrollBurst | undefined;
+
+/**
+ * Last position the handler saw for an element, which is where its next burst
+ * starts from. Weakly keyed, so remembering a position never keeps a removed
+ * element alive.
+ */
+let lastObservedPosition = new WeakMap<Element, ScrollPosition>();
+
+function rememberPosition(element: Element, x: number, y: number): void {
+  const known = lastObservedPosition.get(element);
+  // Mutated in place: this runs once per scroll event, i.e. per frame while
+  // scrolling, so it should not allocate.
+  if (known) {
+    known.x = x;
+    known.y = y;
+    return;
+  }
+  lastObservedPosition.set(element, { x, y });
+}
+
+function onWindowScroll(event: Event) {
+  if (!event.isTrusted) return;
+  handleScroll(event);
+}
+
+export function startScrollInstrumentation() {
+  if (listenerAttached) return;
+  if (!win) return;
+
+  // Capture phase on window sees both document scrolling and scrolling of
+  // nested overflow containers (scroll does not bubble, but capture works).
+  win.addEventListener("scroll", onWindowScroll, { capture: true, passive: true } as AddEventListenerOptions);
+  listenerAttached = true;
+
+  // A burst is otherwise only emitted once the settle timer fires, so scrolling
+  // and then immediately navigating away or closing the tab drops it -- and the
+  // last burst before a navigation is often the most interesting one, since it
+  // is what preceded the click that left the page.
+  //
+  // The log this emits still reaches the wire even though the transport's own
+  // onLastChance(flush) is registered first (the batchers in transport/index.ts
+  // are created at module load, i.e. before any start* call), but for two
+  // separate reasons -- neither of which may be "simplified" away:
+  //   - on visibilitychange->hidden and on pagehide the document is no longer
+  //     visible, so batcher.send() transmits immediately instead of queueing
+  //     behind a scheduled flush that would never get to run;
+  //   - on beforeunload the document is still visible so the log does get
+  //     queued, but beforeunload always precedes pagehide, whose batcher flush
+  //     then drains it.
+  //
+  // Tracked separately from listenerAttached because onLastChance offers no way
+  // to unregister: stopScrollInstrumentationForTests() resets listenerAttached,
+  // and re-registering on every start* would leak a duplicate unload listener
+  // per test case.
+  if (!unloadHookRegistered) {
+    unloadHookRegistered = true;
+    onLastChance(flushBurst);
+  }
+
+  // Page scrolling is the common case, and it is also the one most likely to
+  // already be scrolled by the time the SDK attaches (deferred script,
+  // browser scroll restoration on back/forward). Recording the current
+  // position gives the first page burst a real baseline instead of the assumed
+  // 0 that unseen elements fall back to.
+  const root = doc?.scrollingElement ?? doc?.documentElement;
+  if (root) rememberPosition(root, win.scrollX ?? root.scrollLeft, win.scrollY ?? root.scrollTop);
+}
+
+export function stopScrollInstrumentationForTests() {
+  // Before the guard below: module state has to be reset even for test cases
+  // that never attached the real listener, otherwise an in-flight burst and its
+  // pending settle timer leak into the next test.
+  if (burst?.settleTimeout != null) clearTimeout(burst.settleTimeout);
+  burst = undefined;
+  // The jsdom document root outlives a single test case, so a remembered page
+  // position would otherwise become the next test's baseline.
+  lastObservedPosition = new WeakMap();
+  // unloadHookRegistered is deliberately NOT reset: the onLastChance listeners
+  // cannot be removed, so clearing the flag would only make the next start*
+  // register a second set of them.
+  if (!listenerAttached || !win) return;
+  win.removeEventListener("scroll", onWindowScroll, { capture: true } as EventListenerOptions);
+  listenerAttached = false;
+}
+
+/** Resolves the scrolled element plus its current scroll position. */
+function scrollStateFor(event: Event): { element: Element; x: number; y: number } | undefined {
+  const target = event.target;
+
+  // Scrolling the page itself reports the document (or window) as target.
+  if (!target || target === doc || target === win) {
+    const root = doc?.scrollingElement ?? doc?.documentElement;
+    if (!root) return undefined;
+    return { element: root, x: win?.scrollX ?? root.scrollLeft, y: win?.scrollY ?? root.scrollTop };
+  }
+
+  if ((target as Node).nodeType !== 1) return undefined;
+  const element = target as Element;
+  return { element, x: element.scrollLeft, y: element.scrollTop };
+}
+
+/**
+ * Exported for tests (bypasses the isTrusted gate, same pattern as
+ * click.ts/handleClick).
+ */
+export function handleScroll(event: Event): void {
+  try {
+    const state = scrollStateFor(event);
+    if (!state) return;
+
+    if (!burst) {
+      // An element nobody has seen scroll yet is assumed to have started at 0.
+      // If it was in fact already scrolled before the listener attached, its
+      // first upward burst reports "down" -- bounded to that one event, since
+      // its position is remembered from here on.
+      const baseline = lastObservedPosition.get(state.element);
+      burst = {
+        element: state.element,
+        startX: baseline?.x ?? 0,
+        startY: baseline?.y ?? 0,
+        lastX: state.x,
+        lastY: state.y,
+        settleTimeout: null,
+      };
+    } else {
+      if (burst.settleTimeout != null) clearTimeout(burst.settleTimeout);
+      // The burst tracks the element it started on; scrolls of other elements
+      // during the settle window just keep the burst alive.
+      if (state.element === burst.element) {
+        burst.lastX = state.x;
+        burst.lastY = state.y;
+      }
+    }
+
+    rememberPosition(state.element, state.x, state.y);
+
+    burst.settleTimeout = setTimeout(() => finalizeBurst(), SCROLL_SETTLE_MILLIS);
+  } catch (err) {
+    debug("Dash0 interaction instrumentation failed to process a scroll event.", err);
+  }
+}
+
+function finalizeBurst(): void {
+  const finished = burst;
+  burst = undefined;
+  if (!finished) return;
+
+  try {
+    const element = finished.element;
+    const deltaX = finished.lastX - finished.startX;
+    const deltaY = finished.lastY - finished.startY;
+
+    if (Math.abs(deltaX) < MIN_SCROLL_DELTA_PX && Math.abs(deltaY) < MIN_SCROLL_DELTA_PX) {
+      return; // micro-scroll, not a meaningful interaction
+    }
+
+    const direction =
+      Math.abs(deltaY) >= Math.abs(deltaX) ? (deltaY > 0 ? "down" : "up") : deltaX > 0 ? "right" : "left";
+
+    const extraAttributes: KeyValue[] = [];
+    addAttribute(extraAttributes, INTERACTION_DIRECTION, direction);
+
+    emitInteractionEvent({
+      type: "scroll",
+      // Scroll down   (emit appends ` on <scrubbed page path>`)
+      title: `Scroll ${direction}`,
+      id: generateUniqueId(WEB_EVENT_ID_BYTES),
+      name: "",
+      nameSource: "blank",
+      element,
+      extraAttributes,
+    });
+  } catch (err) {
+    debug("Dash0 interaction instrumentation failed to finalize a scroll burst.", err);
+  }
+}
+
+/** Finalizes the in-flight burst now, without waiting for the settle timer. */
+function flushBurst(): void {
+  if (burst?.settleTimeout != null) clearTimeout(burst.settleTimeout);
+  finalizeBurst();
+}
+
+/** Test-only: force-finalize the in-flight burst without waiting for the settle timer. */
+export function flushScrollBurstForTests(): void {
+  flushBurst();
+}
