@@ -56,11 +56,23 @@ describe("scroll instrumentation", () => {
     vi.clearAllMocks();
   });
 
+  /**
+   * Real dispatch order: the offset changes first, the scroll event follows. So
+   * every `scrollTop` assignment below is immediately followed by the event it
+   * caused, and the position a burst started from is never itself the subject of
+   * an event -- it is either remembered from an earlier burst, or assumed to be 0
+   * for an element nobody has seen scroll yet.
+   */
+  function settleBurstAt(pane: HTMLElement, top: number): void {
+    pane.scrollTop = top;
+    handleScroll(scrollEventFor(pane));
+    flushScrollBurstForTests();
+    vi.clearAllMocks();
+  }
+
   it("collapses a burst of scroll events into a single event with the net direction", () => {
     const pane = scrollable();
 
-    pane.scrollTop = 0;
-    handleScroll(scrollEventFor(pane));
     pane.scrollTop = 40;
     handleScroll(scrollEventFor(pane));
     pane.scrollTop = 120;
@@ -77,8 +89,9 @@ describe("scroll instrumentation", () => {
 
   it("reports upward scrolling", () => {
     const pane = scrollable();
+    settleBurstAt(pane, 200);
 
-    pane.scrollTop = 200;
+    pane.scrollTop = 120;
     handleScroll(scrollEventFor(pane));
     pane.scrollTop = 20;
     handleScroll(scrollEventFor(pane));
@@ -90,11 +103,72 @@ describe("scroll instrumentation", () => {
     expect(attr(log, INTERACTION_DIRECTION)).toEqual({ stringValue: "up" });
   });
 
-  it("drops micro-scrolls below the noise threshold", () => {
+  it("emits a single-event burst, measured from where the previous burst ended", () => {
     const pane = scrollable();
+    settleBurstAt(pane, 200);
 
+    // One event is all a programmatic jump (`scrollTo`, anchor navigation,
+    // `scrollIntoView`, Home/End) produces. Sampling the baseline from this very
+    // event would net a delta of 0 and drop the burst as a micro-scroll.
     pane.scrollTop = 100;
     handleScroll(scrollEventFor(pane));
+    flushScrollBurstForTests();
+
+    expect(sendLog).toHaveBeenCalledOnce();
+    expect(attr(lastLog(), INTERACTION_DIRECTION)).toEqual({ stringValue: "up" });
+  });
+
+  it("assumes an unseen element started at 0, so its very first burst is not lost either", () => {
+    const pane = scrollable();
+
+    pane.scrollTop = 400;
+    handleScroll(scrollEventFor(pane));
+    flushScrollBurstForTests();
+
+    expect(sendLog).toHaveBeenCalledOnce();
+    expect(attr(lastLog(), INTERACTION_DIRECTION)).toEqual({ stringValue: "down" });
+  });
+
+  it("keeps the observed end position when the element is reset or detached before the burst settles", () => {
+    const pane = scrollable();
+
+    pane.scrollTop = 200;
+    handleScroll(scrollEventFor(pane));
+
+    // A modal closing, a dropdown dismissing or a route change resets the
+    // container inside the settle window. Re-reading it here would see 0 and
+    // finalize a phantom "up".
+    pane.remove();
+    pane.scrollTop = 0;
+    flushScrollBurstForTests();
+
+    expect(sendLog).toHaveBeenCalledOnce();
+    expect(attr(lastLog(), INTERACTION_DIRECTION)).toEqual({ stringValue: "down" });
+  });
+
+  it("does not read the element at all while finalizing", () => {
+    const pane = scrollable();
+
+    pane.scrollTop = 200;
+    handleScroll(scrollEventFor(pane));
+
+    // Stronger than the reset case above: any DOM read at finalize time now
+    // throws, so the burst can only be finalized from what the handler saw.
+    Object.defineProperty(pane, "scrollTop", {
+      get() {
+        throw new Error("scrollTop must not be read at finalize time");
+      },
+    });
+    flushScrollBurstForTests();
+
+    expect(sendLog).toHaveBeenCalledOnce();
+    expect(attr(lastLog(), INTERACTION_DIRECTION)).toEqual({ stringValue: "down" });
+  });
+
+  it("drops micro-scrolls below the noise threshold", () => {
+    const pane = scrollable();
+    settleBurstAt(pane, 100);
+
     pane.scrollTop = 103; // 3px net movement
     handleScroll(scrollEventFor(pane));
 
@@ -106,8 +180,6 @@ describe("scroll instrumentation", () => {
   it("emits nothing while a burst is still in flight", () => {
     const pane = scrollable();
 
-    pane.scrollTop = 0;
-    handleScroll(scrollEventFor(pane));
     pane.scrollTop = 500;
     handleScroll(scrollEventFor(pane));
 
@@ -143,8 +215,6 @@ describe("scroll instrumentation", () => {
     it("clears an in-flight burst on teardown even when the listener was never attached", () => {
       const pane = scrollable();
 
-      pane.scrollTop = 0;
-      handleScroll(scrollEventFor(pane));
       pane.scrollTop = 300;
       handleScroll(scrollEventFor(pane));
 
@@ -161,13 +231,11 @@ describe("scroll instrumentation", () => {
       const pane = scrollable();
       startScrollInstrumentation();
 
-      pane.scrollTop = 0;
+      pane.scrollTop = 400;
       // scroll does not bubble, but a capture-phase listener on window is on the
       // propagation path of every dispatch, so this really does reach the listener.
       const event = new Event("scroll", { bubbles: false });
       pane.dispatchEvent(event);
-      pane.scrollTop = 400;
-      pane.dispatchEvent(new Event("scroll", { bubbles: false }));
 
       expect(event.isTrusted).toBe(false);
       // Flushing is what makes this assertion mean "no burst was ever started"
@@ -186,11 +254,6 @@ describe("scroll instrumentation", () => {
       startScrollInstrumentation();
 
       const listener = addSpy.mock.calls.find((call) => call[0] === "scroll")![1] as EventListener;
-      // Two events, not one: the burst baseline is sampled from the first event,
-      // so a single-event burst has a net delta of 0 and is dropped as a
-      // micro-scroll. This shape asserts the gate, not the sampling behaviour.
-      pane.scrollTop = 0;
-      listener({ isTrusted: true, target: pane } as unknown as Event);
       pane.scrollTop = 120;
       listener({ isTrusted: true, target: pane } as unknown as Event);
 
@@ -218,8 +281,6 @@ describe("scroll instrumentation", () => {
     it("swallows errors while finalizing a burst and still resets burst state", () => {
       const pane = scrollable();
 
-      pane.scrollTop = 0;
-      handleScroll(scrollEventFor(pane));
       pane.scrollTop = 200;
       handleScroll(scrollEventFor(pane));
 

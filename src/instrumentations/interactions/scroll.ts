@@ -13,6 +13,18 @@ import { emitInteractionEvent } from "./emit";
  * first scroll event, and finalizes after SCROLL_SETTLE_MILLIS without
  * further scrolling. The emitted direction is derived from the net position
  * delta over the whole burst.
+ *
+ * Both endpoints of that delta are sampled inside the event handler, never at
+ * finalize time:
+ *
+ * - The end position is the last position the handler observed. Re-reading the
+ *   element 300 ms later would report 0 for an element detached or reset in the
+ *   meantime (modal closed, route change), inverting the direction.
+ * - The start position is the last position observed for that element *before*
+ *   the burst. A scroll event fires after the offset has already changed, so
+ *   the burst's own first event is already too late to be its baseline; using
+ *   it would net a delta of 0 for single-event bursts (instant `scrollTo`,
+ *   anchor jump, `scrollIntoView`, Home/End) and drop them as micro-scrolls.
  */
 const SCROLL_SETTLE_MILLIS = 300;
 
@@ -23,15 +35,38 @@ const SCROLL_SETTLE_MILLIS = 300;
  */
 const MIN_SCROLL_DELTA_PX = 8;
 
+type ScrollPosition = { x: number; y: number };
+
 type ScrollBurst = {
   element: Element;
   startX: number;
   startY: number;
+  lastX: number;
+  lastY: number;
   settleTimeout: ReturnType<typeof setTimeout> | null;
 };
 
 let listenerAttached = false;
 let burst: ScrollBurst | undefined;
+
+/**
+ * Last position the handler saw for an element, which is where its next burst
+ * starts from. Weakly keyed, so remembering a position never keeps a removed
+ * element alive.
+ */
+let lastObservedPosition = new WeakMap<Element, ScrollPosition>();
+
+function rememberPosition(element: Element, x: number, y: number): void {
+  const known = lastObservedPosition.get(element);
+  // Mutated in place: this runs once per scroll event, i.e. per frame while
+  // scrolling, so it should not allocate.
+  if (known) {
+    known.x = x;
+    known.y = y;
+    return;
+  }
+  lastObservedPosition.set(element, { x, y });
+}
 
 function onWindowScroll(event: Event) {
   if (!event.isTrusted) return;
@@ -46,6 +81,14 @@ export function startScrollInstrumentation() {
   // nested overflow containers (scroll does not bubble, but capture works).
   win.addEventListener("scroll", onWindowScroll, { capture: true, passive: true } as AddEventListenerOptions);
   listenerAttached = true;
+
+  // Page scrolling is the common case, and it is also the one most likely to
+  // already be scrolled by the time the SDK attaches (deferred script,
+  // browser scroll restoration on back/forward). Recording the current
+  // position gives the first page burst a real baseline instead of the assumed
+  // 0 that unseen elements fall back to.
+  const root = doc?.scrollingElement ?? doc?.documentElement;
+  if (root) rememberPosition(root, win.scrollX ?? root.scrollLeft, win.scrollY ?? root.scrollTop);
 }
 
 export function stopScrollInstrumentationForTests() {
@@ -54,6 +97,9 @@ export function stopScrollInstrumentationForTests() {
   // pending settle timer leak into the next test.
   if (burst?.settleTimeout != null) clearTimeout(burst.settleTimeout);
   burst = undefined;
+  // The jsdom document root outlives a single test case, so a remembered page
+  // position would otherwise become the next test's baseline.
+  lastObservedPosition = new WeakMap();
   if (!listenerAttached || !win) return;
   win.removeEventListener("scroll", onWindowScroll, { capture: true } as EventListenerOptions);
   listenerAttached = false;
@@ -85,18 +131,31 @@ export function handleScroll(event: Event): void {
     if (!state) return;
 
     if (!burst) {
+      // An element nobody has seen scroll yet is assumed to have started at 0.
+      // If it was in fact already scrolled before the listener attached, its
+      // first upward burst reports "down" -- bounded to that one event, since
+      // its position is remembered from here on.
+      const baseline = lastObservedPosition.get(state.element);
       burst = {
         element: state.element,
-        startX: state.x,
-        startY: state.y,
+        startX: baseline?.x ?? 0,
+        startY: baseline?.y ?? 0,
+        lastX: state.x,
+        lastY: state.y,
         settleTimeout: null,
       };
-    } else if (burst.settleTimeout != null) {
-      clearTimeout(burst.settleTimeout);
+    } else {
+      if (burst.settleTimeout != null) clearTimeout(burst.settleTimeout);
+      // The burst tracks the element it started on; scrolls of other elements
+      // during the settle window just keep the burst alive.
+      if (state.element === burst.element) {
+        burst.lastX = state.x;
+        burst.lastY = state.y;
+      }
     }
 
-    // The burst tracks the element it started on; scrolls of other elements
-    // during the settle window just keep the burst alive.
+    rememberPosition(state.element, state.x, state.y);
+
     burst.settleTimeout = setTimeout(() => finalizeBurst(), SCROLL_SETTLE_MILLIS);
   } catch (err) {
     debug("Dash0 interaction instrumentation failed to process a scroll event.", err);
@@ -110,17 +169,8 @@ function finalizeBurst(): void {
 
   try {
     const element = finished.element;
-    const endX =
-      element === (doc?.scrollingElement ?? doc?.documentElement)
-        ? (win?.scrollX ?? element.scrollLeft)
-        : element.scrollLeft;
-    const endY =
-      element === (doc?.scrollingElement ?? doc?.documentElement)
-        ? (win?.scrollY ?? element.scrollTop)
-        : element.scrollTop;
-
-    const deltaX = endX - finished.startX;
-    const deltaY = endY - finished.startY;
+    const deltaX = finished.lastX - finished.startX;
+    const deltaY = finished.lastY - finished.startY;
 
     if (Math.abs(deltaX) < MIN_SCROLL_DELTA_PX && Math.abs(deltaY) < MIN_SCROLL_DELTA_PX) {
       return; // micro-scroll, not a meaningful interaction
