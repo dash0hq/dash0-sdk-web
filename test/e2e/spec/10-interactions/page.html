@@ -70,5 +70,55 @@
          must carry the id of the click that caused it. -->
     <button id="fetch-button" data-dash0-action-name="Load Report" onclick="onFetchClick()">Load</button>
     <button id="xhr-button" data-dash0-action-name="Refresh Table" onclick="onXhrClick()">Refresh</button>
+
+    <!--
+      DOM clobbering. HTMLFormElement is [LegacyOverrideBuiltIns], so a named form
+      control shadows the form's own same-named property: here `checkoutForm.id`
+      returns the <input> rather than "checkout-form". jsdom does not implement the
+      shadowing, so these two fixtures are the only place the SDK's clobber-safe
+      reads (src/utils/dom.ts) are exercised for real.
+
+      Only `id` is shadowed on this one -- a hidden `id` field is ordinary CRUD
+      markup -- and deliberately nothing else: shadowing `tagName`/`getAttribute`
+      breaks ChromeDriver's own in-page automation atoms, which makes WebDriver's
+      click a silent no-op, so a form clobbered any harder cannot be clicked by the
+      test driver at all. Those shadows are covered by the unit tests instead.
+
+      The form is the click target itself: its only child is a hidden input, so the
+      form's own padding is all there is to click and a centre-click cannot land on
+      a descendant. onsubmit is blocked so a click can never navigate the page away
+      mid-test.
+    -->
+    <form
+      id="checkout-form"
+      class="checkout wide"
+      data-dash0-action-name="Checkout"
+      style="padding: 30px"
+      onsubmit="return false"
+    >
+      <input type="hidden" name="id" value="4711" />
+    </form>
+
+    <!--
+      The naming walk's view of a clobbered form: the click target is a plain button
+      the driver can interact with, and the name has to come from the enclosing
+      form's data-dash0-action-name -- i.e. from an attribute read on an element
+      whose `getAttribute` is shadowed. Reading it naively throws, and the handler's
+      try/catch would swallow that into no event at all.
+    -->
+    <form id="wrapped-form" data-dash0-action-name="Wrapped Form" onsubmit="return false">
+      <input type="hidden" name="getAttribute" value="clobbered" />
+      <button id="wrapped-button" type="button">Go</button>
+    </form>
+
+    <!-- interaction.target.id is capped at 128 characters like the selector, so a
+         page with generated or state-carrying ids cannot send unbounded strings on
+         every interaction. This id is well past the cap. -->
+    <button
+      id="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      data-dash0-action-name="Long Id"
+    >
+      Long id
+    </button>
   </body>
 </html>

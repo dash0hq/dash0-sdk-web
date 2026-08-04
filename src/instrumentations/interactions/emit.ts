@@ -1,4 +1,4 @@
-import { nowNanos } from "../../utils";
+import { elementFirstClass, elementId, elementTag, nowNanos } from "../../utils";
 import { sendLog } from "../../transport";
 import {
   EVENT_NAME,
@@ -18,7 +18,8 @@ import { addAttribute, findLastAttribute, withPrefix } from "../../utils/otel";
 import { addCommonAttributes } from "../../attributes";
 import { KeyValue, LogRecord } from "../../types/otlp";
 
-const MAX_SELECTOR_LENGTH = 128;
+/** Shared cap for the two target descriptors: `target.selector` and `target.id`. */
+const MAX_TARGET_VALUE_LENGTH = 128;
 const MAX_SELECTOR_ANCESTORS = 3;
 const SELECTOR_BOUNDARY_TAGS = new Set(["BODY", "HTML"]);
 
@@ -53,6 +54,12 @@ export type InteractionEvent = {
  * (browser.interaction event, INFO severity), a plain-string human-readable
  * body, and the structured fields as namespaced `interaction.*` log
  * attributes.
+ *
+ * Every target descriptor is bounded -- `target.id` shares the selector's
+ * MAX_TARGET_VALUE_LENGTH cap so a page with generated or state-carrying ids
+ * cannot send unbounded strings on every interaction -- and is read through the
+ * clobber-safe accessors in utils/dom, since a `<form>` target's `id`/`tagName`
+ * can be shadowed by its own named controls.
  */
 export function emitInteractionEvent(evt: InteractionEvent): void {
   const attributes: KeyValue[] = [];
@@ -72,9 +79,10 @@ export function emitInteractionEvent(evt: InteractionEvent): void {
   addAttribute(attributes, INTERACTION_NAME, evt.name);
   addAttribute(attributes, INTERACTION_NAME_SOURCE, evt.nameSource);
   addAttribute(attributes, INTERACTION_TARGET_SELECTOR, buildSelector(evt.element));
-  addAttribute(attributes, INTERACTION_TARGET_TAG, evt.element.tagName.toLowerCase());
-  if (evt.element.id) {
-    addAttribute(attributes, INTERACTION_TARGET_ID, evt.element.id);
+  addAttribute(attributes, INTERACTION_TARGET_TAG, elementTag(evt.element).toLowerCase());
+  const targetId = elementId(evt.element);
+  if (targetId) {
+    addAttribute(attributes, INTERACTION_TARGET_ID, capTargetValue(targetId));
   }
   for (const extra of evt.extraAttributes ?? []) {
     attributes.push(extra);
@@ -101,38 +109,39 @@ export function emitInteractionEvent(evt: InteractionEvent): void {
  *   same way) joined with " > ", since there is no id anywhere to anchor on.
  *   The walk never crosses a BODY/HTML boundary -- those document-structure
  *   elements are not meaningful target context.
- * Result is capped at MAX_SELECTOR_LENGTH characters.
+ * Result is capped at MAX_TARGET_VALUE_LENGTH characters.
  *
  * The selector is best-effort display telemetry, NOT guaranteed valid CSS for
  * querySelector: ids/class names are not escaped and truncation may cut
  * mid-token.
  */
 export function buildSelector(element: Element): string {
-  if (element.id) {
-    return truncateSelector(describeElement(element));
+  if (elementId(element)) {
+    return capTargetValue(describeElement(element));
   }
 
   const parts: string[] = [describeElement(element)];
   let current: Element | null = element;
   for (let i = 0; i < MAX_SELECTOR_ANCESTORS; i++) {
     current = current.parentElement;
-    if (!current || SELECTOR_BOUNDARY_TAGS.has(current.tagName)) break;
+    if (!current || SELECTOR_BOUNDARY_TAGS.has(elementTag(current))) break;
     parts.unshift(describeElement(current));
-    if (current.id) break;
+    if (elementId(current)) break;
   }
 
-  return truncateSelector(parts.join(" > "));
+  return capTargetValue(parts.join(" > "));
 }
 
-function truncateSelector(selector: string): string {
-  return selector.length > MAX_SELECTOR_LENGTH ? selector.substring(0, MAX_SELECTOR_LENGTH) : selector;
+function capTargetValue(value: string): string {
+  return value.length > MAX_TARGET_VALUE_LENGTH ? value.substring(0, MAX_TARGET_VALUE_LENGTH) : value;
 }
 
 function describeElement(element: Element): string {
-  const tag = element.tagName.toLowerCase();
-  if (element.id) {
-    return `${tag}#${element.id}`;
+  const tag = elementTag(element).toLowerCase();
+  const id = elementId(element);
+  if (id) {
+    return `${tag}#${id}`;
   }
-  const firstClass = element.classList.item(0);
+  const firstClass = elementFirstClass(element);
   return firstClass ? `${tag}.${firstClass}` : tag;
 }

@@ -353,6 +353,45 @@ describe("deriveActionName", () => {
       });
     });
 
+    it("does not walk past a FORM whose tagName property is clobbered", () => {
+      // In a real browser `<input name="tagName">` shadows `form.tagName` into an
+      // element, so a naive `BOUNDARY_TAGS.has(form.tagName)` is silently false and
+      // the walk escapes the boundary it exists to enforce. jsdom does not
+      // implement the shadowing, so it is installed by hand -- see utils/dom.
+      dom.body.innerHTML = `
+        <div data-dash0-action-name="Outer Name">
+          <form>
+            <input name="tagName" />
+            <span id="span"></span>
+          </form>
+        </div>`;
+      const form = dom.querySelector("form")!;
+      Object.defineProperty(form, "tagName", { value: form.querySelector("input"), configurable: true });
+
+      expect(deriveActionName(dom.getElementById("span")!, attributeName)).toEqual({
+        name: "",
+        nameSource: "blank",
+      });
+    });
+
+    it("still reads attributes off a FORM whose getAttribute method is clobbered", () => {
+      // `<input name="getAttribute">` shadows the method itself, so calling
+      // `form.getAttribute(...)` throws -- and the throw is swallowed by the
+      // handler's try/catch, silently dropping the whole interaction.
+      dom.body.innerHTML = `
+        <form data-dash0-action-name="Checkout Form">
+          <input name="getAttribute" />
+          <span id="span"></span>
+        </form>`;
+      const form = dom.querySelector("form")!;
+      Object.defineProperty(form, "getAttribute", { value: form.querySelector("input"), configurable: true });
+
+      expect(deriveActionName(dom.getElementById("span")!, attributeName)).toEqual({
+        name: "Checkout Form",
+        nameSource: "custom_attribute",
+      });
+    });
+
     it("caps the ancestor walk at 10 levels", () => {
       // Build 12 nested divs; only the outermost (12 levels up) carries the attribute,
       // which exceeds the 10-ancestor cap and must not be found.

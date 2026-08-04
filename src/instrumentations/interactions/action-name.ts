@@ -1,5 +1,6 @@
 import { DEFAULT_ACTION_NAME_ATTRIBUTE, vars } from "../../vars";
 import { warn } from "../../utils/debug";
+import { elementAttribute, elementTag } from "../../utils/dom";
 
 export type ActionNameSource = "custom_attribute" | "standard_attribute" | "text_content" | "blank";
 
@@ -45,12 +46,15 @@ function normalizeWhitespace(value: string): string {
 }
 
 function isTextExcluded(el: Element): boolean {
+  // `localName` rather than the clobber-safe `elementTag`: FORM is not in the set,
+  // so a shadowed `localName` on a form yields the same `false` this returns for a
+  // form anyway. See utils/dom for what shadowing is and where it does matter.
   if (TEXT_EXCLUDED_TAGS.has(el.localName)) return true;
   // A contenteditable region holds user-typed content. The attribute is read
   // directly rather than via `isContentEditable`: that property is unimplemented
   // in jsdom and is false for elements outside a rendered document. An empty
   // value means editable per spec; only an explicit "false" opts out.
-  const editable = el.getAttribute("contenteditable");
+  const editable = elementAttribute(el, "contenteditable");
   return editable != null && editable.toLowerCase() !== "false";
 }
 
@@ -122,12 +126,16 @@ function finalize(name: string, nameSource: ActionNameSource): ActionNameResult 
 /**
  * Collects the click target plus up to MAX_ANCESTOR_WALK ancestor elements,
  * stopping (inclusively) at the first FORM/BODY/HTML/HEAD boundary.
+ *
+ * The tag is read clobber-safely: FORM is a boundary here, and a form's own named
+ * controls can shadow its `tagName` (see utils/dom), which would otherwise make the
+ * comparison silently false and let the walk cross the boundary it must stop at.
  */
 function collectWalkPath(target: Element): Element[] {
   const path: Element[] = [target];
   let current: Element | null = target;
 
-  if (BOUNDARY_TAGS.has(target.tagName)) {
+  if (BOUNDARY_TAGS.has(elementTag(target))) {
     return path;
   }
 
@@ -135,7 +143,7 @@ function collectWalkPath(target: Element): Element[] {
     current = current.parentElement;
     if (!current) break;
     path.push(current);
-    if (BOUNDARY_TAGS.has(current.tagName)) break;
+    if (BOUNDARY_TAGS.has(elementTag(current))) break;
   }
 
   return path;
@@ -143,7 +151,7 @@ function collectWalkPath(target: Element): Element[] {
 
 function findCustomAttributeName(path: Element[], actionNameAttribute: string): string | undefined {
   for (const el of path) {
-    const value = el.getAttribute(actionNameAttribute);
+    const value = elementAttribute(el, actionNameAttribute);
     if (value != null && normalizeWhitespace(value)) {
       return value;
     }
@@ -152,7 +160,7 @@ function findCustomAttributeName(path: Element[], actionNameAttribute: string): 
 }
 
 function resolveAriaLabelledBy(el: Element): string | undefined {
-  const labelledBy = el.getAttribute("aria-labelledby");
+  const labelledBy = elementAttribute(el, "aria-labelledby");
   if (!labelledBy) return undefined;
 
   const doc = el.ownerDocument;
@@ -170,8 +178,8 @@ function resolveAriaLabelledBy(el: Element): string | undefined {
 }
 
 function readInputValueIfSafe(el: Element): string | undefined {
-  if (el.tagName !== "INPUT") return undefined;
-  const type = (el.getAttribute("type") || "text").toLowerCase();
+  if (elementTag(el) !== "INPUT") return undefined;
+  const type = (elementAttribute(el, "type") || "text").toLowerCase();
   if (!VALUE_READABLE_INPUT_TYPES.has(type)) return undefined;
   const value = (el as HTMLInputElement).value;
   return value ? value : undefined;
@@ -187,19 +195,19 @@ function findStandardAttributeName(path: Element[]): string | undefined {
     const inputValue = readInputValueIfSafe(el);
     if (inputValue) return inputValue;
 
-    const ariaLabel = el.getAttribute("aria-label");
+    const ariaLabel = elementAttribute(el, "aria-label");
     if (ariaLabel && normalizeWhitespace(ariaLabel)) return ariaLabel;
 
     const labelledByText = resolveAriaLabelledBy(el);
     if (labelledByText) return labelledByText;
 
-    const alt = el.getAttribute("alt");
+    const alt = elementAttribute(el, "alt");
     if (alt && normalizeWhitespace(alt)) return alt;
 
-    const title = el.getAttribute("title");
+    const title = elementAttribute(el, "title");
     if (title && normalizeWhitespace(title)) return title;
 
-    const placeholder = el.getAttribute("placeholder");
+    const placeholder = elementAttribute(el, "placeholder");
     if (placeholder && normalizeWhitespace(placeholder)) return placeholder;
   }
   return undefined;
@@ -220,7 +228,7 @@ function findStandardAttributeName(path: Element[]): string | undefined {
  */
 function findTextContentName(path: Element[]): string | undefined {
   for (const el of path) {
-    if (CLICKABLE_TEXT_TAGS.has(el.tagName) || el.getAttribute("role") === "button") {
+    if (CLICKABLE_TEXT_TAGS.has(elementTag(el)) || elementAttribute(el, "role") === "button") {
       const text = labelText(el);
       if (text) return text;
     }

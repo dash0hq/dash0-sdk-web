@@ -1,4 +1,4 @@
-import { win } from "../../utils";
+import { elementTag, win } from "../../utils";
 import { debug } from "../../utils/debug";
 import { resolveActionName } from "./action-name";
 import { registerActiveInteraction } from "./active-interaction";
@@ -110,7 +110,9 @@ export function handleClick(event: Event): void {
     rememberLabelForward(element);
 
     const { name, nameSource } = resolveActionName(element);
-    const tag = element.tagName.toLowerCase();
+    // Clobber-safe: a click can land on a <form> itself, whose own named controls
+    // can shadow `tagName` into an element -- see utils/dom.
+    const tag = elementTag(element).toLowerCase();
 
     // Register this click as the active interaction BEFORE the application's
     // own handlers run (we are in the capture phase), so any HTTP request the

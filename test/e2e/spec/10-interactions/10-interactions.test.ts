@@ -15,6 +15,9 @@ import {
 const PAGE_PATH = "/e2e/spec/10-interactions/page.html";
 const DISABLED_PAGE_PATH = "/e2e/spec/10-interactions/page-disabled.html";
 
+/** Mirrors MAX_TARGET_VALUE_LENGTH in src/instrumentations/interactions/emit.ts. */
+const MAX_TARGET_VALUE_LENGTH = 128;
+
 /**
  * Resolves the `interaction.id` the `browser.interaction` event for a given
  * click target carried, throwing when the event has not arrived yet so the
@@ -153,6 +156,93 @@ describe("Interaction Instrumentation", () => {
 
       expect(interactionRecord.attributes.map((kv: any) => kv.value?.stringValue)).not.toContain("pre-filled secret");
       expect(interactionRecord.body?.stringValue).not.toContain("pre-filled secret");
+    });
+
+    expectNoBrowserErrors();
+  });
+
+  it("describes a form target by its real id, which its own hidden id field clobbers", async () => {
+    // Only testable here: HTMLFormElement's named getter shadows `form.id` in real
+    // browsers and jsdom does not implement it, so the unit tests have to simulate
+    // the shadowing. Reading `.id` naively yields the <input> element, which ships
+    // as an empty kvlistValue instead of a string.
+    const testId = generateUniqueId(16);
+    await loadPage(`${PAGE_PATH}?testId=${testId}`);
+
+    const form = await $("#checkout-form");
+    await form.click();
+
+    await retry(async () => {
+      await expectLogMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "event.name", value: { stringValue: "browser.interaction" } },
+            { key: "interaction.type", value: { stringValue: "click" } },
+            { key: "interaction.name", value: { stringValue: "Checkout" } },
+            { key: "interaction.name_source", value: { stringValue: "custom_attribute" } },
+            { key: "interaction.target.id", value: { stringValue: "checkout-form" } },
+            { key: "interaction.target.tag", value: { stringValue: "form" } },
+            { key: "interaction.target.selector", value: { stringValue: "form#checkout-form" } },
+          ]),
+          body: { stringValue: `Click "Checkout" on ${PAGE_PATH}` },
+        })
+      );
+    });
+
+    expectNoBrowserErrors();
+  });
+
+  it("names a click from an enclosing form whose getAttribute method is clobbered", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`${PAGE_PATH}?testId=${testId}`);
+
+    const btn = await $("#wrapped-button");
+    await btn.click();
+
+    await retry(async () => {
+      await expectLogMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            // The custom attribute lives on the form, so deriving this name means
+            // reading an attribute off an element whose `getAttribute` is shadowed.
+            // Naively that throws and the interaction never arrives at all.
+            { key: "interaction.name", value: { stringValue: "Wrapped Form" } },
+            { key: "interaction.name_source", value: { stringValue: "custom_attribute" } },
+            { key: "interaction.target.id", value: { stringValue: "wrapped-button" } },
+            { key: "interaction.target.selector", value: { stringValue: "button#wrapped-button" } },
+          ]),
+          body: { stringValue: `Click "Wrapped Form" on ${PAGE_PATH}` },
+        })
+      );
+    });
+
+    expectNoBrowserErrors();
+  });
+
+  it("caps interaction.target.id and the selector at 128 characters", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`${PAGE_PATH}?testId=${testId}`);
+
+    // Selected by its action-name attribute rather than its id: both expectations
+    // below only depend on the id being longer than the cap, so the fixture's exact
+    // id length stays irrelevant to the assertions.
+    const btn = await $('[data-dash0-action-name="Long Id"]');
+    await btn.click();
+
+    await retry(async () => {
+      await expectLogMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "interaction.name", value: { stringValue: "Long Id" } },
+            { key: "interaction.target.id", value: { stringValue: "a".repeat(MAX_TARGET_VALUE_LENGTH) } },
+            {
+              key: "interaction.target.selector",
+              // "button#" plus as many id characters as fit inside the same cap.
+              value: { stringValue: `button#${"a".repeat(MAX_TARGET_VALUE_LENGTH - "button#".length)}` },
+            },
+          ]),
+        })
+      );
     });
 
     expectNoBrowserErrors();

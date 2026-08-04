@@ -253,11 +253,12 @@ describe("click instrumentation", () => {
     it("swallows errors from a throwing scenario and does not propagate", () => {
       dom.body.innerHTML = `<button id="btn">Click</button>`;
       const target = dom.getElementById("btn")!;
-      // Force an internal error by making the first DOM read of the derivation
-      // throw (name derivation no longer touches textContent -- see labelText
-      // in action-name.ts).
-      Object.defineProperty(target, "getAttribute", {
-        value() {
+      // Force an internal error by making the first DOM read of the derivation --
+      // the ancestor walk -- throw. Shadowing `getAttribute` no longer works as a
+      // lever: attributes are read through Element.prototype so a shadowed method
+      // on the element is bypassed by design (see utils/dom).
+      Object.defineProperty(target, "parentElement", {
+        get() {
           throw new Error("boom");
         },
       });

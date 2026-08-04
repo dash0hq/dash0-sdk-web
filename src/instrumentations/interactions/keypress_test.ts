@@ -142,9 +142,10 @@ describe("key press instrumentation", () => {
     dom.body.innerHTML = `<input id="q" aria-label="Search parts" />`;
     const input = dom.getElementById("q")!;
     // Force an internal error in the name derivation, the deepest DOM surface
-    // the handler touches (same lever as click_test.ts).
-    Object.defineProperty(input, "getAttribute", {
-      value() {
+    // the handler touches (same lever as click_test.ts -- a shadowed
+    // `getAttribute` is bypassed by design, see utils/dom).
+    Object.defineProperty(input, "parentElement", {
+      get() {
         throw new Error("boom");
       },
     });
