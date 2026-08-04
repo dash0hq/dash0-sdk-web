@@ -3,7 +3,7 @@ import { vars } from "../../vars";
 import { instrumentFetch } from "./fetch";
 import { sendSpan } from "../../transport";
 import type { Span } from "../../types/otlp";
-import { USER_INTERACTION_ID, USER_INTERACTION_NAME } from "../../semantic-conventions";
+import { URL_PATH, USER_INTERACTION_ID, USER_INTERACTION_NAME } from "../../semantic-conventions";
 import { clearActiveInteractionForTests, registerActiveInteraction } from "../interactions/active-interaction";
 
 vi.mock("../../transport", () => ({
@@ -36,12 +36,21 @@ describe("fetch test", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("location", { origin: "http://localhost:3000" });
+    // Tests that do not wait for their span still leave a resource-timing observer pending, and its
+    // end() timer is what eventually calls sendSpan. Holding the wait at 0 queues that timer for the
+    // next macrotask instead of ~300ms later, so the afterEach below can flush it before the next
+    // test starts. See the equivalent comment in xhr_test.ts.
+    vars.maxWaitForResourceTimingsMillis = 0;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Give any observer left pending by this test its macrotask turn, so the span it flushes is
+    // cleared by the reset below instead of landing in a later test's sendSpan expectations.
+    await new Promise((resolve) => setTimeout(resolve, 0));
     vi.resetAllMocks();
     vars.propagators = undefined;
     vars.ignoreUrls = [];
+    vars.maxWaitForResourceTimingsMillis = 10000;
   });
 
   it("should inject traceparent header for cross-origin requests", async () => {
@@ -380,26 +389,33 @@ describe("fetch test", () => {
   // isolation (see interaction-attribution_test.ts) would stay green even if the call moved to an
   // unreachable branch.
   describe("interaction attribution", () => {
-    beforeEach(() => {
-      sendSpanMock.mockClear();
-      // The success path completes the span through observeResourcePerformance, which resolves
-      // asynchronously. Holding the wait at 0 keeps these tests fast; see the equivalent comment
-      // in xhr_test.ts.
-      vars.maxWaitForResourceTimingsMillis = 0;
-    });
+    let requestCount = 0;
 
     afterEach(() => {
       clearActiveInteractionForTests();
-      vars.maxWaitForResourceTimingsMillis = 10000;
     });
 
     async function fetchAndAwaitSpan(): Promise<Span> {
+      // The span this test cares about is picked out of sendSpan's calls by URL rather than by call
+      // count. The success path completes spans asynchronously through observeResourcePerformance,
+      // so a span belonging to another test can be flushed inside the wait below and would
+      // otherwise either be mistaken for this request's span or keep a call-count expectation from
+      // ever matching. A per-request path keeps the selection unambiguous.
+      const path = `/api/interaction-${++requestCount}`;
       instrumentFetch();
       // eslint-disable-next-line no-restricted-globals
-      await fetch("http://localhost:3000/api/test");
+      await fetch(`http://localhost:3000${path}`);
 
-      await vi.waitFor(() => expect(sendSpanMock).toHaveBeenCalledTimes(1));
-      return lastSpan();
+      return vi.waitFor(
+        () => {
+          const span = sendSpanMock.mock.calls
+            .map((call) => call[0] as Span)
+            .find((s) => hasAttribute(s, URL_PATH, { stringValue: path }));
+          expect(span, `no span sent for ${path} yet`).toBeDefined();
+          return span!;
+        },
+        { timeout: 5000, interval: 20 }
+      );
     }
 
     it("stamps the active interaction onto the fetch span", async () => {
