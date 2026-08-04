@@ -60,6 +60,11 @@ init({
 });
 ```
 
+> [!IMPORTANT]
+> To correlate frontend requests with a backend on a **different origin**, you must configure **propagators** — see
+> [Propagators Configuration](./docs/sdk/configuration.md#propagators-configuration-recommended) (recommended over the
+> deprecated legacy `propagateTraceHeadersCorsURLs` option). Same-origin requests are propagated automatically.
+
 #### Session Sampling
 
 You can control the percentage of user sessions that produce telemetry by setting `sessionSamplingRate` (0–100, default 100):
