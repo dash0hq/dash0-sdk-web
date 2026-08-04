@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { vars } from "../../vars";
+import { DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS, vars } from "../../vars";
+import { MAX_TRANSPORT_CALLS_PER_TEN_SECONDS } from "../../transport/limits";
 import { sendLog } from "../../transport";
 import { doc } from "../../utils/globals";
 import { INTERACTION_TARGET_ID, INTERACTION_TARGET_SELECTOR, INTERACTION_TARGET_TAG } from "../../semantic-conventions";
@@ -9,7 +10,7 @@ vi.mock("../../transport", () => ({
   sendLog: vi.fn(),
 }));
 
-import { buildSelector, emitInteractionEvent } from "./emit";
+import { buildSelector, emitInteractionEvent, resetInteractionRateLimiterForTests } from "./emit";
 
 // Vitest runs these tests in jsdom, so the SSR-safe doc is always defined.
 const dom = doc!;
@@ -44,6 +45,9 @@ describe("interaction event emission", () => {
   beforeEach(() => {
     dom.body.innerHTML = "";
     vars.interactionInstrumentation = { enabled: true, actionNameAttribute: "data-dash0-action-name" };
+    // The limiter is module state built on first emit, so without this the
+    // budget spent by one test case is missing from the next one.
+    resetInteractionRateLimiterForTests();
     vi.clearAllMocks();
   });
 
@@ -145,6 +149,62 @@ describe("interaction event emission", () => {
       // reading `.id` naively both breaks the anchor rendering and, being truthy,
       // still ends the walk, so only the rendering is visibly wrong.
       expect(buildSelector(dom.querySelector(".cell")!)).toBe("form#checkout > div.row > span.cell");
+    });
+  });
+
+  describe("rate limiting", () => {
+    function sentCount(): number {
+      return (sendLog as ReturnType<typeof vi.fn>).mock.calls.length;
+    }
+
+    function emitTimes(count: number): void {
+      dom.body.innerHTML = `<button id="btn">Save</button>`;
+      const button = dom.getElementById("btn")!;
+      for (let i = 0; i < count; i++) {
+        emit(button);
+      }
+    }
+
+    it("emits up to the default per-ten-second budget and silently drops the rest", () => {
+      // The budget exists so a burst of interactions cannot evict spans, errors
+      // and web vitals from the shared transport budget.
+      emitTimes(DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS + 20);
+
+      expect(sentCount()).toBe(DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS);
+    });
+
+    it("honours a configured budget", () => {
+      vars.interactionInstrumentation.maxEventsPerTenSeconds = 4;
+
+      emitTimes(10);
+
+      expect(sentCount()).toBe(4);
+    });
+
+    it("clamps a budget above the transport ceiling, so interactions can never exceed it", () => {
+      vars.interactionInstrumentation.maxEventsPerTenSeconds = 100_000;
+
+      emitTimes(MAX_TRANSPORT_CALLS_PER_TEN_SECONDS + 5);
+
+      expect(sentCount()).toBe(MAX_TRANSPORT_CALLS_PER_TEN_SECONDS);
+    });
+
+    it("clamps a zero budget up to one event instead of falling back to the default", () => {
+      // createRateLimiter treats a falsy limit as "unset" and substitutes 32, so
+      // 0 has to be clamped before it gets there.
+      vars.interactionInstrumentation.maxEventsPerTenSeconds = 0;
+
+      emitTimes(5);
+
+      expect(sentCount()).toBe(1);
+    });
+
+    it("falls back to the default when the configured budget is not a usable number", () => {
+      vars.interactionInstrumentation.maxEventsPerTenSeconds = NaN;
+
+      emitTimes(DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS + 5);
+
+      expect(sentCount()).toBe(DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS);
     });
   });
 });

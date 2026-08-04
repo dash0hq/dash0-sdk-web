@@ -1,5 +1,8 @@
-import { elementFirstClass, elementId, elementTag, nowNanos } from "../../utils";
+import { createRateLimiter, elementFirstClass, elementId, elementTag, nowNanos } from "../../utils";
+import { debug } from "../../utils/debug";
 import { sendLog } from "../../transport";
+import { MAX_TRANSPORT_CALLS_PER_TEN_SECONDS } from "../../transport/limits";
+import { DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS, vars } from "../../vars";
 import {
   EVENT_NAME,
   EVENT_NAMES,
@@ -25,6 +28,51 @@ const SELECTOR_BOUNDARY_TAGS = new Set(["BODY", "HTML"]);
 
 /** The attribute key `addCommonAttributes` emits the scrubbed page path under. */
 const PAGE_URL_PATH = withPrefix(PAGE_URL_ATTR_PREFIX)(URL_PATH);
+
+/**
+ * How much of a ten-minute window interactions may use, relative to their
+ * ten-second allowance. Keeps their share of the transport budget identical in
+ * both windows: the default 32/10s maps to 512/10min, which is 1/8 of the
+ * transport's 4096 -- the same ratio as 32 out of 128.
+ */
+const TEN_MINUTE_BUDGET_MULTIPLIER = 16;
+
+let rateLimiter: (() => boolean) | undefined;
+
+/**
+ * Interaction events are the highest-frequency signal the SDK produces, so they
+ * get their own budget instead of drawing on the transport-wide one in
+ * transport/index.ts. Without it a burst of interactions evicts spans, errors,
+ * page views and web vitals -- the telemetry people actually alert on -- leaving
+ * only an invisible `debug()` trace behind.
+ *
+ * Created lazily, like the transport's own limiter: createRateLimiter registers
+ * two intervals, interaction capture is opt-in, and the configured budget is
+ * only known once init() has populated vars.
+ */
+function isRateLimited(): boolean {
+  if (!rateLimiter) {
+    // Clamped explicitly rather than leaning on createRateLimiter's `|| 32`
+    // fallback, which would silently turn a configured 0 into the default.
+    const configured = vars.interactionInstrumentation.maxEventsPerTenSeconds;
+    const perTenSeconds =
+      typeof configured === "number" && isFinite(configured)
+        ? Math.max(1, Math.min(MAX_TRANSPORT_CALLS_PER_TEN_SECONDS, Math.floor(configured)))
+        : DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS;
+
+    rateLimiter = createRateLimiter({
+      maxCallsPerTenSeconds: perTenSeconds,
+      maxCallsPerTenMinutes: perTenSeconds * TEN_MINUTE_BUDGET_MULTIPLIER,
+    });
+  }
+
+  return rateLimiter();
+}
+
+/** Test-only: forget the limiter so the next emit starts from a full budget. */
+export function resetInteractionRateLimiterForTests(): void {
+  rateLimiter = undefined;
+}
 
 export type InteractionType = "click" | "scroll" | "key_press" | "change";
 
@@ -60,8 +108,22 @@ export type InteractionEvent = {
  * cannot send unbounded strings on every interaction -- and is read through the
  * clobber-safe accessors in utils/dom, since a `<form>` target's `id`/`tagName`
  * can be shadowed by its own named controls.
+ *
+ * Interactions over their own rate-limit budget are dropped here, ahead of any
+ * attribute derivation, so a spent budget also takes the selector and text
+ * reads off the input-delay path. Note that the callers register their active
+ * interaction *before* calling this, deliberately: a dropped log may leave a
+ * span carrying a `user_interaction.id` with no matching log record, but the
+ * span still carries `user_interaction.name`, whereas rate-limiting the
+ * registration itself would silently break click-to-request correlation under
+ * exactly the load where it is most interesting.
  */
 export function emitInteractionEvent(evt: InteractionEvent): void {
+  if (isRateLimited()) {
+    debug("Dash0 interaction rate limit reached. Will not send interaction event.", evt.type);
+    return;
+  }
+
   const attributes: KeyValue[] = [];
   addCommonAttributes(attributes);
 

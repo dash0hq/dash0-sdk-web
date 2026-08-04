@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InitOptions, InstrumentationName } from "../types/options";
-import { PropagatorConfig, Vars } from "../vars";
+import { DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS, PropagatorConfig, Vars } from "../vars";
 import {
   DEPLOYMENT_ENVIRONMENT_NAME,
   DEPLOYMENT_ID,
@@ -204,6 +204,7 @@ describe("init", () => {
         captureScrolls: false,
         captureKeyPresses: false,
         captureChanges: false,
+        maxEventsPerTenSeconds: DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS,
       });
     });
 
@@ -219,6 +220,7 @@ describe("init", () => {
         captureScrolls: true,
         captureKeyPresses: true,
         captureChanges: false,
+        maxEventsPerTenSeconds: DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS,
       });
     });
 
@@ -234,6 +236,7 @@ describe("init", () => {
         captureScrolls: false,
         captureKeyPresses: false,
         captureChanges: false,
+        maxEventsPerTenSeconds: DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS,
       });
     });
   });

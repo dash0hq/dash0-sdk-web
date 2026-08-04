@@ -66,6 +66,13 @@ export type PageViewInstrumentationSettings = {
  */
 export const DEFAULT_ACTION_NAME_ATTRIBUTE = "data-dash0-action-name";
 
+/**
+ * Fallback for `InteractionInstrumentationSettings.maxEventsPerTenSeconds`, for
+ * the same reason as the constant above. A quarter of the transport's
+ * per-ten-second budget, so interaction volume leaves the other signals room.
+ */
+export const DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS = 32;
+
 export type InteractionInstrumentationSettings = {
   /**
    * Whether the SDK should automatically capture click interactions.
@@ -113,6 +120,23 @@ export type InteractionInstrumentationSettings = {
    * @default false
    */
   captureChanges?: boolean;
+
+  /**
+   * Maximum number of interaction events emitted per ten seconds.
+   *
+   * Interaction capture gets its own budget rather than competing for the
+   * transport-wide one, so a burst of interactions can never evict spans,
+   * errors, page views or web vitals. The ten-minute allowance is derived as 16x
+   * this value, which keeps interactions at the same share of the transport
+   * budget in both windows. Events over the budget are dropped at the source.
+   *
+   * Clamped to [1, 128] -- 128 being the transport's own per-ten-second
+   * ceiling, at which point interactions may consume the entire budget. The
+   * default leaves three quarters of it to the other signals.
+   *
+   * @default 32
+   */
+  maxEventsPerTenSeconds?: number;
 
   /**
    * Last-chance hook to replace or drop a derived interaction name. Runs as the
@@ -293,6 +317,7 @@ export const vars: Vars = {
     captureScrolls: false,
     captureKeyPresses: false,
     captureChanges: false,
+    maxEventsPerTenSeconds: DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS,
   },
   enableTransportCompression: false,
   isSessionSampled: true,

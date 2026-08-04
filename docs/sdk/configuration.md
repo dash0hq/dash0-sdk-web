@@ -487,6 +487,17 @@ _additionally_ opt-in via their own flags below.
   Emit a `change` interaction when a form control's value is committed. Reports only `interaction.value_length`
   for text fields and `interaction.selected_count` for selects -- never the value itself, and neither for
   password fields.
+- **Max Events Per Ten Seconds**<br>
+  key: `interactionInstrumentation.maxEventsPerTenSeconds`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `32`<br>
+  Maximum number of interaction events emitted per ten seconds. Interaction capture has its own budget rather
+  than competing for the transport-wide one, so a burst of interactions can never displace spans, errors, page
+  views or web vitals; events over the budget are dropped at the source. The ten-minute allowance is derived as
+  16x this value, keeping interactions at the same share of the transport budget in both windows. Values are
+  clamped to `[1, 128]`, `128` being the transport's own per-ten-second ceiling. Note that HTTP spans stay
+  correlated to the interaction that caused them even when the interaction's own event is dropped.
 - **Action Name Attribute**<br>
   key: `interactionInstrumentation.actionNameAttribute`<br>
   type: `string`<br>
