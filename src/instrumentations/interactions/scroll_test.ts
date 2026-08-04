@@ -12,6 +12,7 @@ vi.mock("../../transport", () => ({
 import {
   handleScroll,
   flushScrollBurstForTests,
+  SCROLL_SETTLE_MILLIS,
   startScrollInstrumentation,
   stopScrollInstrumentationForTests,
 } from "./scroll";
@@ -188,13 +189,44 @@ describe("scroll instrumentation", () => {
     expect(sendLog).toHaveBeenCalledOnce();
   });
 
+  /**
+   * The only test that drives the production settle timer instead of calling
+   * flushScrollBurstForTests(); without it, deleting the setTimeout in
+   * handleScroll would keep every other test in this file green.
+   *
+   * It really does wait: utils/timers captures win.setTimeout at module load,
+   * so vi.useFakeTimers() cannot intercept the timer this code schedules.
+   */
+  it("emits after the settle timer, with no test-only flush", async () => {
+    const pane = scrollable();
+
+    pane.scrollTop = 200;
+    handleScroll(scrollEventFor(pane));
+    expect(sendLog).not.toHaveBeenCalled();
+
+    await new Promise((resolve) => globalThis.setTimeout(resolve, SCROLL_SETTLE_MILLIS + 50));
+
+    expect(sendLog).toHaveBeenCalledOnce();
+    expect(attr(lastLog(), INTERACTION_DIRECTION)).toEqual({ stringValue: "down" });
+  });
+
   describe("startScrollInstrumentation (real capture-phase listener + isTrusted gate)", () => {
+    /**
+     * Filtered by event type rather than asserting a total call count: the
+     * unload hook also registers window-level pagehide/beforeunload listeners,
+     * and it registers only on the *first* start* in this file, so any count
+     * over all registrations would depend on test order.
+     */
+    function scrollRegistrations(addSpy: ReturnType<typeof vi.spyOn>) {
+      return addSpy.mock.calls.filter((call) => call[0] === "scroll");
+    }
+
     it("registers exactly one window-level capture-phase scroll listener", () => {
       const addSpy = vi.spyOn(globalWindow, "addEventListener");
 
       startScrollInstrumentation();
 
-      expect(addSpy).toHaveBeenCalledOnce();
+      expect(scrollRegistrations(addSpy)).toHaveLength(1);
       // `passive: true` is load-bearing: scroll fires per frame on the input
       // delay path, and a non-passive listener lets the SDK block scrolling.
       expect(addSpy).toHaveBeenCalledWith("scroll", expect.any(Function), { capture: true, passive: true });
@@ -208,7 +240,7 @@ describe("scroll instrumentation", () => {
       startScrollInstrumentation();
       startScrollInstrumentation();
 
-      expect(addSpy).toHaveBeenCalledOnce();
+      expect(scrollRegistrations(addSpy)).toHaveLength(1);
       addSpy.mockRestore();
     });
 
@@ -258,6 +290,65 @@ describe("scroll instrumentation", () => {
       listener({ isTrusted: true, target: pane } as unknown as Event);
 
       addSpy.mockRestore();
+      flushScrollBurstForTests();
+      expect(sendLog).toHaveBeenCalledOnce();
+    });
+  });
+
+  /**
+   * None of these call a flush helper -- the burst has to be finalized by the
+   * unload hook alone, otherwise the assertion would pass with the hook removed.
+   */
+  describe("flushes an in-flight burst on unload", () => {
+    function startBurst(): void {
+      const pane = scrollable();
+      startScrollInstrumentation();
+      pane.scrollTop = 200;
+      handleScroll(scrollEventFor(pane));
+      expect(sendLog).not.toHaveBeenCalled();
+    }
+
+    it("finalizes the burst on pagehide", () => {
+      startBurst();
+
+      globalWindow.dispatchEvent(new Event("pagehide"));
+
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(attr(lastLog(), INTERACTION_DIRECTION)).toEqual({ stringValue: "down" });
+    });
+
+    it("finalizes the burst on beforeunload", () => {
+      startBurst();
+
+      globalWindow.dispatchEvent(new Event("beforeunload"));
+
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(attr(lastLog(), INTERACTION_DIRECTION)).toEqual({ stringValue: "down" });
+    });
+
+    it("finalizes the burst once the document is no longer visible", () => {
+      startBurst();
+
+      // jsdom defines visibilityState as a configurable getter on
+      // Document.prototype, so it can be stubbed; the afterEach
+      // restoreAllMocks() puts it back.
+      vi.spyOn(dom, "visibilityState", "get").mockReturnValue("hidden");
+      dom.dispatchEvent(new Event("visibilitychange"));
+
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(attr(lastLog(), INTERACTION_DIRECTION)).toEqual({ stringValue: "down" });
+    });
+
+    it("keeps the burst in flight on a visibilitychange that leaves the document visible", () => {
+      startBurst();
+
+      // Proves the hook is driven by the visibility check rather than the bare
+      // event: a tab regaining focus must not chop the burst in two.
+      expect(dom.visibilityState).toBe("visible");
+      dom.dispatchEvent(new Event("visibilitychange"));
+
+      expect(sendLog).not.toHaveBeenCalled();
+      // Still finalizable, i.e. the burst survived rather than being dropped.
       flushScrollBurstForTests();
       expect(sendLog).toHaveBeenCalledOnce();
     });

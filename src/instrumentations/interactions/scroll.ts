@@ -1,5 +1,6 @@
 import { doc, generateUniqueId, win, WEB_EVENT_ID_BYTES } from "../../utils";
 import { debug } from "../../utils/debug";
+import { onLastChance } from "../../utils/on-last-chance";
 import { setTimeout, clearTimeout } from "../../utils/timers";
 import { addAttribute } from "../../utils/otel";
 import { INTERACTION_DIRECTION } from "../../semantic-conventions";
@@ -26,7 +27,7 @@ import { emitInteractionEvent } from "./emit";
  *   it would net a delta of 0 for single-event bursts (instant `scrollTo`,
  *   anchor jump, `scrollIntoView`, Home/End) and drop them as micro-scrolls.
  */
-const SCROLL_SETTLE_MILLIS = 300;
+export const SCROLL_SETTLE_MILLIS = 300;
 
 /**
  * Net movement (px) below which a burst is dropped entirely -- sub-pixel and
@@ -47,6 +48,7 @@ type ScrollBurst = {
 };
 
 let listenerAttached = false;
+let unloadHookRegistered = false;
 let burst: ScrollBurst | undefined;
 
 /**
@@ -82,6 +84,31 @@ export function startScrollInstrumentation() {
   win.addEventListener("scroll", onWindowScroll, { capture: true, passive: true } as AddEventListenerOptions);
   listenerAttached = true;
 
+  // A burst is otherwise only emitted once the settle timer fires, so scrolling
+  // and then immediately navigating away or closing the tab drops it -- and the
+  // last burst before a navigation is often the most interesting one, since it
+  // is what preceded the click that left the page.
+  //
+  // The log this emits still reaches the wire even though the transport's own
+  // onLastChance(flush) is registered first (the batchers in transport/index.ts
+  // are created at module load, i.e. before any start* call), but for two
+  // separate reasons -- neither of which may be "simplified" away:
+  //   - on visibilitychange->hidden and on pagehide the document is no longer
+  //     visible, so batcher.send() transmits immediately instead of queueing
+  //     behind a scheduled flush that would never get to run;
+  //   - on beforeunload the document is still visible so the log does get
+  //     queued, but beforeunload always precedes pagehide, whose batcher flush
+  //     then drains it.
+  //
+  // Tracked separately from listenerAttached because onLastChance offers no way
+  // to unregister: stopScrollInstrumentationForTests() resets listenerAttached,
+  // and re-registering on every start* would leak a duplicate unload listener
+  // per test case.
+  if (!unloadHookRegistered) {
+    unloadHookRegistered = true;
+    onLastChance(flushBurst);
+  }
+
   // Page scrolling is the common case, and it is also the one most likely to
   // already be scrolled by the time the SDK attaches (deferred script,
   // browser scroll restoration on back/forward). Recording the current
@@ -100,6 +127,9 @@ export function stopScrollInstrumentationForTests() {
   // The jsdom document root outlives a single test case, so a remembered page
   // position would otherwise become the next test's baseline.
   lastObservedPosition = new WeakMap();
+  // unloadHookRegistered is deliberately NOT reset: the onLastChance listeners
+  // cannot be removed, so clearing the flag would only make the next start*
+  // register a second set of them.
   if (!listenerAttached || !win) return;
   win.removeEventListener("scroll", onWindowScroll, { capture: true } as EventListenerOptions);
   listenerAttached = false;
@@ -197,8 +227,13 @@ function finalizeBurst(): void {
   }
 }
 
-/** Test-only: force-finalize the in-flight burst without waiting for the settle timer. */
-export function flushScrollBurstForTests(): void {
+/** Finalizes the in-flight burst now, without waiting for the settle timer. */
+function flushBurst(): void {
   if (burst?.settleTimeout != null) clearTimeout(burst.settleTimeout);
   finalizeBurst();
+}
+
+/** Test-only: force-finalize the in-flight burst without waiting for the settle timer. */
+export function flushScrollBurstForTests(): void {
+  flushBurst();
 }
