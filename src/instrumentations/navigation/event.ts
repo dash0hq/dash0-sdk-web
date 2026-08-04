@@ -1,4 +1,4 @@
-import { addAttribute, getTraceContextForPageLoad } from "../../utils/otel";
+import { addAttribute, addAttributes, AttributeValueType, getTraceContextForPageLoad } from "../../utils/otel";
 import {
   EVENT_NAME,
   EVENT_NAMES,
@@ -12,7 +12,7 @@ import { doc, NO_VALUE_FALLBACK } from "../../utils";
 import { addCommonAttributes } from "../../attributes";
 import { sendLog } from "../../transport";
 import { PageViewMeta, vars } from "../../vars";
-import { KeyValue, LogRecord } from "../../types/otlp";
+import { AnyValue, KeyValue, LogRecord } from "../../types/otlp";
 
 function getPageViewMeta(url?: URL): PageViewMeta {
   if (!url) return {};
@@ -20,32 +20,41 @@ function getPageViewMeta(url?: URL): PageViewMeta {
   return vars.pageViewInstrumentation.generateMetadata?.(url) ?? {};
 }
 
-export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?: boolean, replaced?: boolean) {
-  const meta = getPageViewMeta(url);
+type BuildPageViewLogOptions = {
+  timeUnixNano: string;
+  url?: URL;
+  title?: string;
+  metaAttributes?: Record<string, AttributeValueType | AnyValue>;
+  customAttributes?: Record<string, AttributeValueType | AnyValue>;
+  pageViewType: (typeof PAGE_VIEW_TYPE_VALUES)[keyof typeof PAGE_VIEW_TYPE_VALUES];
+  changeState?: (typeof PAGE_VIEW_CHANGE_STATE_VALUES)[keyof typeof PAGE_VIEW_CHANGE_STATE_VALUES];
+};
 
+function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
   const attributes: KeyValue[] = [];
   addAttribute(attributes, EVENT_NAME, EVENT_NAMES.PAGE_VIEW);
 
-  if (meta.attributes) {
-    Object.entries(meta.attributes).forEach(([key, value]) => addAttribute(attributes, key, value));
+  if (opts.metaAttributes) {
+    Object.entries(opts.metaAttributes).forEach(([key, value]) => addAttribute(attributes, key, value));
   }
-  addCommonAttributes(attributes, { url });
+  addCommonAttributes(attributes, { url: opts.url });
+
+  // Add custom attributes last to allow overrides
+  addAttributes(attributes, opts.customAttributes);
 
   const bodyAttributes: KeyValue[] = [];
-  addAttribute(bodyAttributes, "title", meta.title ?? doc?.title ?? NO_VALUE_FALLBACK);
+  addAttribute(bodyAttributes, "title", opts.title ?? doc?.title ?? NO_VALUE_FALLBACK);
   if (doc?.referrer) {
     addAttribute(bodyAttributes, "referrer", doc.referrer);
   }
 
-  addAttribute(bodyAttributes, PAGE_VIEW_TYPE, virtual ? PAGE_VIEW_TYPE_VALUES.VIRTUAL : PAGE_VIEW_TYPE_VALUES.INITIAL);
-  addAttribute(
-    bodyAttributes,
-    PAGE_VIEW_CHANGE_STATE,
-    replaced ? PAGE_VIEW_CHANGE_STATE_VALUES.REPLACE : PAGE_VIEW_CHANGE_STATE_VALUES.PUSH
-  );
+  addAttribute(bodyAttributes, PAGE_VIEW_TYPE, opts.pageViewType);
+  if (opts.changeState) {
+    addAttribute(bodyAttributes, PAGE_VIEW_CHANGE_STATE, opts.changeState);
+  }
 
   const log: LogRecord = {
-    timeUnixNano: timeUnixNano,
+    timeUnixNano: opts.timeUnixNano,
     attributes: attributes,
     severityNumber: LOG_SEVERITIES.INFO,
     severityText: "INFO",
@@ -63,4 +72,43 @@ export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?:
   }
 
   sendLog(log);
+}
+
+export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?: boolean, replaced?: boolean) {
+  const meta = getPageViewMeta(url);
+
+  buildAndSendPageViewLog({
+    timeUnixNano,
+    url,
+    title: meta.title,
+    metaAttributes: meta.attributes,
+    pageViewType: virtual ? PAGE_VIEW_TYPE_VALUES.VIRTUAL : PAGE_VIEW_TYPE_VALUES.INITIAL,
+    changeState: replaced ? PAGE_VIEW_CHANGE_STATE_VALUES.REPLACE : PAGE_VIEW_CHANGE_STATE_VALUES.PUSH,
+  });
+}
+
+export type ManualPageViewOptions = {
+  timeUnixNano: string;
+  url?: URL;
+  title: string;
+  attributes?: Record<string, AttributeValueType | AnyValue>;
+};
+
+/**
+ * Emits a manually-triggered page view log, e.g. from the public `startView` API.
+ * Deliberately does NOT read `vars.pageViewInstrumentation.generateMetadata` and does NOT
+ * include a `change_state` body key (a manual view is neither a pushState nor replaceState).
+ * The emitted `type` is PAGE_VIEW_TYPE_VALUES.VIRTUAL, matching automatic virtual page views —
+ * manual views are deliberately indistinguishable from virtual ones downstream.
+ * Caller-provided attributes are added after the SDK-generated ones so they can override them,
+ * matching the sendEvent semantics.
+ */
+export function transmitManualPageViewEvent(opts: ManualPageViewOptions) {
+  buildAndSendPageViewLog({
+    timeUnixNano: opts.timeUnixNano,
+    url: opts.url,
+    title: opts.title,
+    customAttributes: opts.attributes,
+    pageViewType: PAGE_VIEW_TYPE_VALUES.VIRTUAL,
+  });
 }

@@ -8,6 +8,7 @@ import { terminateSession } from "../api/session";
 import { addSignalAttribute, removeSignalAttribute } from "../api/attributes";
 import { sendEvent } from "../api/events";
 import { setActiveLogLevel } from "../api/log-level";
+import { startView } from "../api/start-view";
 
 /**
  * All the APIs exposed through the script tag via `dash0('{{api name}}')`
@@ -22,6 +23,7 @@ const scriptApis = {
   removeSignalAttribute,
   setActiveLogLevel,
   sendEvent,
+  startView,
 } as const;
 
 type GlobalObject = {
