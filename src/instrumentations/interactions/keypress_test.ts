@@ -2,14 +2,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { vars } from "../../vars";
 import { sendLog } from "../../transport";
 import { doc, win } from "../../utils/globals";
-import { INTERACTION_KEY, INTERACTION_TYPE } from "../../semantic-conventions";
+import {
+  INTERACTION_ID,
+  INTERACTION_KEY,
+  INTERACTION_REPEAT_COUNT,
+  INTERACTION_TYPE,
+} from "../../semantic-conventions";
 import type { LogRecord } from "../../types/otlp";
 
 vi.mock("../../transport", () => ({
   sendLog: vi.fn(),
 }));
 
-import { handleKeydown, startKeyPressInstrumentation, stopKeyPressInstrumentationForTests } from "./keypress";
+import {
+  flushKeyPressBurstForTests,
+  handleKeydown,
+  KEYPRESS_SETTLE_MILLIS,
+  startKeyPressInstrumentation,
+  stopKeyPressInstrumentationForTests,
+} from "./keypress";
 import { clearActiveInteractionForTests, getActiveInteraction } from "./active-interaction";
 
 // Vitest runs these tests in jsdom, so the SSR-safe doc/win are always defined.
@@ -63,6 +74,7 @@ describe("key press instrumentation", () => {
     dom.body.innerHTML = `<button id="b">Play</button>`;
 
     handleKeydown(keydownOn(dom.getElementById("b")!, " "));
+    flushKeyPressBurstForTests();
 
     const log = lastLog();
     expect(attr(log, INTERACTION_KEY)).toEqual({ stringValue: "Space" });
@@ -87,8 +99,12 @@ describe("key press instrumentation", () => {
     handleKeydown(keydownOn(list, "ArrowDown", false));
     handleKeydown(keydownOn(list, "ArrowDown", true));
     handleKeydown(keydownOn(list, "ArrowDown", true));
+    flushKeyPressBurstForTests();
 
+    // One event, and no repeat count: auto-repeat is filtered before it can be
+    // mistaken for the user pressing the key again.
     expect(sendLog).toHaveBeenCalledOnce();
+    expect(attr(lastLog(), INTERACTION_REPEAT_COUNT)).toBeUndefined();
   });
 
   it("registers Enter as the active interaction for span attribution", () => {
@@ -119,6 +135,8 @@ describe("key press instrumentation", () => {
       handleKeydown(keydownOn(list, key));
       expect(getActiveInteraction()).toBeUndefined();
     }
+    // Each key finalizes the previous key's burst, leaving only the last pending.
+    flushKeyPressBurstForTests();
 
     expect(sendLog).toHaveBeenCalledTimes(6);
   });
@@ -158,13 +176,135 @@ describe("key press instrumentation", () => {
     expect(getActiveInteraction()).toBeUndefined();
   });
 
+  describe("coalescing", () => {
+    it("collapses repeated presses of the same key into one event carrying the repeat count", () => {
+      // Prose typing produces a press per word boundary and per correction, which
+      // is what would otherwise dominate the interaction budget.
+      dom.body.innerHTML = `<textarea id="notes" placeholder="Notes"></textarea>`;
+      const notes = dom.getElementById("notes")!;
+
+      for (let i = 0; i < 7; i++) {
+        handleKeydown(keydownOn(notes, "Backspace"));
+      }
+      expect(sendLog).not.toHaveBeenCalled(); // settle timer still pending
+      flushKeyPressBurstForTests();
+
+      expect(sendLog).toHaveBeenCalledOnce();
+      const log = lastLog();
+      expect(log.body).toEqual({ stringValue: 'Press Backspace 7 times in "Notes" on /' });
+      expect(attr(log, INTERACTION_REPEAT_COUNT)).toEqual({ doubleValue: 7 });
+    });
+
+    it("omits the repeat count for a single press", () => {
+      dom.body.innerHTML = `<div id="list" tabindex="0" aria-label="Results"></div>`;
+
+      handleKeydown(keydownOn(dom.getElementById("list")!, "ArrowDown"));
+      flushKeyPressBurstForTests();
+
+      const log = lastLog();
+      expect(log.body).toEqual({ stringValue: 'Press ArrowDown in "Results" on /' });
+      expect(attr(log, INTERACTION_REPEAT_COUNT)).toBeUndefined();
+    });
+
+    it("emits Enter immediately, and flushes a pending burst ahead of it to keep press order", () => {
+      dom.body.innerHTML = `<input id="q" aria-label="Search parts" />`;
+      const input = dom.getElementById("q")!;
+
+      handleKeydown(keydownOn(input, "Backspace"));
+      handleKeydown(keydownOn(input, "Enter"));
+
+      // Enter must not wait on a settle timer: it is the key most likely to have
+      // caused the request that follows.
+      const [first, second] = (sendLog as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0] as LogRecord);
+      expect(sendLog).toHaveBeenCalledTimes(2);
+      expect(attr(first!, INTERACTION_KEY)).toEqual({ stringValue: "Backspace" });
+      expect(attr(second!, INTERACTION_KEY)).toEqual({ stringValue: "Enter" });
+    });
+
+    it("finalizes the pending burst when a different key is pressed", () => {
+      dom.body.innerHTML = `<textarea id="notes" placeholder="Notes"></textarea>`;
+      const notes = dom.getElementById("notes")!;
+
+      handleKeydown(keydownOn(notes, "Backspace"));
+      handleKeydown(keydownOn(notes, "Backspace"));
+      handleKeydown(keydownOn(notes, "Delete"));
+
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(attr(lastLog(), INTERACTION_REPEAT_COUNT)).toEqual({ doubleValue: 2 });
+
+      flushKeyPressBurstForTests();
+      expect(attr(lastLog(), INTERACTION_KEY)).toEqual({ stringValue: "Delete" });
+    });
+
+    it("finalizes the pending burst when the same key is pressed on a different element", () => {
+      dom.body.innerHTML = `
+        <input id="first" aria-label="First" />
+        <input id="second" aria-label="Second" />`;
+
+      handleKeydown(keydownOn(dom.getElementById("first")!, "Tab"));
+      handleKeydown(keydownOn(dom.getElementById("second")!, "Tab"));
+
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(lastLog().body).toEqual({ stringValue: 'Press Tab in "First" on /' });
+    });
+
+    it("keeps one correlation id across a coalesced activation burst, so attributed spans join to the emitted event", () => {
+      dom.body.innerHTML = `<button id="b" aria-label="Play"></button>`;
+      const button = dom.getElementById("b")!;
+
+      handleKeydown(keydownOn(button, " "));
+      const firstId = getActiveInteraction()!.id;
+
+      handleKeydown(keydownOn(button, " "));
+      const secondId = getActiveInteraction()!.id;
+
+      // Minting a fresh id per press would leave the spans attributed to the
+      // first one pointing at a log record that never gets emitted.
+      expect(secondId).toBe(firstId);
+
+      flushKeyPressBurstForTests();
+      expect(attr(lastLog(), INTERACTION_ID)).toEqual({ stringValue: firstId });
+    });
+
+    /**
+     * The only test here that drives the production settle timer instead of
+     * calling flushKeyPressBurstForTests(); without it, deleting the setTimeout
+     * in handleKeydown would keep every other test in this file green.
+     *
+     * It really does wait: utils/timers captures win.setTimeout at module load,
+     * so vi.useFakeTimers() cannot intercept the timer this code schedules.
+     */
+    it("emits after the settle timer, with no test-only flush", async () => {
+      dom.body.innerHTML = `<div id="list" tabindex="0" aria-label="Results"></div>`;
+
+      handleKeydown(keydownOn(dom.getElementById("list")!, "ArrowDown"));
+      expect(sendLog).not.toHaveBeenCalled();
+
+      await new Promise((resolve) => globalThis.setTimeout(resolve, KEYPRESS_SETTLE_MILLIS + 50));
+
+      expect(sendLog).toHaveBeenCalledOnce();
+      expect(attr(lastLog(), INTERACTION_KEY)).toEqual({ stringValue: "ArrowDown" });
+    });
+  });
+
   describe("startKeyPressInstrumentation (real capture-phase listener + isTrusted gate)", () => {
+    /**
+     * Filtered by event type rather than asserting a total call count: the
+     * unload hook also registers window-level pagehide/beforeunload listeners,
+     * and it registers only on the *first* start* in this file, so any count
+     * over all registrations would depend on test order. Same shape as
+     * scroll_test.ts.
+     */
+    function keydownRegistrations(addSpy: ReturnType<typeof vi.spyOn>) {
+      return addSpy.mock.calls.filter((call) => call[0] === "keydown");
+    }
+
     it("registers exactly one window-level capture-phase keydown listener", () => {
       const addSpy = vi.spyOn(globalWindow, "addEventListener");
 
       startKeyPressInstrumentation();
 
-      expect(addSpy).toHaveBeenCalledOnce();
+      expect(keydownRegistrations(addSpy)).toHaveLength(1);
       expect(addSpy).toHaveBeenCalledWith("keydown", expect.any(Function), { capture: true });
 
       addSpy.mockRestore();
@@ -176,7 +316,7 @@ describe("key press instrumentation", () => {
       startKeyPressInstrumentation();
       startKeyPressInstrumentation();
 
-      expect(addSpy).toHaveBeenCalledOnce();
+      expect(keydownRegistrations(addSpy)).toHaveLength(1);
       addSpy.mockRestore();
     });
 

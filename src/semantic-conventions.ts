@@ -56,6 +56,11 @@ export const INTERACTION_TARGET_TAG = "interaction.target.tag";
 export const INTERACTION_TARGET_ID = "interaction.target.id";
 /** key_press events: the captured key (allow-listed control keys only). */
 export const INTERACTION_KEY = "interaction.key";
+/**
+ * key_press events: how many presses of that key the coalesced burst covers.
+ * Only present when greater than 1.
+ */
+export const INTERACTION_REPEAT_COUNT = "interaction.repeat_count";
 /** scroll events: net direction of the scroll burst (up/down/left/right). */
 export const INTERACTION_DIRECTION = "interaction.direction";
 /** change events: length of the new value; the value itself is never read. */

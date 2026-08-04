@@ -30,9 +30,17 @@ const ACTIVE_INTERACTION_WINDOW_MILLIS = 2000;
 
 let active: ActiveInteraction | undefined;
 
-export function registerActiveInteraction(name: string): ActiveInteraction {
+/**
+ * Registers the interaction HTTP requests are attributed to from now on.
+ *
+ * `id` lets a producer that coalesces a burst of DOM events into one telemetry
+ * event (keypress.ts, change.ts) keep the attribution window alive on the
+ * burst's own id. Without it every DOM event in the burst would mint an id
+ * whose log record never gets emitted, leaving spans pointing at nothing.
+ */
+export function registerActiveInteraction(name: string, id?: string): ActiveInteraction {
   active = {
-    id: generateUniqueId(WEB_EVENT_ID_BYTES),
+    id: id ?? generateUniqueId(WEB_EVENT_ID_BYTES),
     name,
     epochMillis: Date.now(),
   };

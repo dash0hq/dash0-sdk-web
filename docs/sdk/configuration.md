@@ -478,7 +478,9 @@ _additionally_ opt-in via their own flags below.
   optional: `true`<br>
   default: `false`<br>
   Emit a `key_press` interaction for allow-listed navigation and activation keys only (e.g. `Enter`, `Tab`,
-  `Escape`, arrow keys). Printable characters are never recorded -- see the privacy note below.
+  `Escape`, arrow keys). Printable characters are never recorded -- see the privacy note below. Repeated presses
+  of the same key on the same element are coalesced into one event carrying `interaction.repeat_count`; `Enter` is
+  always emitted immediately.
 - **Capture Changes**<br>
   key: `interactionInstrumentation.captureChanges`<br>
   type: `boolean`<br>
@@ -486,7 +488,8 @@ _additionally_ opt-in via their own flags below.
   default: `false`<br>
   Emit a `change` interaction when a form control's value is committed. Reports only `interaction.value_length`
   for text fields and `interaction.selected_count` for selects -- never the value itself, and neither for
-  password fields.
+  password fields. Successive changes to the same control are coalesced into one event describing its latest
+  state.
 - **Max Events Per Ten Seconds**<br>
   key: `interactionInstrumentation.maxEventsPerTenSeconds`<br>
   type: `number`<br>
@@ -556,14 +559,21 @@ cannot know about, such as a `title` or `alt` attribute your application interpo
 **Emitted attributes.** Every `browser.interaction` event carries `interaction.id`, `interaction.type` (`click`,
 `scroll`, `key_press`, or `change`), `interaction.name`, `interaction.name_source`, `interaction.target.tag`,
 `interaction.target.selector`, and `interaction.target.id` when the element has one. Type-specific attributes:
-`interaction.direction` (scroll), `interaction.key` (key press), and `interaction.value_length` /
-`interaction.selected_count` (change). The event body is a human-readable string such as
+`interaction.direction` (scroll), `interaction.key` plus `interaction.repeat_count` (key press), and
+`interaction.value_length` / `interaction.selected_count` (change). The event body is a human-readable string such as
 `Click "Save Settings" on /settings`; treat the attributes, not the body, as the stable contract. The path in the
 body is the same scrubbed value as the event's `page.url.path` attribute, so a configured `urlAttributeScrubber`
 applies to it too -- if the scrubber drops `url.path`, the body omits the ` on <path>` suffix entirely rather than
 falling back to the raw location.
 
-**One event per gesture.** Clicking a `<label>` makes the browser fire a second click at the label's control, so a
+**One event per gesture.** Scroll, key-press and change capture coalesce bursts of DOM events into a single
+interaction event, finalized 300 ms after the last event in the burst -- one event per scroll burst, per run of
+presses of the same key, and per run of changes to the same control. A burst is also finalized immediately when
+the user moves on (a different key, a different control) and when the page is being unloaded, so the last
+interaction before a navigation is not lost. Coalesced events are timestamped when the burst _started_, and every
+request attributed during a burst shares the one correlation id the burst emits.
+
+Clicking a `<label>` makes the browser fire a second click at the label's control, so a
 single user action reaches the SDK twice. Only the click the user actually made is reported: the forwarded
 duplicate is dropped, for both `<label>Text <input></label>` and `<label for="…">`. This means
 `interaction.target.tag` / `.selector` / `.id` describe the label (or the element inside it that was clicked)

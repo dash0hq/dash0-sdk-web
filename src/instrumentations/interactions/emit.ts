@@ -95,6 +95,14 @@ export type InteractionEvent = {
   element: Element;
   /** Type-specific extra attributes (e.g. key, direction, value_length). */
   extraAttributes?: KeyValue[];
+  /**
+   * Event time in epoch nanoseconds; defaults to now. Producers that coalesce a
+   * burst of DOM events pass the time the burst *started*, so an event emitted
+   * once the settle timer fires is still ordered by when the user acted -- which
+   * is what keeps a coalesced key press and a coalesced change orderable against
+   * each other, since they settle on independent timers.
+   */
+  timeUnixNano?: string;
 };
 
 /**
@@ -151,7 +159,7 @@ export function emitInteractionEvent(evt: InteractionEvent): void {
   }
 
   const log: LogRecord = {
-    timeUnixNano: nowNanos(),
+    timeUnixNano: evt.timeUnixNano ?? nowNanos(),
     attributes,
     severityNumber: LOG_SEVERITIES.INFO,
     severityText: "INFO",
