@@ -30,12 +30,12 @@ nav:
   order: 72.7
   id: web-sdk
   parentPath: Tooling
-  title: Web SDK
+  title: Dash0 Web SDK
 
 files:
   - source: README.md
     target: dash0/miscellaneous/tooling/web-sdk/overview.md
-    title: About the Web SDK
+    title: About the Dash0 Web SDK
     description: Introduction to the Dash0 Web SDK — what it instruments, its features, and how to get started capturing frontend telemetry.
     transformations:
       - description: rewrite the relative INSTALL.md link to the Installation sub-page
