@@ -1,6 +1,6 @@
 # Dash0 Web SDK
 
-This SDK enables users of Dash0's web monitoring features to instrument a website or single-page-application to capture
+This SDK enables users of Dash0's web monitoring features to instrument a website or single-page application to capture
 and transmit telemetry to Dash0.
 
 Features include:
