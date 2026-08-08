@@ -41,10 +41,45 @@ jobs:
       - name: build
         run: pnpm run build
 
+      # E2E tests exercise runtime behavior, so a change that only touches docs (README.md, INSTALL.md,
+      # docs/) can't affect their outcome. Detect that case via a plain git diff (no extra actions/deps needed)
+      # and skip the E2E matrix by handing it an empty capability list; check-e2e-tests still passes since a
+      # skipped test-e2e run isn't a 'failure' or 'cancelled' result.
+      - name: Determine if only documentation changed
+        id: docs-only
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+
+          # base is all-zeros on a new branch's first push (no prior commit to diff against); run the full
+          # pipeline in that case rather than guessing.
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            echo "only_docs=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_files=$(git diff --name-only "$base" "${{ github.sha }}")
+          echo "Changed files:"
+          echo "$changed_files"
+
+          if [ -n "$changed_files" ] && ! echo "$changed_files" | grep -qvE '^(docs/|README\.md|INSTALL\.md)'; then
+            echo "only_docs=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "only_docs=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Get capabilities for E2E tests
         id: get-capabilities
         run: |
-          echo "capabilities=$(pnpm exec tsx ./test/e2e/scripts/get-wdio-capabilities.ts)" >> $GITHUB_OUTPUT
+          if [ "${{ steps.docs-only.outputs.only_docs }}" = "true" ]; then
+            echo "capabilities=[]" >> $GITHUB_OUTPUT
+          else
+            echo "capabilities=$(pnpm exec tsx ./test/e2e/scripts/get-wdio-capabilities.ts)" >> $GITHUB_OUTPUT
+          fi
 
   test-e2e:
     needs: build
