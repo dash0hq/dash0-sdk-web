@@ -98,6 +98,11 @@ jobs:
 
   test-e2e:
     needs: build
+    # An empty capabilities array is a valid, deliberate signal (docs-only change), but handing `strategy.matrix`
+    # an empty array directly causes GitHub to fail the run at strategy-evaluation time ("Matrix vector
+    # 'capability' does not contain any values") instead of cleanly skipping the job. Gating with `if:` here
+    # means the job — and its matrix — is never evaluated at all when there's nothing to run.
+    if: ${{ needs.build.outputs.capabilities != '[]' && needs.build.outputs.capabilities != '' }}
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
@@ -135,11 +140,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
+      - build
       - test-e2e
-    # test-e2e is skipped (not 'success') when the E2E matrix is empty for a docs-only change; without
-    # `always()` here, GitHub's default needs-cascade would skip this job too, so its own pass/fail logic
-    # below (which does account for 'skipped') would never run.
-    if: ${{ always() }}
+    # test-e2e is skipped (not 'success') when the E2E matrix is empty for a docs-only change; without an
+    # `if:` here, GitHub's default needs-cascade would skip this job too, so its own pass/fail logic below
+    # (which does account for 'skipped') would never run. `!cancelled()` (rather than `always()`) still lets a
+    # cancelled run skip this gate instead of reporting a false pass. `build` is included in `needs` so a
+    # failed `build` shows up as 'failure' in `needs.*.result` below instead of this job passing on the
+    # strength of test-e2e being merely skipped-due-to-upstream-failure.
+    if: ${{ !cancelled() }}
     steps:
       - name: Successful tests
         if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
