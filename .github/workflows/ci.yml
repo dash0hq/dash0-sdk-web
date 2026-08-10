@@ -93,7 +93,7 @@ jobs:
           if [ "${{ steps.docs-only.outputs.only_docs }}" = "true" ]; then
             echo "capabilities=[]" >> $GITHUB_OUTPUT
           else
-            echo "capabilities=$(pnpm exec tsx ./test/e2e/scripts/get-wdio-capabilities.ts)" >> $GITHUB_OUTPUT
+            echo "capabilities=$(bash -c 'echo simulated-script-failure >&2; exit 1')" >> $GITHUB_OUTPUT
           fi
 
   test-e2e:
