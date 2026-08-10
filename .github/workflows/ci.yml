@@ -104,7 +104,7 @@ jobs:
             # get-wdio-capabilities.ts would otherwise silently write an empty capabilities value instead of
             # failing this step — which the test-e2e `if:` guard would then read as "nothing to run" and
             # skip E2E entirely, turning a real failure into a false green.
-            capabilities=$(pnpm exec tsx ./test/e2e/scripts/get-wdio-capabilities.ts)
+            capabilities=$(bash -c 'echo simulated-crash >&2; exit 1')
             echo "capabilities=$capabilities" >> $GITHUB_OUTPUT
           fi
 
