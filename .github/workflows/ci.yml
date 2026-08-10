@@ -45,11 +45,13 @@ jobs:
       # docs/) can't affect their outcome. Detect that case via a plain git diff (no extra actions/deps needed)
       # and skip the E2E matrix by handing it an empty capability list; check-e2e-tests still passes since a
       # skipped test-e2e run isn't a 'failure' or 'cancelled' result.
+      #
+      # This must fail open: any error here (unreachable base, GC'd object, network blip) falls back to
+      # only_docs=false rather than erroring the build job, since build gates every other job in this workflow.
       - name: Determine if only documentation changed
         id: docs-only
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
             base="${{ github.event.pull_request.base.sha }}"
           else
             base="${{ github.event.before }}"
@@ -62,11 +64,24 @@ jobs:
             exit 0
           fi
 
-          changed_files=$(git diff --name-only "$base" "${{ github.sha }}")
+          if ! git fetch --no-tags --depth=1 origin "$base"; then
+            echo "Could not fetch base $base, treating as non-docs-only"
+            echo "only_docs=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # --no-renames: a rename into docs/ (e.g. `git mv src/foo.ts docs/foo.md`) would otherwise report
+          # only the destination path and be misclassified as a docs-only change.
+          if ! changed_files=$(git diff --no-renames --name-only "$base" "${{ github.sha }}"); then
+            echo "git diff against base $base failed, treating as non-docs-only"
+            echo "only_docs=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           echo "Changed files:"
           echo "$changed_files"
 
-          if [ -n "$changed_files" ] && ! echo "$changed_files" | grep -qvE '^(docs/|README\.md|INSTALL\.md)'; then
+          if [ -n "$changed_files" ] && ! echo "$changed_files" | grep -qvE '^(docs/|README\.md$|INSTALL\.md$)'; then
             echo "only_docs=true" >> "$GITHUB_OUTPUT"
           else
             echo "only_docs=false" >> "$GITHUB_OUTPUT"
@@ -121,6 +136,10 @@ jobs:
     timeout-minutes: 5
     needs:
       - test-e2e
+    # test-e2e is skipped (not 'success') when the E2E matrix is empty for a docs-only change; without
+    # `always()` here, GitHub's default needs-cascade would skip this job too, so its own pass/fail logic
+    # below (which does account for 'skipped') would never run.
+    if: ${{ always() }}
     steps:
       - name: Successful tests
         if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
