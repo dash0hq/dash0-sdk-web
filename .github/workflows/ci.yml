@@ -72,6 +72,12 @@ jobs:
 
           # --no-renames: a rename into docs/ (e.g. `git mv src/foo.ts docs/foo.md`) would otherwise report
           # only the destination path and be misclassified as a docs-only change.
+          #
+          # Two-dot diff (not three-dot/`base...head`) is required, not a style choice: three-dot needs a
+          # merge base, which doesn't exist on this shallow (--depth=1) fetch of just the base commit — it
+          # fails with "fatal: no merge base" on every PR. That failure would be caught by the fail-open
+          # guard below, so switching to three-dot wouldn't be unsafe, just silently useless: every PR would
+          # fall back to only_docs=false and the E2E skip would never fire again.
           if ! changed_files=$(git diff --no-renames --name-only "$base" "${{ github.sha }}"); then
             echo "git diff against base $base failed, treating as non-docs-only"
             echo "only_docs=false" >> "$GITHUB_OUTPUT"
@@ -93,7 +99,13 @@ jobs:
           if [ "${{ steps.docs-only.outputs.only_docs }}" = "true" ]; then
             echo "capabilities=[]" >> $GITHUB_OUTPUT
           else
-            echo "capabilities=$(pnpm exec tsx ./test/e2e/scripts/get-wdio-capabilities.ts)" >> $GITHUB_OUTPUT
+            # Assigning to a variable first (rather than embedding the substitution in `echo`'s argument)
+            # matters here: `echo "x=$(cmd)"` always succeeds regardless of cmd's exit status, so a crash in
+            # get-wdio-capabilities.ts would otherwise silently write an empty capabilities value instead of
+            # failing this step — which the test-e2e `if:` guard would then read as "nothing to run" and
+            # skip E2E entirely, turning a real failure into a false green.
+            capabilities=$(pnpm exec tsx ./test/e2e/scripts/get-wdio-capabilities.ts)
+            echo "capabilities=$capabilities" >> $GITHUB_OUTPUT
           fi
 
   test-e2e:
