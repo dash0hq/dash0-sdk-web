@@ -16,3 +16,6 @@ export function generateUniqueId(byteCount: number): string {
   }
   return String.fromCharCode.apply(null, SHARED_CHAR_CODES_ARRAY.slice(0, byteCount * 2));
 }
+
+const    ciProbeBadlyFormatted     =    {a:1,b:2}   ;
+export default ciProbeBadlyFormatted
