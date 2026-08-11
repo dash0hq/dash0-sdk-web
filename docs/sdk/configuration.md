@@ -127,7 +127,7 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
-  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr'`
+  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/interactions'`
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
 - **Ignore URLs**<br>
@@ -448,3 +448,159 @@ for `fetch`, while an `XMLHttpRequest` timeout is an error — this asymmetry is
   Additionally generate virtual page views when these url parts change.
   - "HASH" changes to the urls hash / fragment
   - "SEARCH" changes to the urls search / query parameters
+
+#### Interaction instrumentation
+
+Opt-in automatic capture of user interactions. Disabled by default --
+set `interactionInstrumentation.enabled: true` to turn it on. When enabled, the SDK attaches capture-phase listeners
+on `window` (no per-element wiring, no listener leakage) and emits one `browser.interaction` web event per
+interaction, carrying a derived, privacy-conscious interaction name and a compact target-element selector.
+
+Clicks are captured whenever the instrumentation is enabled. Scroll, key-press and form-change capture are each
+_additionally_ opt-in via their own flags below.
+
+- **Enable Interaction Instrumentation**<br>
+  key: `interactionInstrumentation.enabled`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Whether the SDK should automatically capture user interactions. Enables click capture; the three capture flags
+  below have no effect unless this is `true`. Also requires `'@dash0/interactions'` to be present in
+  `enabledInstrumentations` when that option is explicitly set (it is included by default when
+  `enabledInstrumentations` is left `undefined`).
+- **Capture Scrolls**<br>
+  key: `interactionInstrumentation.captureScrolls`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Emit one `scroll` interaction per scroll burst, with the burst's net direction in `interaction.direction`.
+  Consecutive scroll events are coalesced; bursts smaller than a few pixels are discarded.
+- **Capture Key Presses**<br>
+  key: `interactionInstrumentation.captureKeyPresses`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Emit a `key_press` interaction for allow-listed navigation and activation keys only (e.g. `Enter`, `Tab`,
+  `Escape`, arrow keys). Printable characters are never recorded -- see the privacy note below. Repeated presses
+  of the same key on the same element are coalesced into one event carrying `interaction.repeat_count`; `Enter` is
+  always emitted immediately.
+- **Capture Changes**<br>
+  key: `interactionInstrumentation.captureChanges`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Emit a `change` interaction when a form control's value is committed. Reports only `interaction.value_length`
+  for text fields and `interaction.selected_count` for selects -- never the value itself, and neither for
+  password fields. Successive changes to the same control are coalesced into one event describing its latest
+  state.
+- **Max Events Per Ten Seconds**<br>
+  key: `interactionInstrumentation.maxEventsPerTenSeconds`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `32`<br>
+  Maximum number of interaction events emitted per ten seconds. Interaction capture has its own budget rather
+  than competing for the transport-wide one, so a burst of interactions can never displace spans, errors, page
+  views or web vitals; events over the budget are dropped at the source. The ten-minute allowance is derived as
+  16x this value, keeping interactions at the same share of the transport budget in both windows. Values are
+  clamped to `[1, 128]`, `128` being the transport's own per-ten-second ceiling. Note that HTTP spans stay
+  correlated to the interaction that caused them even when the interaction's own event is dropped.
+- **Action Name Attribute**<br>
+  key: `interactionInstrumentation.actionNameAttribute`<br>
+  type: `string`<br>
+  optional: `true`<br>
+  default: `"data-dash0-action-name"`<br>
+  The element attribute the SDK checks first (on the clicked element or any of its ancestors) when deriving a
+  human-readable interaction name. Set this attribute on interactive elements for full control over the captured
+  name, e.g. `<button data-dash0-action-name="Save Settings">`.
+- **Action Name Scrubber**<br>
+  key: `interactionInstrumentation.actionNameScrubber`<br>
+  type: `(name: string, source: ActionNameSource, target: Element) => string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  Last-chance hook to replace or drop a derived interaction name. It runs as the final step of name derivation,
+  so it covers every place the name is emitted: the `interaction.name` attribute, the human-readable event body,
+  and `user_interaction.name` on correlated HTTP spans. It receives the name the SDK would otherwise emit
+  (already whitespace-normalized and truncated), which phase derived it, and the interaction target; return a
+  replacement, or an empty string to drop the name entirely. The return value is normalized and truncated again.
+  It is only invoked when a name was actually derived, so it cannot invent a name for an interaction the SDK
+  could not name. It **fails closed**: if the scrubber throws or returns a non-string, the name is dropped rather
+  than emitted unscrubbed.
+
+**Name derivation priority** (first match wins, walking from the clicked element up to 10 ancestors, stopping at
+the first `FORM`, `BODY`, `HTML`, or `HEAD` boundary):
+
+1. `custom_attribute` -- the configured `actionNameAttribute`, on the target or a qualifying ancestor.
+2. `standard_attribute` -- attribute-derived names checked on the target then ancestors: for `button`/`submit`/`reset`
+   inputs, `.value`; then `aria-label`, `aria-labelledby` (resolved via the privacy-aware label text of the
+   referenced element(s) -- a reference to, or wrapping, a form control contributes nothing), `alt`, `title`, or
+   `placeholder`.
+3. `text_content` -- the label text of clickable-tag elements (`BUTTON`, `LABEL`, `A`, or `role="button"`) found
+   while walking up from the target. This is _not_ `textContent`: the collector never descends into a nested
+   `input`, `textarea`, `select`, `option`, `output`, `script`, `style`, `noscript`, or `contenteditable` element,
+   because a `<label>` or `<button>` normally _wraps_ its control, so its raw `textContent` would contain the
+   user's entered value. `<label>Notes <textarea>my private note</textarea></label>` therefore yields `Notes`,
+   never the note -- whether the click landed on the label or on the textarea inside it. Shadow roots are never
+   traversed. A click landing on a plain container (a layout `<div>`, `<footer>`, …) with no clickable element in
+   its ancestor path deliberately yields a blank name plus target metadata, rather than the container's entire
+   visible text.
+4. `blank` -- an empty name, if nothing above matched.
+
+Attribute-derived sources always outrank text: the full phase order is custom attribute → standard attributes
+(walk) → text content (walk) → blank. Each captured event's `interaction.name_source` attribute reflects which
+phase produced the name.
+
+**Privacy defaults.** The SDK never reads the value of `password`, `text`, `textarea`, or `select` elements --
+only `button`/`submit`/`reset` inputs expose their value for name derivation -- and it never reads text from a
+form control, `<output>`, `contenteditable` region, or `<script>`/`<style>` **nested anywhere inside** the element
+it names, including via `aria-labelledby`. Key-press capture records only allow-listed control keys, never
+printable characters. Change capture records value length and selected count, never values. Derived names are
+whitespace-normalized and truncated to 100 characters (plus a ` [...]` marker when truncation occurred); the text
+scan itself is bounded to 1024 characters and 1000 DOM nodes. The target-element selector is independently capped
+at 128 characters. None of these limits is configurable -- use `actionNameScrubber` for cases the heuristics
+cannot know about, such as a `title` or `alt` attribute your application interpolates user data into.
+
+**Emitted attributes.** Every `browser.interaction` event carries `interaction.id`, `interaction.type` (`click`,
+`scroll`, `key_press`, or `change`), `interaction.name`, `interaction.name_source`, `interaction.target.tag`,
+`interaction.target.selector`, and `interaction.target.id` when the element has one. Type-specific attributes:
+`interaction.direction` (scroll), `interaction.key` plus `interaction.repeat_count` (key press), and
+`interaction.value_length` / `interaction.selected_count` (change). The event body is a human-readable string such as
+`Click "Save Settings" on /settings`; treat the attributes, not the body, as the stable contract. The path in the
+body is the same scrubbed value as the event's `page.url.path` attribute, so a configured `urlAttributeScrubber`
+applies to it too -- if the scrubber drops `url.path`, the body omits the ` on <path>` suffix entirely rather than
+falling back to the raw location.
+
+**One event per gesture.** Scroll, key-press and change capture coalesce bursts of DOM events into a single
+interaction event, finalized 300 ms after the last event in the burst -- one event per scroll burst, per run of
+presses of the same key, and per run of changes to the same control. A burst is also finalized immediately when
+the user moves on (a different key, a different control) and when the page is being unloaded, so the last
+interaction before a navigation is not lost. Coalesced events are timestamped when the burst _started_, and every
+request attributed during a burst shares the one correlation id the burst emits.
+
+Clicking a `<label>` makes the browser fire a second click at the label's control, so a
+single user action reaches the SDK twice. Only the click the user actually made is reported: the forwarded
+duplicate is dropped, for both `<label>Text <input></label>` and `<label for="…">`. This means
+`interaction.target.tag` / `.selector` / `.id` describe the label (or the element inside it that was clicked)
+rather than the control it activates -- enable `captureChanges` if you also need a record naming the control whose
+value changed.
+
+**Click-to-request correlation.** A click registers a short-lived (2 second) active interaction before the page's
+own handlers run. Any `fetch` or `XMLHttpRequest` span started inside that window is stamped with
+`user_interaction.id` and, when a name was derived, `user_interaction.name` -- joining a user action to the HTTP
+requests it triggered. Join a span to its interaction event by matching the span's `user_interaction.id` against
+the event's `interaction.id`. Key presses open the window only for activation keys (`Enter` and `Space`).
+
+Note: capturing interaction events requires both `interactionInstrumentation.enabled: true` **and**
+`'@dash0/interactions'` present in `enabledInstrumentations` if that option is explicitly set to a non-default
+list -- either gate alone is not sufficient.
+
+```ts
+init({
+  serviceName: "my-website",
+  endpoint: { url: "{OTLP via HTTP endpoint}", authToken: "{authToken}" },
+  interactionInstrumentation: {
+    enabled: true,
+    // Optional: redact anything the derivation heuristics cannot know about.
+    actionNameScrubber: (name) => name.replace(/[^\s@]+@[^\s@]+/g, "[email]"),
+  },
+});
+```

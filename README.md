@@ -9,6 +9,7 @@ Features include:
 - Navigation timing instrumentation
 - HTTP request instrumentation (fetch and XMLHttpRequest)
 - Error tracking
+- Opt-in user interaction instrumentation with click-to-request correlation
 
 ## Getting started
 

@@ -3,6 +3,7 @@ import { send } from "./fetch";
 import { vars } from "../vars";
 import { debug, error, createRateLimiter } from "../utils";
 import { ExportLogsServiceRequest, ExportTraceServiceRequest, LogRecord, Span } from "../types/otlp";
+import { MAX_TRANSPORT_CALLS_PER_TEN_MINUTES, MAX_TRANSPORT_CALLS_PER_TEN_SECONDS } from "./limits";
 
 const logBatcher = newBatcher<LogRecord>(sendLogs);
 const spanBatcher = newBatcher<Span>(sendSpans);
@@ -12,8 +13,8 @@ let rateLimiter: (() => boolean) | undefined;
 function isRateLimited() {
   if (!rateLimiter) {
     rateLimiter = createRateLimiter({
-      maxCallsPerTenMinutes: 4096,
-      maxCallsPerTenSeconds: 128,
+      maxCallsPerTenMinutes: MAX_TRANSPORT_CALLS_PER_TEN_MINUTES,
+      maxCallsPerTenSeconds: MAX_TRANSPORT_CALLS_PER_TEN_SECONDS,
     });
   }
 

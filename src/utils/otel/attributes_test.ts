@@ -1,5 +1,5 @@
 import { expect, describe, it } from "vitest";
-import { addAttribute, toAnyValue } from "./attributes";
+import { addAttribute, findLastAttribute, toAnyValue } from "./attributes";
 import { AnyValue, KeyValue } from "../../types/otlp";
 
 describe("toAnyValue", () => {
@@ -195,5 +195,40 @@ describe("toAnyValue", () => {
 
       expect(attributes).toHaveLength(0);
     });
+  });
+});
+
+describe("findLastAttribute", () => {
+  it("finds an attribute by key", () => {
+    const attributes: KeyValue[] = [];
+    addAttribute(attributes, "a", "first");
+    addAttribute(attributes, "b", "second");
+
+    expect(findLastAttribute(attributes, "b")).toEqual({ key: "b", value: { stringValue: "second" } });
+  });
+
+  it("returns the last entry when a key appears more than once", () => {
+    // Callers rely on this: addCommonAttributes splices user-supplied
+    // signalAttributes in before deriving the SDK's own attributes, so the
+    // SDK-derived value must win.
+    const attributes: KeyValue[] = [];
+    addAttribute(attributes, "page.url.path", "/spoofed");
+    addAttribute(attributes, "page.url.path", "/derived");
+
+    expect(findLastAttribute(attributes, "page.url.path")).toEqual({
+      key: "page.url.path",
+      value: { stringValue: "/derived" },
+    });
+  });
+
+  it("returns undefined for a missing key", () => {
+    const attributes: KeyValue[] = [];
+    addAttribute(attributes, "a", "first");
+
+    expect(findLastAttribute(attributes, "missing")).toBeUndefined();
+  });
+
+  it("returns undefined for an empty attribute set", () => {
+    expect(findLastAttribute([], "a")).toBeUndefined();
   });
 });

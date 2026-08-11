@@ -1,4 +1,5 @@
 export * from "./debug";
+export * from "./dom";
 export * from "./obj";
 export * from "./fn";
 export * from "./globals";

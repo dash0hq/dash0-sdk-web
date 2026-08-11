@@ -118,6 +118,37 @@ export async function expectNoLogMatching(matcher: ExpectWebdriverIO.PartialMatc
   withFullDepthDiff(logRequests, () => expect(logRequests).not.toEqual(getLogMatcher(matcher)));
 }
 
+/**
+ * Flattens the recorded OTLP payloads down to the individual records.
+ *
+ * The expect*Matching helpers above cover everything that can be expressed as a
+ * matcher. These exist for assertions that need a transmitted *value* rather
+ * than a shape -- e.g. correlating a span's `user_interaction.id` with the id
+ * the `browser.interaction` event carried, where the id is only known at
+ * assertion time.
+ */
+export async function getLogRecords() {
+  const requests = await getOTLPRequests();
+  return requests
+    .filter((r) => r.path === "/v1/logs")
+    .flatMap((r) =>
+      "resourceLogs" in r.body ? r.body.resourceLogs.flatMap((rl) => rl.scopeLogs.flatMap((sl) => sl.logRecords)) : []
+    );
+}
+
+export async function getSpans() {
+  const requests = await getOTLPRequests();
+  return requests
+    .filter((r) => r.path === "/v1/traces")
+    .flatMap((r) =>
+      "resourceSpans" in r.body ? r.body.resourceSpans.flatMap((rs) => rs.scopeSpans.flatMap((ss) => ss.spans)) : []
+    );
+}
+
+export function getStringAttribute(record: { attributes?: any[] }, key: string): string | undefined {
+  return record.attributes?.find((kv) => kv.key === key)?.value?.stringValue;
+}
+
 export function expectNoBrowserErrors() {
   // bidi is required to subscribe to browser logs
   if (!browser.isBidi) {

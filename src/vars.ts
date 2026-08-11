@@ -1,6 +1,7 @@
 import { AttributeValueType } from "./utils/otel";
 import { AnyValue, InstrumentationScope, KeyValue, Resource } from "./types/otlp";
 import { UrlAttributeScrubber } from "./attributes";
+import type { ActionNameScrubber } from "./instrumentations/interactions/action-name";
 import { identity } from "./utils";
 
 export type PropagatorType = "traceparent" | "xray";
@@ -56,6 +57,107 @@ export type PageViewInstrumentationSettings = {
    * - "SEARCH" include changes to the urls search / query parameters
    */
   includeParts?: Array<"HASH" | "SEARCH">;
+};
+
+/**
+ * Fallback for `InteractionInstrumentationSettings.actionNameAttribute`. Lives
+ * here rather than in the interactions module so that module can import it
+ * without vars.ts needing a runtime import back (which would be a cycle).
+ */
+export const DEFAULT_ACTION_NAME_ATTRIBUTE = "data-dash0-action-name";
+
+/**
+ * Fallback for `InteractionInstrumentationSettings.maxEventsPerTenSeconds`, for
+ * the same reason as the constant above. A quarter of the transport's
+ * per-ten-second budget, so interaction volume leaves the other signals room.
+ */
+export const DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS = 32;
+
+export type InteractionInstrumentationSettings = {
+  /**
+   * Whether the SDK should automatically capture click interactions.
+   * Opt-in: disabled by default.
+   * Also requires "@dash0/interactions" to be present in enabledInstrumentations
+   * (or enabledInstrumentations left undefined).
+   *
+   * @default false
+   */
+  enabled?: boolean;
+
+  /**
+   * The element attribute the SDK checks first (on the clicked element or any
+   * ancestor) when deriving a human-readable interaction name. Set this
+   * attribute on interactive elements to fully control the captured name,
+   * e.g. `<button data-dash0-action-name="Save Settings">`.
+   *
+   * @default "data-dash0-action-name"
+   */
+  actionNameAttribute?: string;
+
+  /**
+   * Opt in to capturing scroll interactions (one event per scroll burst,
+   * with the net direction). Only applies when `enabled` is true.
+   *
+   * @default false
+   */
+  captureScrolls?: boolean;
+
+  /**
+   * Opt in to capturing key presses. Only navigation/activation keys
+   * (Enter, Tab, Escape, Space, arrows, ...) are ever recorded; printable
+   * characters never are. Only applies when `enabled` is true.
+   *
+   * @default false
+   */
+  captureKeyPresses?: boolean;
+
+  /**
+   * Opt in to capturing form-field changes. The field value is never read:
+   * text fields report only the value length, selects only the selected
+   * count, and password fields report neither. Only applies when `enabled`
+   * is true.
+   *
+   * @default false
+   */
+  captureChanges?: boolean;
+
+  /**
+   * Maximum number of interaction events emitted per ten seconds.
+   *
+   * Interaction capture gets its own budget rather than competing for the
+   * transport-wide one, so a burst of interactions can never evict spans,
+   * errors, page views or web vitals. The ten-minute allowance is derived as 16x
+   * this value, which keeps interactions at the same share of the transport
+   * budget in both windows. Events over the budget are dropped at the source.
+   *
+   * Clamped to [1, 128] -- 128 being the transport's own per-ten-second
+   * ceiling, at which point interactions may consume the entire budget. The
+   * default leaves three quarters of it to the other signals.
+   *
+   * @default 32
+   */
+  maxEventsPerTenSeconds?: number;
+
+  /**
+   * Last-chance hook to replace or drop a derived interaction name. Runs as the
+   * final step of name derivation, so it covers every place the name is
+   * emitted: the `interaction.name` attribute, the human-readable event body,
+   * and `user_interaction.name` on correlated HTTP spans.
+   *
+   * Receives the name the SDK would otherwise emit (already whitespace
+   * normalized and truncated), how it was derived, and the interaction target.
+   * Return a replacement, or an empty string to drop the name entirely. The
+   * return value is normalized and truncated again.
+   *
+   * Only invoked when a name was actually derived -- it cannot invent a name
+   * for an interaction the SDK could not name.
+   *
+   * Fails closed: if the scrubber throws or returns a non-string, the name is
+   * dropped rather than emitted unscrubbed.
+   *
+   * @default undefined
+   */
+  actionNameScrubber?: ActionNameScrubber;
 };
 
 export type Vars = {
@@ -167,6 +269,12 @@ export type Vars = {
   pageViewInstrumentation: PageViewInstrumentationSettings;
 
   /**
+   * Configures automatic user-interaction (click) instrumentation. Opt-in --
+   * disabled by default. See {@link InteractionInstrumentationSettings}.
+   */
+  interactionInstrumentation: InteractionInstrumentationSettings;
+
+  /**
    * Enables telemetry transport compression using gzip.
    * experimental - in rare cases causes Chrome to crash to use at your own risk.
    */
@@ -202,6 +310,14 @@ export const vars: Vars = {
   pageViewInstrumentation: {
     trackVirtualPageViews: true,
     includeParts: [],
+  },
+  interactionInstrumentation: {
+    enabled: false,
+    actionNameAttribute: DEFAULT_ACTION_NAME_ATTRIBUTE,
+    captureScrolls: false,
+    captureKeyPresses: false,
+    captureChanges: false,
+    maxEventsPerTenSeconds: DEFAULT_MAX_INTERACTION_EVENTS_PER_TEN_SECONDS,
   },
   enableTransportCompression: false,
   isSessionSampled: true,
