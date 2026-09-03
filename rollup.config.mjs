@@ -6,21 +6,28 @@ import babel from "@rollup/plugin-babel";
 import terser from "@rollup/plugin-terser";
 import info from "./package.json" with { type: "json" };
 
-const configurePlugins = ({ module }) => {
+const configurePlugins = ({ module, transpile = true }) => {
   return [
-    babel({
-      babelHelpers: "bundled",
-      presets: [
-        [
-          "@babel/preset-env",
-          {
-            targets: {
-              browsers: ["ie 11"],
-            },
-          },
-        ],
-      ],
-    }),
+    // The session recording bundles skip babel: rrweb requires Proxy and MutationObserver, so an IE 11 target
+    // buys nothing and transpiling to ES5 roughly doubles the bundle. rrweb's own build targets ES2015+,
+    // which every browser in the e2e baseline supports.
+    ...(transpile
+      ? [
+          babel({
+            babelHelpers: "bundled",
+            presets: [
+              [
+                "@babel/preset-env",
+                {
+                  targets: {
+                    browsers: ["ie 11"],
+                  },
+                },
+              ],
+            ],
+          }),
+        ]
+      : []),
     replace({
       __sdkVersion: JSON.stringify(info.version),
       preventAssignment: true,
@@ -62,6 +69,32 @@ const configs = [
       name: "dash0",
     },
     plugins: configurePlugins({ module: false }),
+  },
+  {
+    input: "dist/modules/entrypoint/session-recording.js",
+    output: {
+      format: "esm",
+      file: "./dist/dash0-session-recording.js",
+    },
+    plugins: configurePlugins({ module: true, transpile: false }),
+  },
+  {
+    input: "dist/modules/entrypoint/session-recording.js",
+    output: {
+      format: "umd",
+      file: "./dist/dash0-session-recording.umd.cjs",
+      name: "dash0SessionRecording",
+    },
+    plugins: configurePlugins({ module: false, transpile: false }),
+  },
+  {
+    input: "dist/modules/entrypoint/session-recording-script.js",
+    output: {
+      format: "iife",
+      file: "./dist/dash0-session-recording.iife.js",
+      name: "dash0SessionRecording",
+    },
+    plugins: configurePlugins({ module: false, transpile: false }),
   },
 ];
 

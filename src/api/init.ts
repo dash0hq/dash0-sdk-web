@@ -35,6 +35,7 @@ import { initializeTabId } from "../utils/tab-id";
 import { InitOptions, InstrumentationName } from "../types/options";
 import { BrowserBuildEnv, pickFirstString } from "./browser-env";
 import { applyVcsResourceAttributes } from "./vcs";
+import { armSessionRecording } from "../instrumentations/session-recording";
 
 declare const process: { env?: BrowserBuildEnv } | undefined;
 
@@ -86,6 +87,7 @@ export function init(opts: InitOptions) {
         "headersToCapture",
         "urlAttributeScrubber",
         "pageViewInstrumentation",
+        "sessionRecording",
         "enableTransportCompression",
       ])
     )
@@ -123,6 +125,9 @@ export function init(opts: InitOptions) {
   }
   if (isInstrumentationEnabled("@dash0/xhr", opts)) {
     instrumentXhr();
+  }
+  if (isInstrumentationEnabled("@dash0/session-recording", opts)) {
+    armSessionRecording();
   }
 
   hasBeenInitialised = true;

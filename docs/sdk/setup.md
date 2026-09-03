@@ -95,3 +95,40 @@ Then find the `dash0.iife.js` file and copy its integrity value.
 
 Additionally you might need to allow the Dash0 Web SDK to connect to your configured endpoint URL like so:
 `Content-Security-Policy: connect-src 'self' YOUR_ENDPOINT_URL_HERE`
+
+### Session recording
+
+Session recording is an optional add-on. The recorder ships as its own bundle so websites that do not record pay
+nothing for it. Load it in addition to the SDK.
+
+With modules, import the recorder and hand it to `init`:
+
+```js
+import { init } from "@dash0/sdk-web";
+import { recorder } from "@dash0/sdk-web/session-recording";
+
+init({
+  serviceName: "my-website",
+  endpoint: { url: "REPLACE THIS", authToken: "REPLACE THIS" },
+  sessionRecording: { recorder },
+});
+```
+
+With script tags, add a second script after the initializer snippet. The order of the two SDK scripts does not
+matter.
+
+```html
+<script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web/dist/dash0.iife.js"></script>
+<script
+  defer
+  crossorigin="anonymous"
+  src="https://unpkg.com/@dash0/sdk-web/dist/dash0-session-recording.iife.js"
+></script>
+```
+
+The recording bundle loads from the same origin as `dash0.iife.js`, so the content security policy from
+[Content Security and Integrity](#content-security-and-integrity) covers it. The recorder requires `Proxy` and
+`MutationObserver`; the SDK itself keeps working in browsers that lack them, only the recording is skipped.
+
+Inputs are masked by default. See [Session recording configuration](./configuration.md#session-recording) for
+privacy controls, sampling and chunk sizes.

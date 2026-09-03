@@ -38,6 +38,10 @@ vi.mock("../instrumentations/navigation", () => ({
   startNavigationInstrumentation: vi.fn(),
 }));
 
+vi.mock("../instrumentations/session-recording", () => ({
+  armSessionRecording: vi.fn(),
+}));
+
 // Mock the utils module to control loc.hostname
 vi.mock("../utils", async () => {
   const actual = await vi.importActual("../utils");
@@ -52,6 +56,7 @@ import { instrumentFetch } from "../instrumentations/http/fetch";
 import { instrumentXhr } from "../instrumentations/http/xhr";
 import { startNavigationInstrumentation } from "../instrumentations/navigation";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
+import { armSessionRecording } from "../instrumentations/session-recording";
 
 describe("init", () => {
   const baseOptions: InitOptions = {
@@ -98,13 +103,15 @@ describe("init", () => {
       "@dash0/error",
       "@dash0/fetch",
       "@dash0/xhr",
+      "@dash0/session-recording",
     ];
-    const instrumentationMocks = {
+    const instrumentationMocks: Record<InstrumentationName, () => void> = {
       "@dash0/navigation": startNavigationInstrumentation,
       "@dash0/web-vitals": startWebVitalsInstrumentation,
       "@dash0/error": startErrorInstrumentation,
       "@dash0/fetch": instrumentFetch,
       "@dash0/xhr": instrumentXhr,
+      "@dash0/session-recording": armSessionRecording,
     };
 
     instrumentations.forEach((instrumentation) => {
