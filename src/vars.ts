@@ -2,6 +2,7 @@ import { AttributeValueType } from "./utils/otel";
 import { AnyValue, InstrumentationScope, KeyValue, Resource } from "./types/otlp";
 import { UrlAttributeScrubber } from "./attributes";
 import { identity } from "./utils";
+import { SessionRecordingSettings } from "./types/session-recording";
 
 export type PropagatorType = "traceparent" | "xray";
 
@@ -167,6 +168,12 @@ export type Vars = {
   pageViewInstrumentation: PageViewInstrumentationSettings;
 
   /**
+   * Session recording (replay) settings. Recording only starts when a recorder is provided, either through
+   * `sessionRecording.recorder`, `startSessionRecording(recorder)`, or the `dash0-session-recording.iife.js` script.
+   */
+  sessionRecording: SessionRecordingSettings;
+
+  /**
    * Enables telemetry transport compression using gzip.
    * experimental - in rare cases causes Chrome to crash to use at your own risk.
    */
@@ -202,6 +209,17 @@ export const vars: Vars = {
   pageViewInstrumentation: {
     trackVirtualPageViews: true,
     includeParts: [],
+  },
+  sessionRecording: {
+    samplingRate: 100,
+    maskAllInputs: true,
+    maskTextClass: "dash0-mask",
+    blockClass: "dash0-block",
+    recordCanvas: false,
+    collectFonts: false,
+    chunkMaxBytes: 48000,
+    chunkMaxMillis: 5000,
+    checkoutEveryNms: 300000,
   },
   enableTransportCompression: false,
   isSessionSampled: true,

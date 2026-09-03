@@ -334,4 +334,34 @@ describe("fetch transport keepalive handling", () => {
       expect(call[1].keepalive).toBe(true);
     });
   });
+
+  describe("compress option", () => {
+    it("gzips the body when opts.compress is set even though enableTransportCompression is off", async () => {
+      // jsdom's Blob has no stream(); use Node's Blob, which CompressionStream can consume.
+      const { Blob: NodeBlob } = await import("node:buffer");
+      vi.stubGlobal("Blob", NodeBlob);
+      vars.enableTransportCompression = false;
+
+      try {
+        await send("/v1/logs", { data: "x".repeat(1000) }, { compress: true });
+      } finally {
+        vi.unstubAllGlobals();
+      }
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const init = fetchMock.mock.calls[0]![1];
+      expect(init.headers["Content-Encoding"]).toBe("gzip");
+      expect(init.body).toBeInstanceOf(ArrayBuffer);
+    });
+
+    it("does not gzip without opts.compress when enableTransportCompression is off", async () => {
+      vars.enableTransportCompression = false;
+
+      await send("/v1/logs", { data: "x".repeat(1000) });
+
+      const init = fetchMock.mock.calls[0]![1];
+      expect(init.headers["Content-Encoding"]).toBeUndefined();
+      expect(typeof init.body).toBe("string");
+    });
+  });
 });

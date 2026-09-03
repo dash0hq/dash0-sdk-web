@@ -11,14 +11,20 @@
       "types": "./dist/types/entrypoint/npm-package.d.ts",
       "require": "./dist/dash0.umd.cjs",
       "default": "./dist/dash0.js"
+    },
+    "./session-recording": {
+      "types": "./dist/types/entrypoint/session-recording.d.ts",
+      "require": "./dist/dash0-session-recording.umd.cjs",
+      "default": "./dist/dash0-session-recording.js"
     }
   },
   "types": "./dist/types/entrypoint/npm-package.d.ts",
   "scripts": {
-    "build": "run-s build:clean build:typescript build:rollup build:stats",
+    "build": "run-s build:clean build:typescript build:rollup build:verify build:stats",
     "build:clean": "rm -rf dist",
     "build:typescript": "tsc -b",
     "build:rollup": "rollup -c -m",
+    "build:verify": "node scripts/verify-bundles.mjs",
     "build:stats": "echo \"\nFile Stats:\" && ls dist/*.js | xargs -I '%' bash -c 'echo \"%: $(./node_modules/.bin/gzip-size % --include-original) (gzip)\"'",
     "prettier:all": "prettier . --write --cache --list-different",
     "prettier:check": "prettier . --check",
@@ -68,6 +74,7 @@
     "url": "https://github.com/dash0hq/dash0-sdk-web/issues"
   },
   "dependencies": {
+    "@rrweb/record": "^2.1.1",
     "web-vitals": "^5.0.3"
   },
   "devDependencies": {

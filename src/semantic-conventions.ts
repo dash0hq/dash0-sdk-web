@@ -29,6 +29,13 @@ export const WINDOW_HEIGHT = "browser.window.height";
 export const NETWORK_CONNECTION_TYPE = "network.connection.subtype";
 export const EXCEPTION_COMPONENT_STACK = "exception.component_stack";
 
+// Session Recording Attribute Keys
+export const SESSION_RECORDING_ID = "dash0.session_recording.id";
+export const SESSION_RECORDING_SEQ = "dash0.session_recording.seq";
+export const SESSION_RECORDING_EVENT_COUNT = "dash0.session_recording.event_count";
+export const SESSION_RECORDING_HAS_SNAPSHOT = "dash0.session_recording.has_snapshot";
+export const SESSION_RECORDING_END_TIME_UNIX_NANO = "dash0.session_recording.end_time_unix_nano";
+
 // User Attribute Keys
 export const USER_ID = "user.id";
 export const USER_NAME = "user.name";
@@ -68,6 +75,7 @@ export const EVENT_NAMES = {
   NAVIGATION_TIMING: "browser.navigation_timing",
   WEB_VITAL: "browser.web_vital",
   ERROR: "browser.error",
+  SESSION_RECORDING: "browser.session_recording",
 };
 export const SPAN_EVENT_NAME_EXCEPTION = "exception";
 
