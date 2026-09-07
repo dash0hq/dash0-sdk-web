@@ -126,6 +126,72 @@ describe("session recording lifecycle", () => {
     expect(mod.isSessionRecording()).toBe(false);
   });
 
+  it("discards events emitted by a recorder that then refuses to start", () => {
+    // rrweb emits Meta + FullSnapshot synchronously and returns undefined when it cannot record.
+    const refusing = vi.fn((opts: SessionRecorderOptions) => {
+      opts.emit({ type: 4, timestamp: 1000, data: {} });
+      opts.emit({ type: 2, timestamp: 1001, data: {} });
+      return undefined;
+    }) as any;
+    mod.armSessionRecording();
+    mod.registerSessionRecorder(refusing);
+
+    expect(mod.isSessionRecording()).toBe(false);
+    vi.advanceTimersByTime(10_000);
+    expect(sendSessionRecordingChunk).not.toHaveBeenCalled();
+
+    // stop must be a harmless no-op afterwards
+    expect(() => mod.stopSessionRecording()).not.toThrow();
+    expect(sendSessionRecordingChunk).not.toHaveBeenCalled();
+  });
+
+  it("swallows a stop function that throws and still resets its state", () => {
+    stopFn.mockImplementation(() => {
+      throw new Error("stop failed");
+    });
+    mod.armSessionRecording();
+    mod.registerSessionRecorder(recorder);
+    capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
+
+    expect(() => mod.stopSessionRecording()).not.toThrow();
+    expect(mod.isSessionRecording()).toBe(false);
+    // buffered events are still flushed
+    expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores events the recorder emits after stop", () => {
+    mod.armSessionRecording();
+    mod.registerSessionRecorder(recorder);
+    mod.stopSessionRecording();
+    sendSessionRecordingChunk.mockClear();
+
+    // rrweb's trailing throttle timers can still call emit after its stop function ran.
+    capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
+    vi.advanceTimersByTime(10_000);
+    expect(sendSessionRecordingChunk).not.toHaveBeenCalled();
+  });
+
+  it("compresses periodic chunks but sends the last-chance flush uncompressed", () => {
+    mod.armSessionRecording();
+    mod.registerSessionRecorder(recorder);
+
+    capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
+    vi.advanceTimersByTime(5000);
+    expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(1);
+    expect(sendSessionRecordingChunk.mock.calls[0]![1]).toEqual({ compress: true });
+
+    capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
+    globalThis.dispatchEvent(new Event("pagehide"));
+    expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(2);
+    expect(sendSessionRecordingChunk.mock.calls[1]![1]).toEqual({ compress: false });
+
+    // back to normal once the page keeps running
+    capturedOptions!.emit({ type: 3, timestamp: 3, data: {} });
+    vi.advanceTimersByTime(5000);
+    expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(3);
+    expect(sendSessionRecordingChunk.mock.calls[2]![1]).toEqual({ compress: true });
+  });
+
   it("transmits chunks that share one trace id embedding the session id", () => {
     mod.armSessionRecording();
     mod.registerSessionRecorder(recorder);

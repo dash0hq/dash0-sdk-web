@@ -55,7 +55,8 @@ export type SessionRecordingSettings = {
   samplingRate?: number;
 
   /**
-   * Replace the value of every input, textarea and select with asterisks before it leaves the browser.
+   * Replace the value of every visible input, textarea and select with asterisks before it leaves the browser.
+   * `<input type="hidden">` values are element attributes and are not masked; use `blockSelector` for those.
    * Set to `false` only when you know no form on the page accepts sensitive data.
    *
    * @default true

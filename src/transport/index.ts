@@ -7,32 +7,31 @@ import { ExportLogsServiceRequest, ExportTraceServiceRequest, LogRecord, Span } 
 const logBatcher = newBatcher<LogRecord>(sendLogs);
 const spanBatcher = newBatcher<Span>(sendSpans);
 
-let rateLimiter: (() => boolean) | undefined;
-let sessionRecordingRateLimiter: (() => boolean) | undefined;
-
-function isRateLimited() {
-  if (!rateLimiter) {
-    rateLimiter = createRateLimiter({
-      maxCallsPerTenMinutes: 4096,
-      maxCallsPerTenSeconds: 128,
-    });
-  }
-
-  return rateLimiter();
+/**
+ * Returns an `isRateLimited()` check whose limiter is created on first use, so the module can be imported
+ * without touching timers.
+ */
+function lazyRateLimiter(opts: Parameters<typeof createRateLimiter>[0]): () => boolean {
+  let limiter: (() => boolean) | undefined;
+  return () => {
+    if (!limiter) {
+      limiter = createRateLimiter(opts);
+    }
+    return limiter();
+  };
 }
+
+const isRateLimited = lazyRateLimiter({
+  maxCallsPerTenMinutes: 4096,
+  maxCallsPerTenSeconds: 128,
+});
 
 // Session recording chunks get their own budget. They are large and periodic, and must neither consume the
 // shared budget of spans and logs nor be starved by it.
-function isSessionRecordingRateLimited() {
-  if (!sessionRecordingRateLimiter) {
-    sessionRecordingRateLimiter = createRateLimiter({
-      maxCallsPerTenMinutes: 256,
-      maxCallsPerTenSeconds: 8,
-    });
-  }
-
-  return sessionRecordingRateLimiter();
-}
+const isSessionRecordingRateLimited = lazyRateLimiter({
+  maxCallsPerTenMinutes: 256,
+  maxCallsPerTenSeconds: 8,
+});
 
 export function sendLog(log: LogRecord): void {
   if (!vars.isSessionSampled) return;
@@ -48,8 +47,12 @@ export function sendLog(log: LogRecord): void {
 /**
  * Transmits a session recording chunk as a single log record. Chunks bypass the log batcher: batching 15 chunks
  * of up to `chunkMaxBytes` each would produce requests far beyond the keepalive body limit.
+ *
+ * Chunks are gzipped by default because replay JSON compresses roughly 8:1. Pass `compress: false` when the
+ * request must be issued synchronously, i.e. while the document is being unloaded: compression is asynchronous
+ * and the page may be gone before `fetch()` is ever called.
  */
-export function sendSessionRecordingChunk(log: LogRecord): void {
+export function sendSessionRecordingChunk(log: LogRecord, opts?: SendOptions): void {
   if (!vars.isSessionSampled) return;
 
   if (isSessionRecordingRateLimited()) {
@@ -57,7 +60,7 @@ export function sendSessionRecordingChunk(log: LogRecord): void {
     return;
   }
 
-  sendLogs([log], { compress: true });
+  sendLogs([log], { compress: opts?.compress ?? true });
 }
 
 function sendLogs(logs: LogRecord[], opts?: SendOptions): void {
