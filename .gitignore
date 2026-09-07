@@ -265,5 +265,9 @@ Temporary Items
 
 /.claude/
 
-### JetBrains (whole folder ignored)
-.idea/
+### JetBrains (whole folder ignored, except shared code styles)
+.idea/*
+!.idea/codeStyles/
+.idea/codeStyles/*
+!.idea/codeStyles/Project.xml
+!.idea/codeStyles/codeStyleConfig.xml
