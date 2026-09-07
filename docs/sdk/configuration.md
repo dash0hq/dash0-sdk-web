@@ -127,7 +127,8 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
-  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr'`
+  Supported values:
+  `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording'`
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
 - **Ignore URLs**<br>
@@ -459,9 +460,11 @@ The recorder ships as a separate bundle, `@dash0/sdk-web/session-recording`, so 
 recording do not pay for it. See [Setup](./setup.md#session-recording) for how to load it. All options below live
 under the `sessionRecording` key of the `init` options.
 
-By default, the value of every input, textarea and select is replaced with asterisks before it leaves the browser.
-Page text is captured. Add the class `dash0-mask` to an element to mask its text, or `dash0-block` to leave it out
-of the recording entirely. Set `maskTextSelector` to `"*"` to mask all text on the page.
+By default, the value of every visible input, textarea and select is replaced with asterisks before it leaves the
+browser. Page text is captured, and so are element attributes: `<input type="hidden">` values, `<meta content>`,
+`data-*` attributes and `value=` set in markup are not masked. Add the class `dash0-mask` to an element to mask its
+text, or `dash0-block` to leave it out of the recording entirely (for example `blockSelector: 'input[type=hidden]'`
+to drop hidden inputs). Set `maskTextSelector` to `"*"` to mask all text on the page.
 
 - **Recorder**<br>
   key: `sessionRecording.recorder`<br>
@@ -484,8 +487,9 @@ of the recording entirely. Set `maskTextSelector` to `"*"` to mask all text on t
   type: `boolean`<br>
   optional: `true`<br>
   default: `true`<br>
-  Replace the value of every input, textarea and select with asterisks. Set to `false` only when no form on the
-  page accepts sensitive data.
+  Replace the value of every visible input, textarea and select with asterisks. `<input type="hidden">` values
+  are element attributes and are not masked; use `blockSelector` for those. Set to `false` only when no form on
+  the page accepts sensitive data.
 - **Mask Text Selector**<br>
   key: `sessionRecording.maskTextSelector`<br>
   type: `string`<br>

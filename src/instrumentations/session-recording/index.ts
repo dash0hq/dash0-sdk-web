@@ -15,6 +15,9 @@ let armed = false;
 let stopRecorder: (() => void) | undefined;
 let chunker: Chunker | undefined;
 let lastChanceRegistered = false;
+// True while the last-chance handler flushes. The chunk emitted then must be sent uncompressed: gzip is
+// asynchronous, and a document that is being unloaded may never get to the `fetch()` behind the await.
+let flushingOnLastChance = false;
 
 /**
  * Makes a recorder available. Called from the public `startSessionRecording` API, which the
@@ -92,7 +95,7 @@ function start(): void {
     maxMillis: settings.chunkMaxMillis ?? 5000,
     onChunk: (chunk) => {
       try {
-        sendSessionRecordingChunk(buildSessionRecordingLog(stream, chunk));
+        sendSessionRecordingChunk(buildSessionRecordingLog(stream, chunk), { compress: !flushingOnLastChance });
       } catch (e) {
         warn("Failed to transmit session recording chunk", e);
       }
@@ -102,7 +105,11 @@ function start(): void {
 
   try {
     stopRecorder = recorder({
-      emit: (event: SessionRecordingEvent) => c.add(event),
+      // rrweb can still emit after its stop function ran (trailing throttle timers), and a recorder that failed
+      // to start may have emitted already. Only accept events while this chunker is the active one.
+      emit: (event: SessionRecordingEvent) => {
+        if (chunker === c) c.add(event);
+      },
       checkoutEveryNms: settings.checkoutEveryNms,
       maskAllInputs: settings.maskAllInputs,
       maskTextClass: settings.maskTextClass,
@@ -116,21 +123,37 @@ function start(): void {
     });
   } catch (e) {
     warn("Failed to start session recorder", e);
-    chunker = undefined;
+    abandonChunker(c);
     return;
   }
 
   if (!stopRecorder) {
     // rrweb returns undefined when it refuses to record, e.g. in an unsupported environment.
     warn("Session recorder did not start.");
-    chunker = undefined;
+    abandonChunker(c);
     return;
   }
 
   if (!lastChanceRegistered) {
     lastChanceRegistered = true;
-    onLastChance(() => chunker?.flush());
+    onLastChance(() => {
+      flushingOnLastChance = true;
+      try {
+        chunker?.flush();
+      } finally {
+        flushingOnLastChance = false;
+      }
+    });
   }
 
   debug("Session recording started", stream);
+}
+
+/**
+ * The recorder did not start, but it may already have emitted events into `c` and armed its flush timer. Drop
+ * them so no chunk of a stream that never started is transmitted later.
+ */
+function abandonChunker(c: Chunker): void {
+  c.discard();
+  chunker = undefined;
 }

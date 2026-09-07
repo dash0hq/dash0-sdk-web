@@ -44,16 +44,24 @@ function attr(record, key) {
 
 const counters = { logs: 0, spans: 0, chunks: 0, chunkBytes: 0 };
 
+// The ids come from the request body and end up in file paths and HTML. Accept only what the SDK emits.
+const RECORDING_ID_PATTERN = /^[0-9a-f]{32}$/;
+const SEQ_PATTERN = /^\d{1,10}$/;
+
 function handleLog(record) {
   const eventName = attr(record, "event.name");
   const sessionId = attr(record, "session.id");
   if (eventName === "browser.session_recording") {
-    const recordingId = attr(record, "dash0.session_recording.id");
-    const seq = attr(record, "dash0.session_recording.seq");
+    const recordingId = String(attr(record, "dash0.session_recording.id"));
+    const seq = String(attr(record, "dash0.session_recording.seq"));
+    if (!RECORDING_ID_PATTERN.test(recordingId) || !SEQ_PATTERN.test(seq)) {
+      console.warn(`LOG   ${eventName}  skipped chunk with invalid id/seq: ${recordingId} / ${seq}`);
+      return;
+    }
     const body = record.body?.stringValue ?? "[]";
     const dir = path.join(RECORDINGS_DIR, recordingId);
     mkdirSync(dir, { recursive: true });
-    writeFileSync(path.join(dir, `${String(seq).padStart(5, "0")}.json`), body);
+    writeFileSync(path.join(dir, `${seq.padStart(5, "0")}.json`), body);
     counters.chunks++;
     counters.chunkBytes += body.length;
     console.log(
@@ -96,12 +104,14 @@ app.post("/v1/:signal", (req, res) => {
 
 function listRecordings() {
   if (!existsSync(RECORDINGS_DIR)) return [];
-  return readdirSync(RECORDINGS_DIR).map((id) => {
-    const chunks = readdirSync(path.join(RECORDINGS_DIR, id))
-      .filter((f) => f.endsWith(".json"))
-      .sort();
-    return { id, chunks: chunks.length };
-  });
+  return readdirSync(RECORDINGS_DIR)
+    .filter((id) => RECORDING_ID_PATTERN.test(id))
+    .map((id) => {
+      const chunks = readdirSync(path.join(RECORDINGS_DIR, id))
+        .filter((f) => f.endsWith(".json"))
+        .sort();
+      return { id, chunks: chunks.length };
+    });
 }
 
 app.get("/", (_req, res) => {
@@ -143,7 +153,9 @@ fetch("/recordings/${id}/events.json").then(r => r.json()).then(events => {
 </script>`);
 });
 
-app.listen(PORT, () => {
+// Loopback only: the sink accepts unauthenticated writes and reflects any Origin, so it must not be reachable
+// from the network.
+app.listen(PORT, "127.0.0.1", () => {
   console.log(`OTLP sink listening on http://localhost:${PORT}`);
   console.log(`  endpoint.url for the SDK : http://localhost:${PORT}`);
   console.log(`  raw requests             : ${REQUESTS_FILE}`);

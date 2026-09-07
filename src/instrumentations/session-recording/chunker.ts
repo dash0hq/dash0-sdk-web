@@ -31,6 +31,11 @@ export type ChunkerOptions = {
 export type Chunker = {
   add(event: SessionRecordingEvent): void;
   flush(): void;
+  /**
+   * Drops buffered events without emitting a chunk and cancels the pending time-based flush. Used when the
+   * recorder failed to start after it already emitted events, so no stray chunk is transmitted later.
+   */
+  discard(): void;
 };
 
 /**
@@ -47,7 +52,7 @@ export function newChunker(opts: ChunkerOptions): Chunker {
   let seq = 0;
   let pendingFlushTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  return { add, flush };
+  return { add, flush, discard };
 
   function add(event: SessionRecordingEvent): void {
     // A Meta event announces a new full snapshot. Close the current chunk first so the snapshot starts a fresh
@@ -76,11 +81,22 @@ export function newChunker(opts: ChunkerOptions): Chunker {
     }
   }
 
-  function flush(): void {
+  function discard(): void {
+    clearPendingFlush();
+    serialized = [];
+    byteSize = 0;
+    hasSnapshot = false;
+  }
+
+  function clearPendingFlush(): void {
     if (pendingFlushTimeout != null) {
       clearTimeout(pendingFlushTimeout);
       pendingFlushTimeout = null;
     }
+  }
+
+  function flush(): void {
+    clearPendingFlush();
 
     if (serialized.length === 0) return;
 
