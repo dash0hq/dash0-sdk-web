@@ -71,20 +71,20 @@ describe("sendSessionRecordingChunk", () => {
   });
 
   it("drops chunks beyond its own burst budget without touching the shared log budget", () => {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 70; i++) {
       mod.sendSessionRecordingChunk(log(i));
     }
-    expect(send).toHaveBeenCalledTimes(8);
+    expect(send).toHaveBeenCalledTimes(64);
 
     // Regular logs are batched, not sent immediately; the point is that they are still accepted.
     mod.sendLog(log(100));
     vi.advanceTimersByTime(10_000);
-    const logPaths = send.mock.calls.slice(8).map((c) => c[0]);
+    const logPaths = send.mock.calls.slice(64).map((c) => c[0]);
     expect(logPaths).toContain("/v1/logs");
 
     // The ten-second window has reset, so recording chunks flow again.
     send.mockClear();
-    mod.sendSessionRecordingChunk(log(11));
+    mod.sendSessionRecordingChunk(log(71));
     expect(send).toHaveBeenCalledTimes(1);
   });
 });

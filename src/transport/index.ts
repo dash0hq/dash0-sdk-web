@@ -27,10 +27,13 @@ const isRateLimited = lazyRateLimiter({
 });
 
 // Session recording chunks get their own budget. They are large and periodic, and must neither consume the
-// shared budget of spans and logs nor be starved by it.
+// shared budget of spans and logs nor be starved by it. The budget is deliberately generous: every chunk
+// depends on the ones before it, so a dropped chunk makes the replay unrenderable until the next full snapshot
+// (`checkoutEveryNms`). At the default `chunkMaxBytes` of 48 KB, 64 chunks per 10 s allow a ~3 MB mutation
+// burst (a heavy first render), and 512 per 10 min cap a runaway page at ~25 MB of uncompressed replay JSON.
 const isSessionRecordingRateLimited = lazyRateLimiter({
-  maxCallsPerTenMinutes: 256,
-  maxCallsPerTenSeconds: 8,
+  maxCallsPerTenMinutes: 512,
+  maxCallsPerTenSeconds: 64,
 });
 
 export function sendLog(log: LogRecord): void {
