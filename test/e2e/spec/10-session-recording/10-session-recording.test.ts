@@ -17,7 +17,14 @@ function attr(log: ReceivedLog, key: string): any {
   return log.attributes.find((a) => a.key === key)?.value;
 }
 
-async function getRecordingLogs(): Promise<ReceivedLog[]> {
+/**
+ * Returns the recording chunks emitted by the page loaded with `testId`.
+ *
+ * The test server is cleared in `sharedBeforeEach` while the previous test's page is still open. That page keeps
+ * recording until `loadPage` navigates away, and flushes a final chunk on pagehide, so its chunks can land after
+ * the clear. Filtering on `page.url.query` keeps those out of this test's seq / trace id assertions.
+ */
+async function getRecordingLogs(testId: string): Promise<ReceivedLog[]> {
   const requests = await getOTLPRequests();
   const logs: ReceivedLog[] = [];
   for (const request of requests) {
@@ -25,7 +32,10 @@ async function getRecordingLogs(): Promise<ReceivedLog[]> {
     for (const resourceLog of (request.body as any).resourceLogs ?? []) {
       for (const scopeLog of resourceLog.scopeLogs ?? []) {
         for (const log of scopeLog.logRecords ?? []) {
-          if (attr(log, "event.name")?.stringValue === EVENT_NAME) {
+          if (
+            attr(log, "event.name")?.stringValue === EVENT_NAME &&
+            attr(log, "page.url.query")?.stringValue === `testId=${testId}`
+          ) {
             logs.push(log);
           }
         }
@@ -54,6 +64,7 @@ describe("Session Recording", () => {
             { key: "dash0.session_recording.id", value: { stringValue: expect.stringMatching(/^[0-9a-f]{32}$/) } },
             { key: "session.id", value: { stringValue: expect.any(String) } },
             { key: "page.load.id", value: { stringValue: expect.any(String) } },
+            { key: "page.url.query", value: { stringValue: `testId=${testId}` } },
           ]),
           body: { stringValue: expect.any(String) },
           severityNumber: 9,
@@ -64,7 +75,7 @@ describe("Session Recording", () => {
       );
     });
 
-    const [first] = await getRecordingLogs();
+    const [first] = await getRecordingLogs(testId);
     const sessionId: string = attr(first!, "session.id").stringValue;
     // Trace id layout: "d042" + 1 flags byte + 8 session id bytes + random. See src/utils/trace-id.ts.
     expect(first!.traceId!.substring(6, 22)).toBe(sessionId);
@@ -87,11 +98,11 @@ describe("Session Recording", () => {
 
     // Wait for at least one chunk after the snapshot so the typed input has been captured as incremental events.
     await retry(async () => {
-      const logs = await getRecordingLogs();
+      const logs = await getRecordingLogs(testId);
       expect(logs.length).toBeGreaterThanOrEqual(2);
     });
 
-    const bodies = (await getRecordingLogs()).map((l) => l.body?.stringValue ?? "").join("\n");
+    const bodies = (await getRecordingLogs(testId)).map((l) => l.body?.stringValue ?? "").join("\n");
     expect(bodies).toContain("Visible heading text");
     expect(bodies).not.toContain(secret);
     expect(bodies).not.toContain("Masked paragraph text");
@@ -108,11 +119,11 @@ describe("Session Recording", () => {
     await toggle.click();
 
     await retry(async () => {
-      const logs = await getRecordingLogs();
+      const logs = await getRecordingLogs(testId);
       expect(logs.length).toBeGreaterThanOrEqual(2);
     });
 
-    const logs = await getRecordingLogs();
+    const logs = await getRecordingLogs(testId);
     const seqs = logs.map((l) => parseInt(attr(l, "dash0.session_recording.seq").intValue, 10)).sort((a, b) => a - b);
     expect(seqs).toEqual(seqs.map((_, i) => i));
 
@@ -134,7 +145,7 @@ describe("Session Recording", () => {
     await loadPage(`/e2e/spec/10-session-recording/page.html?testId=${testId}`);
 
     await retry(async () => {
-      const logs = await getRecordingLogs();
+      const logs = await getRecordingLogs(testId);
       expect(logs.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -144,17 +155,17 @@ describe("Session Recording", () => {
     await stop.click();
 
     await retry(async () => {
-      const bodies = (await getRecordingLogs()).map((l) => l.body?.stringValue ?? "").join("\n");
+      const bodies = (await getRecordingLogs(testId)).map((l) => l.body?.stringValue ?? "").join("\n");
       expect(bodies).toContain("Heading after click");
     });
 
     // No further chunks after stop, even when the DOM keeps changing.
-    const countAfterStop = (await getRecordingLogs()).length;
+    const countAfterStop = (await getRecordingLogs(testId)).length;
     await browser.execute(() => {
       document.getElementById("visible-heading")!.textContent = "Changed after stop";
     });
     await browser.pause(1500);
-    const logs = await getRecordingLogs();
+    const logs = await getRecordingLogs(testId);
     expect(logs.length).toBe(countAfterStop);
     expect(logs.map((l) => l.body?.stringValue ?? "").join("\n")).not.toContain("Changed after stop");
 
