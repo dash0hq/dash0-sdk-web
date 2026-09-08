@@ -239,54 +239,6 @@ dash0("terminateSession");
 **Note:** Sessions are automatically managed by the Dash0 Web SDK based on inactivity and termination timeouts
 configured during initialization. Manual termination is typically only needed for explicit user logout scenarios.
 
-### Session Recording
-
-#### `startSessionRecording(recorder)`
-
-Starts recording the session with [rrweb](https://github.com/rrweb-io/rrweb). The recording is transmitted as
-`browser.session_recording` log records. All records of one recording share a trace ID that embeds the session ID.
-See [Session recording configuration](./configuration.md#session-recording) for privacy and chunking options.
-
-The recorder lives in the separate `@dash0/sdk-web/session-recording` bundle. Passing it to `init` through
-`sessionRecording.recorder` is equivalent to calling this function. It is safe to call this before `init`; the
-recorder is kept and recording starts once the SDK is initialized with a sampled session.
-
-**Parameters:**
-
-- `recorder` (SessionRecorder, optional): `recorder` from `@dash0/sdk-web/session-recording`. When omitted, the
-  SDK uses `window.dash0Recorder`, which the `dash0-session-recording.iife.js` script sets. Calls without a usable
-  recorder are ignored.
-
-**Example:**
-
-```js
-// Module
-import { init, startSessionRecording } from "@dash0/sdk-web";
-import { recorder } from "@dash0/sdk-web/session-recording";
-
-init({ serviceName: "my-website", endpoint: { url: "...", authToken: "..." } });
-startSessionRecording(recorder);
-
-// Script: dash0-session-recording.iife.js calls this for you. Call it yourself only after stopSessionRecording.
-dash0("startSessionRecording");
-```
-
-#### `stopSessionRecording()`
-
-Stops the running recording and transmits buffered events. A no-op when no recording is running.
-
-**Example:**
-
-```js
-// Module
-import { stopSessionRecording } from "@dash0/sdk-web";
-
-stopSessionRecording();
-
-// Script
-dash0("stopSessionRecording");
-```
-
 ### Internal Telemetry
 
 #### `setActiveLogLevel(logLevel)`
