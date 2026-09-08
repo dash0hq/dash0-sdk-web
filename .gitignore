@@ -264,3 +264,6 @@ Temporary Items
 /playwright/.cache/
 
 /.claude/
+
+### JetBrains (whole folder ignored)
+.idea/
