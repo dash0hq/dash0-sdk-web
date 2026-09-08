@@ -126,9 +126,12 @@ matter.
 ></script>
 ```
 
-The recording bundle loads from the same origin as `dash0.iife.js`, so the content security policy from
-[Content Security and Integrity](#content-security-and-integrity) covers it. The recorder requires `Proxy` and
-`MutationObserver`; the SDK itself keeps working in browsers that lack them, only the recording is skipped.
+The recording bundle loads from the same origin as `dash0.iife.js`. A content security policy that allows all of
+`https://unpkg.com` (see [Content Security and Integrity](#content-security-and-integrity)) needs no change. If
+you allow a specific file URL or a `sha256-` hash instead, add a second entry for
+`dash0-session-recording.iife.js`; its integrity value is listed next to `dash0.iife.js` in the `?meta` output.
+The recorder requires `Proxy` and `MutationObserver`; the SDK itself keeps working in browsers that lack them,
+only the recording is skipped.
 
 Inputs are masked by default. See [Session recording configuration](./configuration.md#session-recording) for
 privacy controls, sampling and chunk sizes.

@@ -38,6 +38,24 @@ describe("session recording chunker", () => {
     expect(chunks).toEqual([]);
   });
 
+  it("discards buffered events and the pending time-based flush", () => {
+    const chunker = create();
+    chunker.add(event(META, 1000));
+    chunker.add(event(FULL_SNAPSHOT, 1001));
+
+    chunker.discard();
+    vi.advanceTimersByTime(10_000);
+    expect(chunks).toEqual([]);
+
+    // The chunker stays usable, and the dropped events do not leak into the next chunk.
+    chunker.add(event(INCREMENTAL, 2000));
+    chunker.flush();
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]!.seq).toBe(0);
+    expect(chunks[0]!.eventCount).toBe(1);
+    expect(chunks[0]!.hasSnapshot).toBe(false);
+  });
+
   it("flushes on explicit flush with a serialized JSON array body", () => {
     const chunker = create();
     chunker.add(event(META, 1000, { href: "http://x" }));
