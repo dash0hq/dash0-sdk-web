@@ -9,7 +9,15 @@ const BEACON_BODY_SIZE_LIMIT = 60000;
 let pendingBodySize = 0;
 let pendingRequestCount = 0;
 
-export async function send(path: string, body: unknown): Promise<void> {
+export type SendOptions = {
+  /**
+   * Compress this request regardless of `vars.enableTransportCompression`. Used for payloads that are
+   * large and highly compressible, such as session recording chunks.
+   */
+  compress?: boolean;
+};
+
+export async function send(path: string, body: unknown, opts?: SendOptions): Promise<void> {
   debug("Transmitting telemetry to endpoints", body);
 
   const jsonString = JSON.stringify(body);
@@ -18,7 +26,7 @@ export async function send(path: string, body: unknown): Promise<void> {
   let isCompressed = false;
 
   // Try to compress if supported
-  if (typeof CompressionStream !== "undefined" && vars.enableTransportCompression) {
+  if (typeof CompressionStream !== "undefined" && (vars.enableTransportCompression || opts?.compress)) {
     requestBody = await compressWithGzip(jsonString);
     byteLength = requestBody.byteLength;
     isCompressed = true;

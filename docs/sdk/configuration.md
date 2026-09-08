@@ -448,3 +448,112 @@ for `fetch`, while an `XMLHttpRequest` timeout is an error — this asymmetry is
   Additionally generate virtual page views when these url parts change.
   - "HASH" changes to the urls hash / fragment
   - "SEARCH" changes to the urls search / query parameters
+
+#### Session recording
+
+Session recording captures a replay of the user's session with [rrweb](https://github.com/rrweb-io/rrweb) and
+transmits it as `browser.session_recording` log records. Every record of one recording shares a trace ID that
+embeds the session ID, so a replay can be opened from any span or log of that session.
+
+The recorder ships as a separate bundle, `@dash0/sdk-web/session-recording`, so websites that do not use session
+recording do not pay for it. See [Setup](./setup.md#session-recording) for how to load it. All options below live
+under the `sessionRecording` key of the `init` options.
+
+By default, the value of every input, textarea and select is replaced with asterisks before it leaves the browser.
+Page text is captured. Add the class `dash0-mask` to an element to mask its text, or `dash0-block` to leave it out
+of the recording entirely. Set `maskTextSelector` to `"*"` to mask all text on the page.
+
+- **Recorder**<br>
+  key: `sessionRecording.recorder`<br>
+  type: `SessionRecorder`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  The recorder to use. Pass `recorder` from `@dash0/sdk-web/session-recording`. When omitted, recording starts as
+  soon as a recorder is registered through `startSessionRecording(recorder)` or through the
+  `dash0-session-recording.iife.js` script.
+- **Sampling Rate**<br>
+  key: `sessionRecording.samplingRate`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `100`<br>
+  The percentage of sessions for which a recording is captured, between 0 and 100. The decision is deterministic
+  per session ID and uses the same hash as `sessionSamplingRate`, so recorded sessions are always a subset of the
+  sessions for which telemetry is transmitted.
+- **Mask All Inputs**<br>
+  key: `sessionRecording.maskAllInputs`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `true`<br>
+  Replace the value of every input, textarea and select with asterisks. Set to `false` only when no form on the
+  page accepts sensitive data.
+- **Mask Text Selector**<br>
+  key: `sessionRecording.maskTextSelector`<br>
+  type: `string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  CSS selector for elements whose text content must be masked. Use `"*"` to mask all text on the page.
+- **Mask Text Class**<br>
+  key: `sessionRecording.maskTextClass`<br>
+  type: `string | RegExp`<br>
+  optional: `true`<br>
+  default: `"dash0-mask"`<br>
+  Elements with this class have their text content masked.
+- **Block Class**<br>
+  key: `sessionRecording.blockClass`<br>
+  type: `string | RegExp`<br>
+  optional: `true`<br>
+  default: `"dash0-block"`<br>
+  Elements with this class are not recorded. The replay shows a placeholder with the same dimensions.
+- **Block Selector**<br>
+  key: `sessionRecording.blockSelector`<br>
+  type: `string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  CSS selector for elements that are not recorded.
+- **Mask Input Function**<br>
+  key: `sessionRecording.maskInputFn`<br>
+  type: `(text: string, element: HTMLElement | null) => string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  Custom function to mask input values. Receives the raw value and the element and returns the masked value.
+- **Mask Text Function**<br>
+  key: `sessionRecording.maskTextFn`<br>
+  type: `(text: string, element: HTMLElement | null) => string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  Custom function to mask text nodes. Receives the raw text and the parent element and returns the masked text.
+- **Record Canvas**<br>
+  key: `sessionRecording.recordCanvas`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Record the content of canvas elements. This is expensive.
+- **Collect Fonts**<br>
+  key: `sessionRecording.collectFonts`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Collect fonts so the replay renders with the same typefaces. Adds payload size.
+- **Chunk Max Bytes**<br>
+  key: `sessionRecording.chunkMaxBytes`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `48000`<br>
+  The maximum serialized size of one chunk. When buffered events reach this size, a chunk is transmitted. A single
+  rrweb event larger than this, typically a full snapshot, is transmitted on its own.
+- **Chunk Max Millis**<br>
+  key: `sessionRecording.chunkMaxMillis`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `5000`<br>
+  The maximum time buffered events wait before they are transmitted as a chunk.
+- **Checkout Interval**<br>
+  key: `sessionRecording.checkoutEveryNms`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `300000`<br>
+  How often the recorder takes a new full snapshot of the DOM, in milliseconds. A replay can start from any chunk
+  that contains a full snapshot.
+
+Session recording can be disabled without removing the recorder bundle by leaving `@dash0/session-recording` out of
+`enabledInstrumentations`.
