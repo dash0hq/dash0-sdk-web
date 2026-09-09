@@ -75,10 +75,10 @@
     "url": "https://github.com/dash0hq/dash0-sdk-web/issues"
   },
   "dependencies": {
-    "@rrweb/record": "^2.1.1",
     "web-vitals": "^5.0.3"
   },
   "devDependencies": {
+    "@rrweb/record": "^2.1.1",
     "@babel/core": "^7.26.10",
     "@babel/preset-env": "^7.26.9",
     "@release-it/conventional-changelog": "^10.0.1",
