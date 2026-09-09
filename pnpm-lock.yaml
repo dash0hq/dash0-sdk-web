@@ -11,9 +11,6 @@ importers:
 
   .:
     dependencies:
-      '@rrweb/record':
-        specifier: ^2.1.1
-        version: 2.1.1
       web-vitals:
         specifier: ^5.0.3
         version: 5.0.3
@@ -39,6 +36,9 @@ importers:
       '@rollup/plugin-terser':
         specifier: ^0.4.4
         version: 0.4.4(rollup@4.39.0)
+      '@rrweb/record':
+        specifier: ^2.1.1
+        version: 2.1.1
       '@types/body-parser':
         specifier: ^1.19.5
         version: 1.19.5
@@ -2660,7 +2660,7 @@ packages:
     engines: {node: '>=12.0.0'}
 
   expect-webdriverio@5.1.0:
-    resolution: {integrity: sha512-4u3q+Dqx/lXNgvCx1gKia4CfS28z1UxGGfVUkoMNbrsBlTBB2fYqXG+4+YtYoerxvp/XPwIb/+89IGEdyPbDXQ==}
+    resolution: {integrity: sha512-4u3q+Dqx/lXNgvCx1gKia4CfS28z1UxGGfVUkoMNbrsBlTBB2fYqXG+4+YtYoerxvp/XPwIb/+89IGEdyPbDXQ==, tarball: https://registry.npmjs.org/expect-webdriverio/-/expect-webdriverio-5.1.0.tgz}
     engines: {node: '>=18 || >=20 || >=22'}
     peerDependencies:
       '@wdio/globals': ^9.0.0
