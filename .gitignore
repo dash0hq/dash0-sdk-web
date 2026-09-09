@@ -1,5 +1,6 @@
 ### Project Specifics
 /dist/
+/otlp-sink/
 .npmrc
 .lambdatest
 
@@ -263,3 +264,10 @@ Temporary Items
 /playwright/.cache/
 
 /.claude/
+
+### JetBrains (whole folder ignored, except shared code styles)
+.idea/*
+!.idea/codeStyles/
+.idea/codeStyles/*
+!.idea/codeStyles/Project.xml
+!.idea/codeStyles/codeStyleConfig.xml

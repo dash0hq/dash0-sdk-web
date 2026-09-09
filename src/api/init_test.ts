@@ -38,6 +38,10 @@ vi.mock("../instrumentations/navigation", () => ({
   startNavigationInstrumentation: vi.fn(),
 }));
 
+vi.mock("../instrumentations/session-recording", () => ({
+  armSessionRecording: vi.fn(),
+}));
+
 // Mock the utils module to control loc.hostname
 vi.mock("../utils", async () => {
   const actual = await vi.importActual("../utils");
@@ -52,6 +56,7 @@ import { instrumentFetch } from "../instrumentations/http/fetch";
 import { instrumentXhr } from "../instrumentations/http/xhr";
 import { startNavigationInstrumentation } from "../instrumentations/navigation";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
+import { armSessionRecording } from "../instrumentations/session-recording";
 
 describe("init", () => {
   const baseOptions: InitOptions = {
@@ -78,6 +83,31 @@ describe("init", () => {
     vi.clearAllMocks();
   });
 
+  describe("nested option merging", () => {
+    it("keeps nested defaults when an override is explicitly undefined", () => {
+      init({
+        ...baseOptions,
+        sessionRecording: { maskAllInputs: undefined, chunkMaxMillis: 1000 },
+      });
+
+      expect(vars.sessionRecording.maskAllInputs).toBe(true);
+      expect(vars.sessionRecording.blockClass).toBe("dash0-block");
+      expect(vars.sessionRecording.chunkMaxMillis).toBe(1000);
+    });
+
+    it("still lets an explicit false override a nested default", () => {
+      init({
+        ...baseOptions,
+        sessionRecording: { maskAllInputs: false },
+        pageViewInstrumentation: { trackVirtualPageViews: false },
+      });
+
+      expect(vars.sessionRecording.maskAllInputs).toBe(false);
+      expect(vars.pageViewInstrumentation.trackVirtualPageViews).toBe(false);
+      expect(vars.pageViewInstrumentation.includeParts).toEqual([]);
+    });
+  });
+
   describe("instrumentation enablement", () => {
     it("should enable all instrumentations when enabledInstrumentations is undefined", async () => {
       init({
@@ -98,13 +128,15 @@ describe("init", () => {
       "@dash0/error",
       "@dash0/fetch",
       "@dash0/xhr",
+      "@dash0/session-recording",
     ];
-    const instrumentationMocks = {
+    const instrumentationMocks: Record<InstrumentationName, () => void> = {
       "@dash0/navigation": startNavigationInstrumentation,
       "@dash0/web-vitals": startWebVitalsInstrumentation,
       "@dash0/error": startErrorInstrumentation,
       "@dash0/fetch": instrumentFetch,
       "@dash0/xhr": instrumentXhr,
+      "@dash0/session-recording": armSessionRecording,
     };
 
     instrumentations.forEach((instrumentation) => {

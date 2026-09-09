@@ -35,6 +35,7 @@ import { initializeTabId } from "../utils/tab-id";
 import { InitOptions, InstrumentationName } from "../types/options";
 import { BrowserBuildEnv, pickFirstString } from "./browser-env";
 import { applyVcsResourceAttributes } from "./vcs";
+import { armSessionRecording } from "../instrumentations/session-recording";
 
 declare const process: { env?: BrowserBuildEnv } | undefined;
 
@@ -86,6 +87,7 @@ export function init(opts: InitOptions) {
         "headersToCapture",
         "urlAttributeScrubber",
         "pageViewInstrumentation",
+        "sessionRecording",
         "enableTransportCompression",
       ])
     )
@@ -123,6 +125,9 @@ export function init(opts: InitOptions) {
   }
   if (isInstrumentationEnabled("@dash0/xhr", opts)) {
     instrumentXhr();
+  }
+  if (isInstrumentationEnabled("@dash0/session-recording", opts)) {
+    armSessionRecording();
   }
 
   hasBeenInitialised = true;
@@ -303,10 +308,23 @@ function merge<T extends Record<string, unknown>>(target: T, source: Partial<T>)
         dstVal !== null &&
         !Array.isArray(dstVal)
       ) {
-        result[key] = { ...dstVal, ...srcVal } as T[keyof T];
+        // Like the top-level rule above, an explicit `undefined` inside a nested object means "not provided" and
+        // must not erase the default. Otherwise `sessionRecording: { maskAllInputs: someUnsetFlag }` would
+        // silently turn input masking off.
+        result[key] = { ...dstVal, ...withoutUndefined(srcVal as Record<string, unknown>) } as T[keyof T];
       } else {
         result[key] = srcVal as T[keyof T];
       }
+    }
+  }
+  return result;
+}
+
+function withoutUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const result: Partial<T> = {};
+  for (const key of Object.keys(obj) as Array<keyof T>) {
+    if (obj[key] !== undefined) {
+      result[key] = obj[key];
     }
   }
   return result;

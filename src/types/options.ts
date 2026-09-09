@@ -7,7 +7,8 @@ export type InstrumentationName =
   | "@dash0/web-vitals"
   | "@dash0/error"
   | "@dash0/fetch"
-  | "@dash0/xhr";
+  | "@dash0/xhr"
+  | "@dash0/session-recording";
 
 /**
  * VCS (version control) context describing the build the SDK is running
@@ -141,6 +142,7 @@ export type InitOptions = {
     | "headersToCapture"
     | "urlAttributeScrubber"
     | "pageViewInstrumentation"
+    | "sessionRecording"
     | "enableTransportCompression"
   >
 >;

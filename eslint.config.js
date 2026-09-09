@@ -60,4 +60,25 @@ export default [
     },
     ignores: ["dist", "node_modules"],
   },
+  {
+    // The session recording entrypoints are bundled separately from the main SDK. They must not pull in any SDK
+    // module, otherwise the script-tag build ends up with two copies of the `vars` and `sessionId` singletons.
+    // Type-only imports are erased at compile time and are fine.
+    files: ["src/entrypoint/session-recording.ts", "src/entrypoint/session-recording-script.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../*", "./*"],
+              allowTypeImports: true,
+              message: "Session recording entrypoints must only import from @rrweb/record (plus type-only imports).",
+            },
+          ],
+        },
+      ],
+      "@typescript-eslint/consistent-type-imports": ["error", { prefer: "type-imports" }],
+    },
+  },
 ];
