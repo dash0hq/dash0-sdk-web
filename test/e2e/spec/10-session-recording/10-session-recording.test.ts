@@ -88,6 +88,26 @@ describe("Session Recording", () => {
     expectNoBrowserErrors();
   });
 
+  it("records when the recorder bundle executes before the initializer snippet", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`/e2e/spec/10-session-recording/page-recorder-first.html?testId=${testId}`);
+    await expect(await browser.getTitle()).toMatch(/recorder-first test/);
+
+    // The recorder script found no `dash0` global, so the SDK must have picked the recorder up from
+    // `window.dash0Recorder` during init. Without that pickup no chunk is ever sent.
+    await retry(async () => {
+      const logs = await getRecordingLogs(testId);
+      expect(logs.length).toBeGreaterThanOrEqual(1);
+    });
+
+    const [first] = await getRecordingLogs(testId);
+    expect(attr(first!, "dash0.session_recording.seq").intValue).toBe("0");
+    expect(attr(first!, "dash0.session_recording.has_snapshot").boolValue).toBe(true);
+    expect(first!.body!.stringValue).toContain("Recorder loaded before initializer");
+
+    expectNoBrowserErrors();
+  });
+
   it("masks inputs and marked text, blocks marked elements, and keeps other text", async () => {
     const testId = generateUniqueId(16);
     const secret = `secret-${generateUniqueId(8)}`;
