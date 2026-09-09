@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.25.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.24.0...0.25.0) (2026-09-09)
+
+### Features
+
+- session recording ([#112](https://github.com/dash0hq/dash0-sdk-web/issues/112)) ([220ad79](https://github.com/dash0hq/dash0-sdk-web/commit/220ad7961380cb978e5d6266a3982e9494013098))
+
 ## [0.24.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.23.0...0.24.0) (2026-07-27)
 
 ### Features
