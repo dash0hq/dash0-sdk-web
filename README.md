@@ -9,6 +9,7 @@ Features include:
 - Navigation timing instrumentation
 - HTTP request instrumentation (fetch and XMLHttpRequest)
 - Error tracking
+- Session recording with [rrweb](https://github.com/rrweb-io/rrweb), shipped as an optional separate bundle (see [Setup](docs/sdk/setup.md#session-recording))
 
 ## Getting started
 
