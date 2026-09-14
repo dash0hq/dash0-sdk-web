@@ -1,13 +1,16 @@
 import { debug, win } from "../utils";
 import { SessionRecorder } from "../types/session-recording";
-import { registerSessionRecorder, stopSessionRecording as stopRecording } from "../instrumentations/session-recording";
-
-const GLOBAL_RECORDER_KEY = "dash0Recorder";
+import {
+  GLOBAL_RECORDER_KEY,
+  registerSessionRecorder,
+  stopSessionRecording as stopRecording,
+} from "../instrumentations/session-recording";
 
 /**
  * Starts session recording with the given recorder. Pass `recorder` from `@dash0/sdk-web/session-recording`.
  * When `recorder` is omitted, the SDK looks for `window.dash0Recorder`, which the
- * `dash0-session-recording.iife.js` script sets.
+ * `dash0-session-recording.iife.js` script sets. Calling this is not required when that script is used: `init()`
+ * picks up `window.dash0Recorder` on its own, regardless of the order in which the scripts execute.
  *
  * Recording only starts once `init()` has run with a sampled session. It is safe to call this before `init()`;
  * the recorder is kept and recording starts as soon as the SDK is initialized. The recording is transmitted

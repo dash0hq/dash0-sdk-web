@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../instrumentations/session-recording", () => ({
+  GLOBAL_RECORDER_KEY: "dash0Recorder",
   registerSessionRecorder: vi.fn(),
   stopSessionRecording: vi.fn(),
 }));
