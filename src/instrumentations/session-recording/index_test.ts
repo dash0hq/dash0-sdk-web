@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionRecorder, SessionRecorderOptions } from "../../types/session-recording";
+import { win } from "../../utils";
 
 vi.mock("../../transport", () => ({
   sendSessionRecordingChunk: vi.fn(),
@@ -65,6 +66,40 @@ describe("session recording lifecycle", () => {
     expect(recorder).not.toHaveBeenCalled();
     mod.registerSessionRecorder(recorder);
     expect(recorder).toHaveBeenCalledTimes(1);
+  });
+
+  it("picks up window.dash0Recorder when arming, so the recorder script may run before the initializer", () => {
+    (win as any).dash0Recorder = recorder;
+    try {
+      mod.armSessionRecording();
+      expect(recorder).toHaveBeenCalledTimes(1);
+      expect(mod.isSessionRecording()).toBe(true);
+    } finally {
+      delete (win as any).dash0Recorder;
+    }
+  });
+
+  it("prefers an explicitly registered recorder over window.dash0Recorder", () => {
+    const globalRecorder = vi.fn(() => vi.fn());
+    (win as any).dash0Recorder = globalRecorder;
+    try {
+      mod.registerSessionRecorder(recorder);
+      mod.armSessionRecording();
+      expect(recorder).toHaveBeenCalledTimes(1);
+      expect(globalRecorder).not.toHaveBeenCalled();
+    } finally {
+      delete (win as any).dash0Recorder;
+    }
+  });
+
+  it("ignores a window.dash0Recorder that is not a function", () => {
+    (win as any).dash0Recorder = "nope";
+    try {
+      mod.armSessionRecording();
+      expect(mod.isSessionRecording()).toBe(false);
+    } finally {
+      delete (win as any).dash0Recorder;
+    }
   });
 
   it("uses the recorder from vars.sessionRecording.recorder", () => {

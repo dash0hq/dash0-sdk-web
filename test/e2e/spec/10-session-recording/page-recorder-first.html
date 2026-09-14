@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>session recording recorder-first test</title>
+
+    <!--
+      The recorder bundle executes synchronously before the initializer snippet has defined the `dash0` command
+      queue, so it cannot push `startSessionRecording`. The only handover left is `window.dash0Recorder`, which
+      `init()` picks up. This is the ordering that tag managers or misordered script tags produce.
+    -->
+    <script crossorigin="anonymous" src="/dist/dash0-session-recording.iife.js"></script>
+
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: {
+          url: `http://${window.location.hostname}:8011?cors=true`,
+          authToken: "auth_abc123",
+          dataset: "production",
+        },
+        sessionRecording: {
+          chunkMaxMillis: 500,
+        },
+      });
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+  </head>
+  <body>
+    <h1 id="visible-heading">Recorder loaded before initializer</h1>
+  </body>
+</html>

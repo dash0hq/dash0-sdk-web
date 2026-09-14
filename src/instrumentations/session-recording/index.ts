@@ -10,6 +10,12 @@ import { SessionRecorder, SessionRecordingEvent } from "../../types/session-reco
 import { Chunker, newChunker } from "./chunker";
 import { buildSessionRecordingLog, RecordingStream } from "./log";
 
+/**
+ * Global set by `dash0-session-recording.iife.js`. Read by `armSessionRecording()` and by
+ * `startSessionRecording()` when called without a recorder.
+ */
+export const GLOBAL_RECORDER_KEY = "dash0Recorder";
+
 let recorder: SessionRecorder | undefined;
 let armed = false;
 let stopRecorder: (() => void) | undefined;
@@ -33,11 +39,21 @@ export function registerSessionRecorder(r: SessionRecorder): void {
 
 /**
  * Called from `init()` once configuration is in place and the session is sampled.
+ *
+ * Recorder precedence: `sessionRecording.recorder` from the init options, then a recorder registered through
+ * `startSessionRecording(recorder)`, then `window.dash0Recorder`. The last one is set by
+ * `dash0-session-recording.iife.js`, and is the only handover that works when that script executes before the
+ * initializer snippet has defined the `dash0` command queue.
  */
 export function armSessionRecording(): void {
   armed = true;
   if (vars.sessionRecording.recorder) {
     recorder = vars.sessionRecording.recorder;
+  } else if (!recorder) {
+    const globalRecorder = (win as any)?.[GLOBAL_RECORDER_KEY];
+    if (typeof globalRecorder === "function") {
+      recorder = globalRecorder as SessionRecorder;
+    }
   }
   if (recorder) {
     start();
