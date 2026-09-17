@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionRecorder, SessionRecorderOptions } from "../../types/session-recording";
-import { win } from "../../utils";
+import { doc, win } from "../../utils";
 
 vi.mock("../../transport", () => ({
   sendSessionRecordingChunk: vi.fn(),
@@ -269,5 +269,90 @@ describe("session recording lifecycle", () => {
     expect(stopFn).toHaveBeenCalledTimes(1);
     expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(1);
     expect(mod.isSessionRecording()).toBe(false);
+  });
+
+  describe("visibility", () => {
+    /**
+     * jsdom's `visibilityState` is a getter on the Document prototype, so it can only be changed by
+     * redefining it. Restored by the `afterEach` below.
+     */
+    function setVisibilityState(state: DocumentVisibilityState): void {
+      Object.defineProperty(doc!, "visibilityState", { value: state, configurable: true });
+    }
+
+    function setVisibility(state: DocumentVisibilityState): void {
+      setVisibilityState(state);
+      doc!.dispatchEvent(new Event("visibilitychange"));
+    }
+
+    afterEach(() => {
+      setVisibilityState("visible");
+    });
+
+    it("defers the start of a tab that is hidden when recording is armed", () => {
+      setVisibilityState("hidden");
+
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+
+      expect(recorder).not.toHaveBeenCalled();
+      expect(mod.isSessionRecording()).toBe(false);
+
+      setVisibility("visible");
+
+      expect(recorder).toHaveBeenCalledTimes(1);
+      expect(mod.isSessionRecording()).toBe(true);
+    });
+
+    it("stops recording while hidden and starts a new run, with a new recording id, when shown again", () => {
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
+
+      setVisibility("hidden");
+
+      expect(stopFn).toHaveBeenCalledTimes(1);
+      expect(mod.isSessionRecording()).toBe(false);
+      // Buffered events are flushed uncompressed: a hidden document may be discarded before an
+      // asynchronous gzip completes.
+      expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(1);
+      expect(sendSessionRecordingChunk.mock.calls[0]![1]).toEqual({ compress: false });
+
+      setVisibility("visible");
+
+      expect(recorder).toHaveBeenCalledTimes(2);
+      capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
+      vi.advanceTimersByTime(5000);
+
+      expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(2);
+      // A separate run, so the replay rebuilds from the full snapshot rrweb takes when it starts.
+      const recordingIds = sendSessionRecordingChunk.mock.calls.map(
+        (c) => c[0].attributes.find((a: any) => a.key === "dash0.session_recording.id").value.stringValue
+      );
+      expect(recordingIds[0]).not.toBe(recordingIds[1]);
+    });
+
+    it("does not resurrect a recording the consumer stopped", () => {
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      mod.stopSessionRecording();
+
+      setVisibility("hidden");
+      setVisibility("visible");
+
+      expect(recorder).toHaveBeenCalledTimes(1);
+      expect(mod.isSessionRecording()).toBe(false);
+    });
+
+    it("records again after an explicit restart that follows a consumer stop", () => {
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      mod.stopSessionRecording();
+
+      mod.registerSessionRecorder(recorder);
+
+      expect(recorder).toHaveBeenCalledTimes(2);
+      expect(mod.isSessionRecording()).toBe(true);
+    });
   });
 });
