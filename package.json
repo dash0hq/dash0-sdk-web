@@ -75,6 +75,7 @@
     "url": "https://github.com/dash0hq/dash0-sdk-web/issues"
   },
   "dependencies": {
+    "@rrweb/record": "^2.1.1",
     "web-vitals": "^5.0.3"
   },
   "devDependencies": {
