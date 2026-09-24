@@ -127,7 +127,7 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
-  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr'`
+  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals'`
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
 - **Ignore URLs**<br>
@@ -448,3 +448,43 @@ for `fetch`, while an `XMLHttpRequest` timeout is an error — this asymmetry is
   Additionally generate virtual page views when these url parts change.
   - "HASH" changes to the urls hash / fragment
   - "SEARCH" changes to the urls search / query parameters
+
+#### Frustration signals
+
+The `@dash0/frustration-signals` instrumentation watches user interaction for signs of frustration. It currently
+detects rage clicks: a burst of clicks in the same place, which usually means a control did not respond the way the
+user expected.
+
+**Clicks are only observed while a session recording is running.** Detection starts and stops with the recording,
+which itself follows document visibility, so a rage click always comes with the replay that shows it. This
+instrumentation therefore does nothing unless `@dash0/session-recording` is enabled and a recorder is registered —
+see [session recording](./setup.md). A burst that is still open when a recording ends is reported at that point.
+
+Each detected burst is emitted as a `browser.rage_click` event once the burst ends, carrying the number of clicks,
+its duration, a CSS selector and the visible label of the clicked element, the click coordinates, and the
+`dash0.session_recording.id` of the recording it happened in, which lets Dash0 open the replay at that moment. The
+element label is omitted whenever it could carry user data — the element is masked or blocked by the session
+recording configuration (`sessionRecording.maskTextClass`, `maskTextSelector`, `blockClass`, `blockSelector`), or it
+is a field the user types into. Only trusted primary-button clicks are considered, so clicks synthesized by scripts
+are ignored.
+
+- **Minimum Clicks**<br>
+  key: `frustrationSignals.rageClick.minClicks`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `3`<br>
+  How many clicks in the same place constitute a rage click.
+- **Click Window**<br>
+  key: `frustrationSignals.rageClick.windowMillis`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `1000`<br>
+  The maximum time allowed between two consecutive clicks for them to belong to the same burst. A burst is reported
+  once this long has passed without another click.
+- **Click Radius**<br>
+  key: `frustrationSignals.rageClick.radiusPixels`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `30`<br>
+  How far apart, in CSS pixels, two clicks may be and still count as the same spot. Only applies to clicks that did
+  not land on the same element; clicks on one element always belong together.

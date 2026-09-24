@@ -355,4 +355,78 @@ describe("session recording lifecycle", () => {
       expect(mod.isSessionRecording()).toBe(true);
     });
   });
+
+  describe("recording state listeners", () => {
+    function setVisibility(state: DocumentVisibilityState): void {
+      Object.defineProperty(doc!, "visibilityState", { value: state, configurable: true });
+      doc!.dispatchEvent(new Event("visibilitychange"));
+    }
+
+    afterEach(() => {
+      Object.defineProperty(doc!, "visibilityState", { value: "visible", configurable: true });
+    });
+
+    it("reports the recording id on start and undefined on stop", () => {
+      const listener = vi.fn();
+      mod.onRecordingStateChange(listener);
+      expect(listener).not.toHaveBeenCalled();
+
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const recordingId = listener.mock.calls[0]![0];
+      expect(recordingId).toMatch(/^[0-9a-f]+$/);
+
+      mod.stopSessionRecording();
+      expect(listener).toHaveBeenCalledTimes(2);
+      expect(listener.mock.calls[1]![0]).toBeUndefined();
+    });
+
+    it("calls a listener that subscribes while a recording is already running", () => {
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+
+      const listener = vi.fn();
+      mod.onRecordingStateChange(listener);
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener.mock.calls[0]![0]).toBe(mod.activeRecordingId());
+    });
+
+    it("reports each run separately when recording follows visibility", () => {
+      const listener = vi.fn();
+      mod.onRecordingStateChange(listener);
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      listener.mockClear();
+
+      setVisibility("hidden");
+      setVisibility("visible");
+
+      expect(listener).toHaveBeenCalledTimes(2);
+      expect(listener.mock.calls[0]![0]).toBeUndefined();
+      expect(listener.mock.calls[1]![0]).toEqual(expect.any(String));
+    });
+
+    it("does not report a stop when nothing was recording", () => {
+      const listener = vi.fn();
+      mod.onRecordingStateChange(listener);
+
+      mod.stopSessionRecording();
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it("survives a listener that throws", () => {
+      mod.onRecordingStateChange(() => {
+        throw new Error("boom");
+      });
+
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+
+      expect(mod.isSessionRecording()).toBe(true);
+    });
+  });
 });

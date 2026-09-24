@@ -3,6 +3,7 @@ import { AnyValue, InstrumentationScope, KeyValue, Resource } from "./types/otlp
 import { UrlAttributeScrubber } from "./attributes";
 import { identity } from "./utils";
 import { SessionRecordingSettings } from "./types/session-recording";
+import { FrustrationSignalSettings } from "./types/frustration";
 
 export type PropagatorType = "traceparent" | "xray";
 
@@ -174,6 +175,13 @@ export type Vars = {
   sessionRecording: SessionRecordingSettings;
 
   /**
+   * Thresholds for the frustration signals the SDK derives from user interaction, currently
+   * rage clicks. Detection runs independently of session recording; when a recording is running,
+   * the emitted event carries its recording id so the replay can be opened at that moment.
+   */
+  frustrationSignals: FrustrationSignalSettings;
+
+  /**
    * Enables telemetry transport compression using gzip.
    * experimental - in rare cases causes Chrome to crash to use at your own risk.
    */
@@ -220,6 +228,13 @@ export const vars: Vars = {
     chunkMaxBytes: 48000,
     chunkMaxMillis: 5000,
     checkoutEveryNms: 300000,
+  },
+  frustrationSignals: {
+    rageClick: {
+      minClicks: 3,
+      windowMillis: 1000,
+      radiusPixels: 30,
+    },
   },
   enableTransportCompression: false,
   isSessionSampled: true,
