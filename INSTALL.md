@@ -25,9 +25,10 @@ You'll need the following before you can start with the Dash0 Web SDK:
 Once you have the prerequisites above, follow these guides:
 
 - **[Setup](docs/sdk/setup.md)** — add the SDK via modules or script tags and initialize it, including Content Security
-  Policy configuration.
+  Policy configuration and the opt-in session recording bundle.
 - **[Configuration](docs/sdk/configuration.md)** — all `init` options: backend correlation and propagators,
   configuration auto-detection (Vercel, VCS context), website attributes, telemetry transmission, session tracking,
-  error tracking, HTTP request and page-view instrumentation.
+  session recording, error tracking, HTTP request and page-view instrumentation.
 - **[API](docs/sdk/api.md)** — runtime API functions: `addSignalAttribute`, `removeSignalAttribute`, `identify`,
-  `sendEvent`, `reportError`, `terminateSession`, and `setActiveLogLevel`.
+  `sendEvent`, `reportError`, `startSessionRecording`, `stopSessionRecording`, `terminateSession`, and
+  `setActiveLogLevel`.

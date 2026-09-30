@@ -214,6 +214,57 @@ reportError(error, {
 dash0("reportError", "Something went wrong in user flow");
 ```
 
+### Session Recording
+
+See [session recording setup](./setup.md#session-recording) for how to load the recorder bundle, and
+[session recording configuration](./configuration.md#session-recording) for masking and sampling options.
+
+#### `startSessionRecording(recorder)`
+
+Starts session recording with the given recorder.
+
+**Parameters:**
+
+- `recorder` (SessionRecorder, optional): The recorder, imported from `@dash0/sdk-web/session-recording`. When omitted,
+  the SDK uses `window.dash0Recorder`, which the `dash0-session-recording.iife.js` script sets.
+
+It is safe to call this before `init()`; the recorder is kept and recording starts as soon as the SDK is initialized
+with a sampled session. Calling this is not required when the script tag is used — `init()` picks up the recorder on
+its own, regardless of the order in which the scripts execute.
+
+**Example:**
+
+```js
+// Module
+import { startSessionRecording } from "@dash0/sdk-web";
+import { recorder } from "@dash0/sdk-web/session-recording";
+
+startSessionRecording(recorder);
+
+// Script — only needed if you load the recording script manually
+dash0("startSessionRecording");
+```
+
+#### `stopSessionRecording()`
+
+Stops the running session recording and transmits any buffered events. Calling this when no recording is running is a
+no-op.
+
+Unlike the automatic pause while a tab is hidden, this is final: recording does not resume when the tab becomes visible
+again. Call `startSessionRecording()` to record again.
+
+**Example:**
+
+```js
+// Module
+import { stopSessionRecording } from "@dash0/sdk-web";
+
+stopSessionRecording();
+
+// Script
+dash0("stopSessionRecording");
+```
+
 ### Session Management
 
 #### `terminateSession()`

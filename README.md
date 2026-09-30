@@ -9,6 +9,7 @@ Features include:
 - Navigation timing instrumentation
 - HTTP request instrumentation (fetch and XMLHttpRequest)
 - Error tracking
+- Session replay (opt-in)
 
 ## Getting started
 
@@ -76,6 +77,25 @@ init({
   sessionSamplingRate: 50, // Only 50% of sessions will be recorded
 });
 ```
+
+#### Session Replay
+
+Session replay is opt-in and ships as a separate bundle, so nothing is recorded until you load it:
+
+```ts
+import { init } from "@dash0/sdk-web";
+import { recorder } from "@dash0/sdk-web/session-recording";
+
+init({
+  serviceName: "my-website",
+  endpoint: { url: "{OTLP via HTTP endpoint}", authToken: "{authToken}" },
+  sessionRecording: { recorder },
+});
+```
+
+All inputs are masked by default. See [Session Recording](./docs/sdk/setup.md#session-recording) for script-tag setup
+and [the configuration reference](./docs/sdk/configuration.md#session-recording) for masking, blocking and sampling
+options.
 
 For more detailed instructions, refer to [`INSTALL.md`](./INSTALL.md).
 

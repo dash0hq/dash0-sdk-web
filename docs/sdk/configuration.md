@@ -299,6 +299,112 @@ The SDK auto-detects VCS (version control) context from the build environment an
   The default session termination timeout. Session termination is the maximum allowed time to pass since session start
   before the session is considered to be expired.
 
+#### Session recording
+
+The `@dash0/session-recording` instrumentation captures the DOM so a session can be replayed in Dash0. It does nothing
+until a recorder is provided — see [session recording setup](./setup.md#session-recording) for the three ways to do
+that. Recording follows document visibility: only the visible document is recorded, and a hidden tab flushes and stops
+until it is shown again.
+
+**Every visible input, textarea and select is masked by default.** To exclude further content, give elements the
+`dash0-mask` class (their text is replaced with asterisks) or the `dash0-block` class (they are not recorded at all,
+and a placeholder of the same size appears in the replay). The class names and the equivalent selectors are
+configurable below. Note that `<input type="hidden">` values are element attributes and are **not** covered by
+`maskAllInputs` — use `blockSelector` for those.
+
+- **Recorder**<br>
+  key: `sessionRecording.recorder`<br>
+  type: `SessionRecorder`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  The recorder to use. Pass `recorder` from `@dash0/sdk-web/session-recording`. When omitted, the SDK waits for a
+  recorder to be registered through [`startSessionRecording(recorder)`](./api.md#startsessionrecordingrecorder) or
+  through the `dash0-session-recording.iife.js` script.
+- **Sampling Rate**<br>
+  key: `sessionRecording.samplingRate`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `100`<br>
+  The percentage of sessions for which a recording is captured. Must be a number between 0 and 100. The decision is
+  deterministic per session ID and uses the same hash as `sessionSamplingRate`, so recorded sessions are always a
+  subset of the sessions for which telemetry is transmitted.
+- **Mask All Inputs**<br>
+  key: `sessionRecording.maskAllInputs`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `true`<br>
+  Replace the value of every visible input, textarea and select with asterisks before it leaves the browser. Set to
+  `false` only when you know no form on the page accepts sensitive data.
+- **Mask Text Class**<br>
+  key: `sessionRecording.maskTextClass`<br>
+  type: `string | RegExp`<br>
+  optional: `true`<br>
+  default: `"dash0-mask"`<br>
+  Elements with this class have their text content masked.
+- **Mask Text Selector**<br>
+  key: `sessionRecording.maskTextSelector`<br>
+  type: `string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  CSS selector for elements whose text content must be masked. Use `"*"` to mask all text on the page.
+- **Block Class**<br>
+  key: `sessionRecording.blockClass`<br>
+  type: `string | RegExp`<br>
+  optional: `true`<br>
+  default: `"dash0-block"`<br>
+  Elements with this class are not recorded at all. A placeholder with the same dimensions is shown in the replay
+  instead.
+- **Block Selector**<br>
+  key: `sessionRecording.blockSelector`<br>
+  type: `string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  CSS selector for elements that are not recorded at all.
+- **Mask Input Function**<br>
+  key: `sessionRecording.maskInputFn`<br>
+  type: `(text: string, element: HTMLElement | null) => string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  Custom function to mask input values. Receives the raw value and the element, and must return the masked value.
+- **Mask Text Function**<br>
+  key: `sessionRecording.maskTextFn`<br>
+  type: `(text: string, element: HTMLElement | null) => string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  Custom function to mask text nodes. Receives the raw text and the parent element, and must return the masked text.
+- **Record Canvas**<br>
+  key: `sessionRecording.recordCanvas`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Record the content of canvas elements. This is expensive and off by default.
+- **Collect Fonts**<br>
+  key: `sessionRecording.collectFonts`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Collect fonts so the replay renders with the same typefaces. Adds payload size.
+- **Chunk Max Bytes**<br>
+  key: `sessionRecording.chunkMaxBytes`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `48000`<br>
+  The maximum serialized size of one chunk in bytes. When the buffered events reach this size, a chunk is transmitted.
+  A single event larger than this (typically a full snapshot) is transmitted on its own.
+- **Chunk Max Millis**<br>
+  key: `sessionRecording.chunkMaxMillis`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `5000`<br>
+  The maximum time buffered events wait before they are transmitted as a chunk.
+- **Checkout Interval**<br>
+  key: `sessionRecording.checkoutEveryNms`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `300000` (5 minutes)<br>
+  How often the recorder takes a new full snapshot of the DOM, in milliseconds. A replay can start from any chunk that
+  contains a full snapshot.
+
 #### Error tracking
 
 - **Ignore Error Messages**<br>
@@ -458,7 +564,7 @@ user expected.
 **Clicks are only observed while a session recording is running.** Detection starts and stops with the recording,
 which itself follows document visibility, so a rage click always comes with the replay that shows it. This
 instrumentation therefore does nothing unless `@dash0/session-recording` is enabled and a recorder is registered —
-see [session recording](./setup.md). A burst that is still open when a recording ends is reported at that point.
+see [session recording](#session-recording). A burst that is still open when a recording ends is reported at that point.
 
 Each detected burst is emitted as a `browser.rage_click` event once the burst ends, carrying the number of clicks,
 its duration, a CSS selector and the visible label of the clicked element, the click coordinates, and the

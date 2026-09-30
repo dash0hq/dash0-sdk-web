@@ -95,3 +95,54 @@ Then find the `dash0.iife.js` file and copy its integrity value.
 
 Additionally you might need to allow the Dash0 Web SDK to connect to your configured endpoint URL like so:
 `Content-Security-Policy: connect-src 'self' YOUR_ENDPOINT_URL_HERE`
+
+When you also load the session recording script, allow `dash0-session-recording.iife.js` the same way.
+
+### Session Recording
+
+Session recording captures the DOM so a session can be replayed in Dash0. The recorder ships as a **separate, opt-in
+bundle** (~22 KB gzip) that is never part of the main Dash0 Web SDK bundle — nothing is recorded until you load it.
+
+Using modules, pass the recorder to `init`:
+
+```js
+import { init } from "@dash0/sdk-web";
+import { recorder } from "@dash0/sdk-web/session-recording";
+
+init({
+  serviceName: "my-website",
+  endpoint: { url: "REPLACE THIS", authToken: "REPLACE THIS" },
+  sessionRecording: { recorder },
+});
+```
+
+To keep the recorder out of your initial bundle, load it lazily instead:
+
+```js
+import { startSessionRecording } from "@dash0/sdk-web";
+
+const { recorder } = await import("@dash0/sdk-web/session-recording");
+startSessionRecording(recorder);
+```
+
+Using script tags, add a second script. No API call is needed, and it may be loaded in any order relative to the
+initializer snippet and `dash0.iife.js`:
+
+```html
+<script
+  defer
+  crossorigin="anonymous"
+  src="https://unpkg.com/@dash0/sdk-web/dist/dash0-session-recording.iife.js"
+></script>
+```
+
+#### What gets recorded
+
+- **Only the visible document.** A hidden tab stops recording and flushes what it buffered; when it is shown again, a
+  fresh recording starts. The whole session, tab switches included, still replays as one.
+- **Only sampled sessions.** A session must pass both `sessionSamplingRate` and `sessionRecording.samplingRate`, so
+  recorded sessions are always a subset of the sessions that produce telemetry. Pages matching `ignoreUrls` are not
+  recorded.
+- **Masked by default.** Every visible input, textarea and select is replaced with asterisks before it leaves the
+  browser. See [session recording configuration](./configuration.md#session-recording) for masking and blocking
+  options.
