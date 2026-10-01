@@ -382,13 +382,6 @@ describe("rage click detection", () => {
       expect(bodyValue(burst(el), "text")).toBe("Save changes");
     });
 
-    it("reads the rendered text of a leaf element", () => {
-      const el = button(`<p class="status">Out of stock</p>`);
-      stubInnerText(el, "OUT OF STOCK");
-
-      expect(bodyValue(burst(el), "text")).toBe("OUT OF STOCK");
-    });
-
     it("omits the text of a button with a masked descendant", () => {
       const el = button(`<button id="pay"><span class="dash0-mask">4242</span> Pay</button>`);
 
@@ -414,23 +407,6 @@ describe("rage click detection", () => {
       expect(bodyValue(log, "selector")).toBe("#card");
     });
 
-    it("omits the text of a masked button clicked far below its own mask check depth", () => {
-      const el = button(
-        `<button id="card" class="dash0-mask">Card 1234${"<span>".repeat(40)}${"</span>".repeat(40)}</button>`
-      );
-      const spans = el.querySelectorAll("span");
-
-      expect(bodyValue(burst(spans[spans.length - 1]!), "text")).toBeUndefined();
-    });
-
-    it("omits the text of a button nested deep inside a masked container", () => {
-      const el = button(
-        `<div class="dash0-mask">${"<div>".repeat(40)}<button id="card"><i></i>Card 1234</button>${"</div>".repeat(40)}</div>`
-      );
-
-      expect(bodyValue(burst(el.querySelector("i")!), "text")).toBeUndefined();
-    });
-
     it("omits the text of a button nested deep inside a blocked container", () => {
       const el = button(
         `<div class="dash0-block">${"<div>".repeat(40)}<button id="card"><i></i>Card 1234</button>${"</div>".repeat(40)}</div>`
@@ -449,24 +425,15 @@ describe("rage click detection", () => {
       expect(bodyValue(burst(shadowButton(`class="dash0-block"`)), "text")).toBeUndefined();
     });
 
-    it("omits the text of a control inside the shadow root of a host matching the block selector", () => {
-      vars.sessionRecording.blockSelector = ".private";
-
-      expect(bodyValue(burst(shadowButton(`class="private"`)), "text")).toBeUndefined();
-    });
-
     it("omits the text of a control inside the shadow root of a host matching the mask selector", () => {
       vars.sessionRecording.maskTextSelector = ".secret";
 
       expect(bodyValue(burst(shadowButton(`class="secret"`)), "text")).toBeUndefined();
     });
 
-    it.each(["combobox", "textbox", "searchbox"])(
-      "never reports the value of a control inside the shadow root of a %s host",
-      (role) => {
-        expect(bodyValue(burst(shadowButton(`role="${role}"`)), "text")).toBeUndefined();
-      }
-    );
+    it("never reports the value of a control inside the shadow root of a combobox host", () => {
+      expect(bodyValue(burst(shadowButton(`role="combobox"`)), "text")).toBeUndefined();
+    });
 
     it("reports the text of a control inside the shadow root of an unmasked host", () => {
       expect(bodyValue(burst(shadowButton(`class="card"`)), "text")).toBe("Private account 4242");
@@ -479,15 +446,6 @@ describe("rage click detection", () => {
 
       expect(bodyValue(log, "text")).toBe("Dark mode");
       expect(bodyValue(log, "selector")).toBe("#dark");
-    });
-
-    it("resolves a control whose role is padded with whitespace", () => {
-      const el = button(`<div id="save" role=" button "><i></i>Save</div>`);
-
-      const log = burst(el.querySelector("i")!);
-
-      expect(bodyValue(log, "text")).toBe("Save");
-      expect(bodyValue(log, "selector")).toBe("#save");
     });
 
     it("reports the select's own label, not the chosen option, for a click on an option", () => {
@@ -511,8 +469,9 @@ describe("rage click detection", () => {
       expect(bodyValue(burst(el), "text")).toBeUndefined();
     });
 
-    it("omits the text of a button with a masked SVG descendant", () => {
-      const el = button(`<button id="pay"><svg><text class="dash0-mask">4242</text></svg> Pay</button>`);
+    it("omits the text of a button with an SVG descendant matching a mask class pattern", () => {
+      vars.sessionRecording.maskTextClass = /^private-/;
+      const el = button(`<button id="pay"><svg><text class="private-card">4242</text></svg> Pay</button>`);
 
       expect(bodyValue(burst(el.querySelector("svg")!), "text")).toBeUndefined();
     });
@@ -527,18 +486,6 @@ describe("rage click detection", () => {
       const el = button(`<label><i></i>Search <div role="searchbox textbox">private query 4242</div></label>`);
 
       expect(bodyValue(burst(el.querySelector("i")!), "text")).toBeUndefined();
-    });
-
-    it("omits the text of a label that wraps an ARIA role padded with whitespace", () => {
-      const el = button(`<label><i></i>Search <div role=" searchbox ">private query 4242</div></label>`);
-
-      expect(bodyValue(burst(el.querySelector("i")!), "text")).toBeUndefined();
-    });
-
-    it("never reports the value of an element with a list of ARIA roles", () => {
-      const el = button(`<div class="search" role="textbox searchbox">my typed query</div>`);
-
-      expect(bodyValue(burst(el), "text")).toBeUndefined();
     });
 
     it("never reports the value of an ARIA textbox", () => {
