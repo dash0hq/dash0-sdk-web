@@ -15,6 +15,11 @@ import {
  * Recording only starts once `init()` has run with a sampled session. It is safe to call this before `init()`;
  * the recorder is kept and recording starts as soon as the SDK is initialized. The recording is transmitted
  * as `browser.session_recording` log records that share one trace ID, which embeds the session ID.
+ *
+ * Only the visible document is recorded. A tab that is hidden — switched away from, or opened in the
+ * background — stops recording and flushes what it buffered, and starts a fresh recording when it is shown
+ * again. So a session is a sequence of recordings that do not overlap in time, which is what lets the whole
+ * session, tab switches included, be replayed as one.
  */
 export function startSessionRecording(recorder?: SessionRecorder): void {
   // The script entrypoint forwards dash0("startSessionRecording", ...) arguments without type checking,
@@ -34,6 +39,9 @@ export function startSessionRecording(recorder?: SessionRecorder): void {
 /**
  * Stops the running session recording and transmits any buffered events. Calling this when no recording is
  * running is a no-op.
+ *
+ * Unlike the automatic pause while a tab is hidden, this is final: recording does not resume when the tab
+ * becomes visible again. Call `startSessionRecording()` to record again.
  */
 export function stopSessionRecording(): void {
   stopRecording();

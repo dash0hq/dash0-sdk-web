@@ -1,9 +1,10 @@
 import { vars } from "../../vars";
 import { sessionId } from "../../api/session";
-import { debug, generateUniqueId, isSessionSampledIn, TRACE_ID_BYTES, warn, win } from "../../utils";
+import { debug, doc, generateUniqueId, isSessionSampledIn, TRACE_ID_BYTES, warn, win } from "../../utils";
 import { generateTraceId } from "../../utils/trace-id";
 import { generateSpanId } from "../../utils/span-id";
 import { isUrlIgnored } from "../../utils/ignore-rules";
+import { addEventListener } from "../../utils/listeners";
 import { onLastChance } from "../../utils/on-last-chance";
 import { sendSessionRecordingChunk } from "../../transport";
 import { SessionRecorder, SessionRecordingEvent } from "../../types/session-recording";
@@ -20,10 +21,16 @@ let recorder: SessionRecorder | undefined;
 let armed = false;
 let stopRecorder: (() => void) | undefined;
 let chunker: Chunker | undefined;
+let stream: RecordingStream | undefined;
 let lastChanceRegistered = false;
-// True while the last-chance handler flushes. The chunk emitted then must be sent uncompressed: gzip is
-// asynchronous, and a document that is being unloaded may never get to the `fetch()` behind the await.
-let flushingOnLastChance = false;
+let visibilityRegistered = false;
+// Set by the public `stopSessionRecording()`, so a visibility change does not resurrect a recording the
+// consumer deliberately ended. Cleared by an explicit start: registering a recorder or arming.
+let stoppedByConsumer = false;
+// True while flushing a document that may not live much longer. The chunk emitted then must be sent
+// uncompressed: gzip is asynchronous, and a document that is being unloaded — or that has just been hidden,
+// and may be unloaded or throttled at any moment — may never get to the `fetch()` behind the await.
+let flushingWhileDocumentMayEnd = false;
 
 /**
  * Makes a recorder available. Called from the public `startSessionRecording` API, which the
@@ -32,6 +39,7 @@ let flushingOnLastChance = false;
  */
 export function registerSessionRecorder(r: SessionRecorder): void {
   recorder = r;
+  stoppedByConsumer = false;
   if (armed) {
     start();
   }
@@ -47,6 +55,7 @@ export function registerSessionRecorder(r: SessionRecorder): void {
  */
 export function armSessionRecording(): void {
   armed = true;
+  stoppedByConsumer = false;
   if (vars.sessionRecording.recorder) {
     recorder = vars.sessionRecording.recorder;
   } else if (!recorder) {
@@ -61,6 +70,68 @@ export function armSessionRecording(): void {
 }
 
 export function stopSessionRecording(): void {
+  stoppedByConsumer = true;
+  teardown();
+}
+
+export function isSessionRecording(): boolean {
+  return stopRecorder != null;
+}
+
+/**
+ * The id of the recording currently being captured, if any. Other instrumentations attach it to
+ * their signals so a replay can be opened at the moment the signal was produced. Undefined
+ * whenever no recording is running — the recorder was never provided, the session was not sampled
+ * for recording, or the document is hidden.
+ */
+export function activeRecordingId(): string | undefined {
+  return stopRecorder != null ? stream?.recordingId : undefined;
+}
+
+type RecordingStateListener = (recordingId: string | undefined) => void;
+
+const recordingStateListeners: RecordingStateListener[] = [];
+
+/**
+ * Subscribes to the recording lifecycle: the listener is called with a recording id when a
+ * recording starts, and with `undefined` when it stops. Both happen repeatedly over a session,
+ * because recording follows document visibility.
+ *
+ * This is how instrumentations that only make sense alongside a replay — currently frustration
+ * signal detection — know when to observe and when to stay out of the way. Subscribing while a
+ * recording is already running calls the listener immediately, so registration order does not
+ * matter.
+ */
+export function onRecordingStateChange(listener: RecordingStateListener): void {
+  recordingStateListeners.push(listener);
+  const active = activeRecordingId();
+  if (active) {
+    invokeRecordingStateListener(listener, active);
+  }
+}
+
+function notifyRecordingState(recordingId: string | undefined): void {
+  for (let i = 0; i < recordingStateListeners.length; i++) {
+    invokeRecordingStateListener(recordingStateListeners[i]!, recordingId);
+  }
+}
+
+function invokeRecordingStateListener(listener: RecordingStateListener, recordingId: string | undefined): void {
+  try {
+    listener(recordingId);
+  } catch (e) {
+    // A misbehaving subscriber must never take the recording down with it.
+    debug("Recording state listener failed", e);
+  }
+}
+
+/**
+ * Stops the recorder and flushes what it buffered. Shared by the public stop and by the visibility handler,
+ * which differ only in whether the consumer asked for it.
+ */
+function teardown(): void {
+  const wasRecording = stopRecorder != null;
+
   if (stopRecorder) {
     try {
       stopRecorder();
@@ -69,12 +140,62 @@ export function stopSessionRecording(): void {
     }
     stopRecorder = undefined;
   }
+
+  // Before the chunk flush below, so whatever a subscriber emits on its way out is queued for the
+  // same transmission rather than the next one — a teardown is often the last thing a document does.
+  if (wasRecording) {
+    notifyRecordingState(undefined);
+  }
+
   chunker?.flush();
   chunker = undefined;
+  stream = undefined;
 }
 
-export function isSessionRecording(): boolean {
-  return stopRecorder != null;
+/**
+ * Whether the document is not on screen. Treats an absent `visibilityState` as visible, so an environment
+ * without the API records exactly as it did before rather than never recording at all.
+ *
+ * `prerender` counts as hidden: nobody is looking at a prerendered page.
+ */
+function isDocumentHidden(): boolean {
+  const state = doc?.visibilityState;
+  return state != null && state !== "visible";
+}
+
+/**
+ * Recording follows visibility: a hidden tab is torn down and a shown tab starts a new recorder run.
+ *
+ * This is what lets one replayer play a whole session. rrweb's Replayer rebuilds from any full snapshot it
+ * plays through, but each rebuild resets its node-id mirror, so events from a document other than the one
+ * that produced the newest snapshot would address the wrong nodes. Recording only the visible document keeps
+ * the runs of a session from overlapping, so they concatenate into a single coherent stream. `record()` takes
+ * a full snapshot when it starts, so every run opens with one and needs no separate snapshot call.
+ *
+ * Not recording hidden tabs is also why a session stays small: a background tab left open for hours used to
+ * record mutations nobody ever saw.
+ */
+function registerVisibilityHandling(): void {
+  if (visibilityRegistered || !doc) {
+    return;
+  }
+  visibilityRegistered = true;
+  addEventListener(doc, "visibilitychange", () => {
+    if (isDocumentHidden()) {
+      // Flushed the same way as an unload: a hidden document can be discarded or throttled before an
+      // asynchronous gzip completes.
+      flushingWhileDocumentMayEnd = true;
+      try {
+        teardown();
+      } finally {
+        flushingWhileDocumentMayEnd = false;
+      }
+      return;
+    }
+    if (!stoppedByConsumer) {
+      start();
+    }
+  });
 }
 
 function start(): void {
@@ -99,19 +220,30 @@ function start(): void {
     return;
   }
 
+  registerVisibilityHandling();
+  if (isDocumentHidden()) {
+    // A tab opened in the background — ctrl+click, `target=_blank`, a restored session — must not record
+    // until it is first shown. The listener above starts it then.
+    debug("Document is hidden. Session recording will start once it becomes visible.");
+    return;
+  }
+
   const traceId = generateTraceId(sessionId);
-  const stream: RecordingStream = {
+  const s: RecordingStream = {
     recordingId: generateUniqueId(TRACE_ID_BYTES),
     traceId,
     spanId: generateSpanId(traceId),
   };
+  stream = s;
 
   const c = newChunker({
     maxBytes: settings.chunkMaxBytes ?? 48000,
     maxMillis: settings.chunkMaxMillis ?? 5000,
     onChunk: (chunk) => {
       try {
-        sendSessionRecordingChunk(buildSessionRecordingLog(stream, chunk), { compress: !flushingOnLastChance });
+        sendSessionRecordingChunk(buildSessionRecordingLog(s, chunk), {
+          compress: !flushingWhileDocumentMayEnd,
+        });
       } catch (e) {
         warn("Failed to transmit session recording chunk", e);
       }
@@ -153,16 +285,17 @@ function start(): void {
   if (!lastChanceRegistered) {
     lastChanceRegistered = true;
     onLastChance(() => {
-      flushingOnLastChance = true;
+      flushingWhileDocumentMayEnd = true;
       try {
         chunker?.flush();
       } finally {
-        flushingOnLastChance = false;
+        flushingWhileDocumentMayEnd = false;
       }
     });
   }
 
-  debug("Session recording started", stream);
+  debug("Session recording started", s);
+  notifyRecordingState(s.recordingId);
 }
 
 /**

@@ -45,6 +45,17 @@ async function getRecordingLogs(testId: string): Promise<ReceivedLog[]> {
   return logs;
 }
 
+/**
+ * Overrides `document.visibilityState` and fires the matching event. `visibilityState` is a getter on the
+ * Document prototype, so it can only be changed by redefining the property.
+ */
+async function setVisibility(state: "visible" | "hidden"): Promise<void> {
+  await browser.execute((s: string) => {
+    Object.defineProperty(document, "visibilityState", { value: s, configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  }, state);
+}
+
 describe("Session Recording", () => {
   beforeEach(sharedBeforeEach);
   afterEach(sharedAfterEach);
@@ -156,6 +167,54 @@ describe("Session Recording", () => {
 
     const bodies = logs.map((l) => l.body?.stringValue ?? "").join("\n");
     expect(bodies).toContain("Heading after click");
+
+    expectNoBrowserErrors();
+  });
+
+  it("stops while the document is hidden and starts a new run with a fresh snapshot when it is shown again", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`/e2e/spec/10-session-recording/page.html?testId=${testId}`);
+
+    await retry(async () => {
+      const logs = await getRecordingLogs(testId);
+      expect(logs.length).toBeGreaterThanOrEqual(1);
+    });
+    const firstRunId = attr((await getRecordingLogs(testId))[0]!, "dash0.session_recording.id").stringValue;
+
+    // A real background tab cannot be produced from a single WebDriver session, so drive `visibilityState`
+    // directly. The event and the state the SDK reads are the same ones the browser would set.
+    await setVisibility("hidden");
+    const countWhileHidden = (await getRecordingLogs(testId)).length;
+    await browser.execute(() => {
+      document.getElementById("visible-heading")!.textContent = "Changed while hidden";
+    });
+    await browser.pause(1500);
+    const hiddenLogs = await getRecordingLogs(testId);
+    expect(hiddenLogs.length).toBe(countWhileHidden);
+    expect(hiddenLogs.map((l) => l.body?.stringValue ?? "").join("\n")).not.toContain("Changed while hidden");
+
+    await setVisibility("visible");
+    await $("#toggle").click();
+
+    await retry(async () => {
+      const runIds = new Set(
+        (await getRecordingLogs(testId)).map((l) => attr(l, "dash0.session_recording.id").stringValue)
+      );
+      expect(runIds.size).toBe(2);
+    });
+
+    // The second run must open with its own full snapshot, which is what lets one replayer rebuild the
+    // document when playback crosses the switch.
+    const secondRun = (await getRecordingLogs(testId)).filter(
+      (l) => attr(l, "dash0.session_recording.id").stringValue !== firstRunId
+    );
+    const opening = secondRun.find((l) => attr(l, "dash0.session_recording.seq").intValue === "0")!;
+    expect(attr(opening, "dash0.session_recording.has_snapshot").boolValue).toBe(true);
+    expect(
+      JSON.parse(opening.body!.stringValue!)
+        .map((e: any) => e.type)
+        .slice(0, 2)
+    ).toEqual([4, 2]);
 
     expectNoBrowserErrors();
   });

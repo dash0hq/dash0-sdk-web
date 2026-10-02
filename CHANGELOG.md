@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.27.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.26.0...0.27.0) (2026-09-24)
+
+### Features
+
+- **frustration-signals:** detect rage clicks during session recordings ([#116](https://github.com/dash0hq/dash0-sdk-web/issues/116)) ([dc99c07](https://github.com/dash0hq/dash0-sdk-web/commit/dc99c07ca5e2a1561609ee617c36be1e461dbc2e))
+
+## [0.26.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.25.0...0.26.0) (2026-09-18)
+
+### Features
+
+- **session-recording:** record only the visible document ([#115](https://github.com/dash0hq/dash0-sdk-web/issues/115)) ([cb7a94b](https://github.com/dash0hq/dash0-sdk-web/commit/cb7a94b808d3afe0ce93e890eafd53ba15dc65e6))
+
 ## [0.25.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.24.0...0.25.0) (2026-09-09)
 
 ### Features
