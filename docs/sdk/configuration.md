@@ -560,6 +560,7 @@ to drop hidden inputs). Set `maskTextSelector` to `"*"` to mask all text on the 
 
 Session recording can be disabled without removing the recorder bundle by leaving `@dash0/session-recording` out of
 `enabledInstrumentations`.
+
 #### Frustration signals
 
 The `@dash0/frustration-signals` instrumentation watches user interaction for signs of frustration. It currently
