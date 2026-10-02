@@ -37,6 +37,7 @@ import { BrowserBuildEnv, pickFirstString } from "./browser-env";
 import { applyVcsResourceAttributes } from "./vcs";
 import { armSessionRecording } from "../instrumentations/session-recording";
 import { startRageClickInstrumentation } from "../instrumentations/frustration/rage-click";
+import { startResourceTimingInstrumentation } from "../instrumentations/resources";
 
 declare const process: { env?: BrowserBuildEnv } | undefined;
 
@@ -90,6 +91,7 @@ export function init(opts: InitOptions) {
         "pageViewInstrumentation",
         "sessionRecording",
         "frustrationSignals",
+        "resourceTiming",
         "enableTransportCompression",
       ])
     )
@@ -133,6 +135,10 @@ export function init(opts: InitOptions) {
   }
   if (isInstrumentationEnabled("@dash0/frustration-signals", opts)) {
     startRageClickInstrumentation();
+  }
+  // Opt-in, so deliberately not routed through isInstrumentationEnabled.
+  if (opts.enabledInstrumentations?.includes("@dash0/resource-timing")) {
+    startResourceTimingInstrumentation();
   }
 
   hasBeenInitialised = true;

@@ -126,9 +126,14 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   type: `InstrumentationName[]`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
-  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals'`
+  List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations except
+  `@dash0/resource-timing`.
+  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals' | '@dash0/resource-timing'`
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
+
+  Providing a list turns off every instrumentation left out of it. To enable `@dash0/resource-timing`, list it along
+  with every other instrumentation you want. It is off by default because it emits one span per static asset. See
+  [static asset instrumentation](#static-asset-instrumentation).
 
 - **Ignore URLs**<br>
   key: `ignoreUrls`<br>
@@ -488,3 +493,77 @@ are ignored.
   default: `30`<br>
   How far apart, in CSS pixels, two clicks may be and still count as the same spot. Only applies to clicks that did
   not land on the same element; clicks on one element always belong together.
+
+#### Static asset instrumentation
+
+The `@dash0/resource-timing` instrumentation captures the static assets the browser loads for a page — scripts,
+stylesheets, images, fonts, media, iframes — and emits one span per asset, derived from the browser's
+[Resource Timing](https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Resource_timing) entries. Each span
+carries the asset's start time and duration, so a page's assets form a load waterfall in the order the browser
+actually fetched them, with the network phases of each asset recorded as span events.
+
+`fetch` and `XMLHttpRequest` calls are never captured here. They have their own instrumentations, which see request
+and response detail that resource timing cannot.
+
+**This instrumentation is opt-in.** Unlike every other instrumentation, it is not enabled by an unset
+`enabledInstrumentations`; it has to be listed explicitly. Remember that naming any instrumentation turns off every
+one you leave out, so list everything you want — including `@dash0/session-recording` and
+`@dash0/frustration-signals` if you use them:
+
+```js
+init({
+  serviceName: "my-website",
+  endpoint: { url: "...", authToken: "..." },
+  enabledInstrumentations: [
+    "@dash0/navigation",
+    "@dash0/web-vitals",
+    "@dash0/error",
+    "@dash0/fetch",
+    "@dash0/xhr",
+    "@dash0/session-recording",
+    "@dash0/frustration-signals",
+    "@dash0/resource-timing",
+  ],
+});
+```
+
+A content-heavy page can reference several hundred assets, all resolving within the first few seconds of the page
+load, so this instrumentation can multiply the number of spans a site produces. `maxSpansPerPageLoad` bounds what any
+one page view contributes — the budget is reset by each page view, including virtual ones, so a single-page app keeps
+reporting assets as the user navigates. The SDK also charges these spans against a transmission budget of their own,
+so a burst of assets cannot crowd out errors, HTTP spans or web vitals.
+
+**This instrumentation raises `performance.setResourceTimingBufferSize()` to 1000** when it starts. The browser's
+default of 250 entries is exhausted by an asset-heavy page before `init()` runs, which loses exactly the entries at
+the beginning of the waterfall. This is a page-wide setting: if something else in your application sets a larger
+buffer, enable this instrumentation before it, or raise the value again afterwards.
+
+`fetch` and `XMLHttpRequest` are not the only initiator types excluded — `beacon` and `ping` are too. Both are POSTs
+rather than asset loads, and resource timing gives no way to record them as anything but a GET.
+
+**Cross-origin assets need `Timing-Allow-Origin`.** Without that response header the browser exposes only the start
+time, the duration and `fetchStart`/`responseEnd` for a cross-origin asset. The span is still emitted and still sits
+correctly in the waterfall, but the DNS, connect and request phases are reported as `0` by the browser and are
+omitted rather than recorded as instant, and the size attributes are absent. Add
+`Timing-Allow-Origin: <your-origin>` on your CDN or third-party responses to get the full breakdown.
+
+Assets matched by [`ignoreUrls`](#general), `data:` URLs, and the SDK's own requests to the configured telemetry
+endpoints are never captured.
+
+- **Initiator Types**<br>
+  key: `resourceTiming.initiatorTypes`<br>
+  type: `string[]`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  Restricts capture to these `initiatorType` values, for example `["script", "css", "img"]`. When unset every
+  initiator type is captured except `fetch` and `xmlhttprequest`. Left unset by default on purpose: the set of
+  initiator types browsers report is not fixed, so a default allow list would silently drop resource kinds added to
+  the platform later.
+- **Maximum Spans Per Page Load**<br>
+  key: `resourceTiming.maxSpansPerPageLoad`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `100`<br>
+  The maximum number of static-asset spans to emit for a single page view. The budget is reset by every page view,
+  including the virtual ones a single-page app produces. Reaching the cap is reported through the SDK's debug log, so
+  a truncated waterfall is not mistaken for a complete one.
