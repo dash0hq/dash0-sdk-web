@@ -342,4 +342,174 @@ describe("rage click detection", () => {
 
     expect(bodyValue(lastLog(), "selector")).toBe("div.cart>span:nth-of-type(2)");
   });
+
+  describe("reported text", () => {
+    function burst(target: Element): LogRecord {
+      click(target);
+      click(target);
+      click(target);
+      closeCluster();
+      expect(sendLog).toHaveBeenCalledTimes(1);
+      return lastLog();
+    }
+
+    function stubInnerText(el: Element, value: string): void {
+      Object.defineProperty(el, "innerText", { value, configurable: true });
+    }
+
+    it("drops the text of a burst on a container's own background", () => {
+      const el = button(`<div class="tool-bar"><button>Show views</button><button>All spans</button></div>`);
+
+      const log = burst(el);
+
+      expect(bodyValue(log, "text")).toBeUndefined();
+      expect(bodyValue(log, "selector")).toBe("div.tool-bar");
+    });
+
+    it("reports the button's label for a click on an icon inside it", () => {
+      const el = button(`<button id="save"><i class="icon"></i> Save</button>`);
+
+      const log = burst(el.querySelector("i")!);
+
+      expect(bodyValue(log, "text")).toBe("Save");
+      expect(bodyValue(log, "selector")).toBe("#save");
+    });
+
+    it("reads the rendered text so block children stay separate", () => {
+      const el = button(`<button id="apply"><div>Save</div><div>changes</div></button>`);
+      stubInnerText(el, "Save\nchanges");
+
+      expect(bodyValue(burst(el), "text")).toBe("Save changes");
+    });
+
+    it("omits the text of a button with a masked descendant", () => {
+      const el = button(`<button id="pay"><span class="dash0-mask">4242</span> Pay</button>`);
+
+      const log = burst(el);
+
+      expect(bodyValue(log, "text")).toBeUndefined();
+      expect(bodyValue(log, "selector")).toBe("#pay");
+    });
+
+    it("omits the text of a button with a descendant matching the mask selector", () => {
+      vars.sessionRecording.maskTextSelector = ".secret";
+      const el = button(`<button id="pay"><span class="secret">4242</span> Pay</button>`);
+
+      expect(bodyValue(burst(el), "text")).toBeUndefined();
+    });
+
+    it("omits the text when an ancestor of the resolved element is masked", () => {
+      const el = button(`<div class="dash0-mask"><button id="card"><i></i>Card 1234</button></div>`);
+
+      const log = burst(el.querySelector("i")!);
+
+      expect(bodyValue(log, "text")).toBeUndefined();
+      expect(bodyValue(log, "selector")).toBe("#card");
+    });
+
+    it("omits the text of a button nested deep inside a blocked container", () => {
+      const el = button(
+        `<div class="dash0-block">${"<div>".repeat(40)}<button id="card"><i></i>Card 1234</button>${"</div>".repeat(40)}</div>`
+      );
+
+      expect(bodyValue(burst(el.querySelector("i")!), "text")).toBeUndefined();
+    });
+
+    function shadowButton(hostAttributes: string): Element {
+      const host = button(`<account-card ${hostAttributes}></account-card>`);
+      host.attachShadow({ mode: "open" }).innerHTML = `<button><i></i>Private account 4242</button>`;
+      return host.shadowRoot!.querySelector("i")!;
+    }
+
+    it("omits the text of a control inside the shadow root of a blocked host", () => {
+      expect(bodyValue(burst(shadowButton(`class="dash0-block"`)), "text")).toBeUndefined();
+    });
+
+    it("omits the text of a control inside the shadow root of a host matching the mask selector", () => {
+      vars.sessionRecording.maskTextSelector = ".secret";
+
+      expect(bodyValue(burst(shadowButton(`class="secret"`)), "text")).toBeUndefined();
+    });
+
+    it("never reports the value of a control inside the shadow root of a combobox host", () => {
+      expect(bodyValue(burst(shadowButton(`role="combobox"`)), "text")).toBeUndefined();
+    });
+
+    it("reports the text of a control inside the shadow root of an unmasked host", () => {
+      expect(bodyValue(burst(shadowButton(`class="card"`)), "text")).toBe("Private account 4242");
+    });
+
+    it("resolves a control whose role is a list of ARIA roles", () => {
+      const el = button(`<div id="dark" role="switch checkbox"><i></i>Dark mode</div>`);
+
+      const log = burst(el.querySelector("i")!);
+
+      expect(bodyValue(log, "text")).toBe("Dark mode");
+      expect(bodyValue(log, "selector")).toBe("#dark");
+    });
+
+    it("reports the select's own label, not the chosen option, for a click on an option", () => {
+      const el = button(`<select id="country" aria-label="Country"><option>Germany</option></select>`);
+
+      const log = burst(el.querySelector("option")!);
+
+      expect(bodyValue(log, "text")).toBe("Country");
+      expect(bodyValue(log, "selector")).toBe("#country");
+    });
+
+    it("omits the text of a label that wraps a textarea", () => {
+      const el = button(`<label id="notes">Notes <textarea>my private draft</textarea></label>`);
+
+      expect(bodyValue(burst(el), "text")).toBeUndefined();
+    });
+
+    it("never reports text typed into an editable region", () => {
+      const el = button(`<div class="editor" contenteditable="true">secret draft</div>`);
+
+      expect(bodyValue(burst(el), "text")).toBeUndefined();
+    });
+
+    it("omits the text of a button with an SVG descendant matching a mask class pattern", () => {
+      vars.sessionRecording.maskTextClass = /^private-/;
+      const el = button(`<button id="pay"><svg><text class="private-card">4242</text></svg> Pay</button>`);
+
+      expect(bodyValue(burst(el.querySelector("svg")!), "text")).toBeUndefined();
+    });
+
+    it("omits the text of a label that wraps an ARIA combobox", () => {
+      const el = button(`<label id="country">Country <div role="combobox">Germany</div></label>`);
+
+      expect(bodyValue(burst(el), "text")).toBeUndefined();
+    });
+
+    it("omits the text of a label that wraps an element with a list of ARIA roles", () => {
+      const el = button(`<label><i></i>Search <div role="searchbox textbox">private query 4242</div></label>`);
+
+      expect(bodyValue(burst(el.querySelector("i")!), "text")).toBeUndefined();
+    });
+
+    it("never reports the value of an ARIA textbox", () => {
+      const el = button(`<div class="search" role="textbox">my typed query</div>`);
+
+      expect(bodyValue(burst(el), "text")).toBeUndefined();
+    });
+
+    it("keeps a password field's label without its value", () => {
+      const el = button(`<label id="pw">Password <input type="password" value="hunter2" /></label>`);
+
+      expect(bodyValue(burst(el), "text")).toBe("Password");
+    });
+
+    it("keeps a container's own aria-label", () => {
+      const el = button(`<div class="toolbar" aria-label="Formatting"><span></span></div>`);
+
+      expect(bodyValue(burst(el), "text")).toBe("Formatting");
+    });
+
+    it("keeps the text of a leaf element outside any control", () => {
+      doc!.body.innerHTML = `<div class="cart"><span>x</span><span>Remove</span></div>`;
+
+      expect(bodyValue(burst(doc!.querySelectorAll("span")[1]!), "text")).toBe("Remove");
+    });
+  });
 });
