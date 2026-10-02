@@ -46,6 +46,10 @@ vi.mock("../instrumentations/frustration/rage-click", () => ({
   startRageClickInstrumentation: vi.fn(),
 }));
 
+vi.mock("../instrumentations/resources", () => ({
+  startResourceTimingInstrumentation: vi.fn(),
+}));
+
 // Mock the utils module to control loc.hostname
 vi.mock("../utils", async () => {
   const actual = await vi.importActual("../utils");
@@ -62,6 +66,7 @@ import { startNavigationInstrumentation } from "../instrumentations/navigation";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { armSessionRecording } from "../instrumentations/session-recording";
 import { startRageClickInstrumentation } from "../instrumentations/frustration/rage-click";
+import { startResourceTimingInstrumentation } from "../instrumentations/resources";
 
 describe("init", () => {
   const baseOptions: InitOptions = {
@@ -127,6 +132,17 @@ describe("init", () => {
       expect(instrumentXhr).toHaveBeenCalled();
     });
 
+    it("should not enable resource timing when enabledInstrumentations is undefined", async () => {
+      // Opt-in by design: one span per static asset would otherwise multiply span volume for every
+      // existing customer on upgrade.
+      init({
+        ...baseOptions,
+        enabledInstrumentations: undefined,
+      });
+
+      expect(startResourceTimingInstrumentation).not.toHaveBeenCalled();
+    });
+
     const instrumentations: InstrumentationName[] = [
       "@dash0/navigation",
       "@dash0/web-vitals",
@@ -135,6 +151,7 @@ describe("init", () => {
       "@dash0/xhr",
       "@dash0/session-recording",
       "@dash0/frustration-signals",
+      "@dash0/resource-timing",
     ];
     const instrumentationMocks: Record<InstrumentationName, () => void> = {
       "@dash0/navigation": startNavigationInstrumentation,
@@ -144,6 +161,7 @@ describe("init", () => {
       "@dash0/xhr": instrumentXhr,
       "@dash0/session-recording": armSessionRecording,
       "@dash0/frustration-signals": startRageClickInstrumentation,
+      "@dash0/resource-timing": startResourceTimingInstrumentation,
     };
 
     instrumentations.forEach((instrumentation) => {

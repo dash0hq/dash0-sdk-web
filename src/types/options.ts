@@ -9,7 +9,8 @@ export type InstrumentationName =
   | "@dash0/fetch"
   | "@dash0/xhr"
   | "@dash0/session-recording"
-  | "@dash0/frustration-signals";
+  | "@dash0/frustration-signals"
+  | "@dash0/resource-timing";
 
 /**
  * VCS (version control) context describing the build the SDK is running
@@ -145,6 +146,7 @@ export type InitOptions = {
     | "pageViewInstrumentation"
     | "sessionRecording"
     | "frustrationSignals"
+    | "resourceTiming"
     | "enableTransportCompression"
   >
 >;

@@ -36,6 +36,17 @@ const isSessionRecordingRateLimited = lazyRateLimiter({
   maxCallsPerTenSeconds: 64,
 });
 
+// Static-asset spans get their own budget. A page can reference hundreds of scripts, stylesheets,
+// images and fonts, and they all resolve within the first few seconds -- on the shared budget above
+// a single such page would spend the whole allowance on assets and leave errors, fetch spans and
+// web vitals silently dropped for the rest of the window. The budget is wider than the shared one
+// because asset spans arrive in exactly this kind of burst, while `maxSpansPerPageLoad` bounds how
+// much any single page load can contribute.
+const isResourceTimingRateLimited = lazyRateLimiter({
+  maxCallsPerTenMinutes: 2048,
+  maxCallsPerTenSeconds: 256,
+});
+
 export function sendLog(log: LogRecord): void {
   if (!vars.isSessionSampled) return;
 
@@ -94,6 +105,23 @@ export function sendSpan(span: Span | undefined): void {
 
   if (isRateLimited()) {
     debug("Transport rate limit. Will not send item.", span);
+    return;
+  }
+
+  spanBatcher.send(span);
+}
+
+/**
+ * Transmits a span derived from a `PerformanceResourceTiming` entry. Identical to {@link sendSpan}
+ * except for the rate limit it is charged against, so a burst of static assets cannot starve the
+ * other signals.
+ */
+export function sendResourceSpan(span: Span | undefined): void {
+  if (!span) return;
+  if (!vars.isSessionSampled) return;
+
+  if (isResourceTimingRateLimited()) {
+    debug("Resource timing rate limit. Will not send item.", span);
     return;
   }
 
