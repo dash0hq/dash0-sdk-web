@@ -8,11 +8,34 @@ import {
   PAGE_VIEW_TYPE,
   PAGE_VIEW_TYPE_VALUES,
 } from "../../semantic-conventions";
-import { doc, NO_VALUE_FALLBACK } from "../../utils";
+import { debug, doc, NO_VALUE_FALLBACK } from "../../utils";
 import { addCommonAttributes } from "../../attributes";
 import { sendLog } from "../../transport";
 import { PageViewMeta, vars } from "../../vars";
 import { AnyValue, KeyValue, LogRecord } from "../../types/otlp";
+
+type PageViewListener = () => void;
+
+const pageViewListeners: PageViewListener[] = [];
+
+/**
+ * Registers a listener invoked whenever a page view is emitted, including virtual ones. Lets
+ * instrumentations whose budgets are scoped to a page view reset without reaching into the
+ * navigation instrumentation's internals.
+ */
+export function onPageView(listener: PageViewListener): void {
+  pageViewListeners.push(listener);
+}
+
+function notifyPageView(): void {
+  for (let i = 0; i < pageViewListeners.length; i++) {
+    try {
+      pageViewListeners[i]!();
+    } catch (e) {
+      debug("Page view listener failed", e);
+    }
+  }
+}
 
 function getPageViewMeta(url?: URL): PageViewMeta {
   if (!url) return {};
@@ -72,6 +95,7 @@ function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
   }
 
   sendLog(log);
+  notifyPageView();
 }
 
 export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?: boolean, replaced?: boolean) {

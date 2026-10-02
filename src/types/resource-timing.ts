@@ -10,9 +10,13 @@ export type ResourceTimingSettings = {
   initiatorTypes?: string[];
 
   /**
-   * The maximum number of static-asset spans to emit for one page load. Pages with very many assets
+   * The maximum number of static-asset spans to emit for one page view. Pages with very many assets
    * are exactly the pages worth measuring, but one span per asset is also the SDK's highest-volume
    * signal, so the cap bounds what a single page can cost.
+   *
+   * The budget is reset by every page view, including the virtual ones a single-page app produces,
+   * so an app that never reloads does not go quiet for the rest of the session once one page has
+   * spent it.
    *
    * Reaching the cap is reported through `debug()`: a silently truncated waterfall is
    * indistinguishable from a complete one.

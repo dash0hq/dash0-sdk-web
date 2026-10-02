@@ -71,6 +71,7 @@ export const RESOURCE_CACHED = "dash0.web.resource.cached";
 
 // Network Attribute Keys
 export const NETWORK_PROTOCOL_NAME = "network.protocol.name";
+export const NETWORK_PROTOCOL_VERSION = "network.protocol.version";
 
 // Http Attribute Keys
 export const HTTP_REQUEST_METHOD = "http.request.method";

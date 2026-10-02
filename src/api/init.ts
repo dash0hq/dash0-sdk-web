@@ -136,10 +136,7 @@ export function init(opts: InitOptions) {
   if (isInstrumentationEnabled("@dash0/frustration-signals", opts)) {
     startRageClickInstrumentation();
   }
-  // Opt-in, unlike every other instrumentation: one span per static asset is by some margin the
-  // SDK's highest-volume signal, and a page referencing hundreds of assets would quietly multiply
-  // a customer's span volume the moment they upgraded. It therefore has to be named explicitly and
-  // does not inherit the "no enabledInstrumentations means all of them" default.
+  // Opt-in, so deliberately not routed through isInstrumentationEnabled.
   if (opts.enabledInstrumentations?.includes("@dash0/resource-timing")) {
     startResourceTimingInstrumentation();
   }

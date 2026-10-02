@@ -126,13 +126,14 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   type: `InstrumentationName[]`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
+  List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations except
+  `@dash0/resource-timing`.
   Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals' | '@dash0/resource-timing'`
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
-  `@dash0/resource-timing` is the one exception to the "`undefined` enables everything" rule: it emits one span per
-  static asset and is by some margin the highest-volume signal the SDK produces, so it has to be named explicitly.
-  See [static asset instrumentation](#static-asset-instrumentation).
+  Providing a list turns off every instrumentation left out of it. To enable `@dash0/resource-timing`, list it along
+  with every other instrumentation you want. It is off by default because it emits one span per static asset. See
+  [static asset instrumentation](#static-asset-instrumentation).
 
 - **Ignore URLs**<br>
   key: `ignoreUrls`<br>
@@ -505,7 +506,9 @@ actually fetched them, with the network phases of each asset recorded as span ev
 and response detail that resource timing cannot.
 
 **This instrumentation is opt-in.** Unlike every other instrumentation, it is not enabled by an unset
-`enabledInstrumentations`; it has to be listed explicitly:
+`enabledInstrumentations`; it has to be listed explicitly. Remember that naming any instrumentation turns off every
+one you leave out, so list everything you want — including `@dash0/session-recording` and
+`@dash0/frustration-signals` if you use them:
 
 ```js
 init({
@@ -517,6 +520,8 @@ init({
     "@dash0/error",
     "@dash0/fetch",
     "@dash0/xhr",
+    "@dash0/session-recording",
+    "@dash0/frustration-signals",
     "@dash0/resource-timing",
   ],
 });
@@ -524,8 +529,17 @@ init({
 
 A content-heavy page can reference several hundred assets, all resolving within the first few seconds of the page
 load, so this instrumentation can multiply the number of spans a site produces. `maxSpansPerPageLoad` bounds what any
-one page load contributes, and the SDK charges these spans against a transmission budget of their own so a burst of
-assets cannot crowd out errors, HTTP spans or web vitals.
+one page view contributes — the budget is reset by each page view, including virtual ones, so a single-page app keeps
+reporting assets as the user navigates. The SDK also charges these spans against a transmission budget of their own,
+so a burst of assets cannot crowd out errors, HTTP spans or web vitals.
+
+**This instrumentation raises `performance.setResourceTimingBufferSize()` to 1000** when it starts. The browser's
+default of 250 entries is exhausted by an asset-heavy page before `init()` runs, which loses exactly the entries at
+the beginning of the waterfall. This is a page-wide setting: if something else in your application sets a larger
+buffer, enable this instrumentation before it, or raise the value again afterwards.
+
+`fetch` and `XMLHttpRequest` are not the only initiator types excluded — `beacon` and `ping` are too. Both are POSTs
+rather than asset loads, and resource timing gives no way to record them as anything but a GET.
 
 **Cross-origin assets need `Timing-Allow-Origin`.** Without that response header the browser exposes only the start
 time, the duration and `fetchStart`/`responseEnd` for a cross-origin asset. The span is still emitted and still sits
@@ -550,5 +564,6 @@ endpoints are never captured.
   type: `number`<br>
   optional: `true`<br>
   default: `100`<br>
-  The maximum number of static-asset spans to emit for a single page load. Reaching the cap is reported through the
-  SDK's debug log, so a truncated waterfall is not mistaken for a complete one.
+  The maximum number of static-asset spans to emit for a single page view. The budget is reset by every page view,
+  including the virtual ones a single-page app produces. Reaching the cap is reported through the SDK's debug log, so
+  a truncated waterfall is not mistaken for a complete one.

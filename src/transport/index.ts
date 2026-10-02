@@ -100,15 +100,7 @@ function sendLogs(logs: LogRecord[], opts?: SendOptions): void {
 }
 
 export function sendSpan(span: Span | undefined): void {
-  if (!span) return;
-  if (!vars.isSessionSampled) return;
-
-  if (isRateLimited()) {
-    debug("Transport rate limit. Will not send item.", span);
-    return;
-  }
-
-  spanBatcher.send(span);
+  enqueueSpan(span, isRateLimited, "Transport");
 }
 
 /**
@@ -117,11 +109,19 @@ export function sendSpan(span: Span | undefined): void {
  * other signals.
  */
 export function sendResourceSpan(span: Span | undefined): void {
+  enqueueSpan(span, isResourceTimingRateLimited, "Resource timing");
+}
+
+/**
+ * The guards every span passes before it is queued, shared so a guard added later cannot apply to
+ * one caller and silently miss the other. Only the budget it is charged against differs.
+ */
+function enqueueSpan(span: Span | undefined, isLimited: () => boolean, limitName: string): void {
   if (!span) return;
   if (!vars.isSessionSampled) return;
 
-  if (isResourceTimingRateLimited()) {
-    debug("Resource timing rate limit. Will not send item.", span);
+  if (isLimited()) {
+    debug(`${limitName} rate limit. Will not send item.`, span);
     return;
   }
 

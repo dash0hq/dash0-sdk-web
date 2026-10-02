@@ -7,6 +7,7 @@ import {
   expectSpanCountMatching,
   expectSpanMatching,
   spanAttribute,
+  spanNumberAttribute,
 } from "../expectations";
 
 const PAGE = "/e2e/spec/11-resource-timing/page.html";
@@ -62,19 +63,26 @@ describe("Resource Timing Instrumentation", () => {
     expectNoBrowserErrors();
   });
 
-  it("must send a span for an image, carrying its transferred size", async () => {
+  it("must send a span for an image", async () => {
     await loadPage(PAGE);
 
     await retry(async () => {
-      await expectSpanMatching(
-        expect.objectContaining({
-          attributes: expect.arrayContaining([
-            { key: "url.path", value: { stringValue: "/e2e/spec/11-resource-timing/asset.svg" } },
-            { key: "http.response.body.size", value: { doubleValue: expect.any(Number) } },
-          ]),
-        })
-      );
+      await expectSpanMatching(staticAssetSpan("/e2e/spec/11-resource-timing/asset.svg"));
     });
+    expectNoBrowserErrors();
+  });
+
+  it("must never report a body size of zero", async () => {
+    // The browser reports 0 rather than nothing when it withholds the size -- for a cross-origin
+    // asset without Timing-Allow-Origin, and for any asset it revalidated into a 304. Recording
+    // that 0 would read as an empty response and drag down every size aggregate, so the attribute
+    // has to be absent instead.
+    await loadPage(PAGE);
+
+    await retry(async () => {
+      await expectSpanMatching(staticAssetSpan("/e2e/spec/11-resource-timing/asset.svg"));
+    });
+    await expectSpanCountMatching(0, (span) => spanNumberAttribute(span, "http.response.body.size") === 0);
     expectNoBrowserErrors();
   });
 

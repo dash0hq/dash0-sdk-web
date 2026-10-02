@@ -88,7 +88,10 @@ export async function expectSpanCount(n: number) {
   expect(requests.filter((r) => r.path === "/v1/traces")).toHaveLength(n);
 }
 
-type ReceivedSpan = { name: string; attributes: { key: string; value: { stringValue?: string } }[] };
+type ReceivedSpan = {
+  name: string;
+  attributes: { key: string; value: { stringValue?: string; doubleValue?: number; boolValue?: boolean } }[];
+};
 
 /** Every span the test server received, flattened out of the OTLP request envelopes. */
 async function getReceivedSpans(): Promise<ReceivedSpan[]> {
@@ -114,6 +117,11 @@ export async function expectSpanCountMatching(n: number, predicate: (span: Recei
 /** Reads a string attribute off a received span, for use in {@link expectSpanCountMatching}. */
 export function spanAttribute(span: ReceivedSpan, key: string): string | undefined {
   return span.attributes.find((a) => a.key === key)?.value?.stringValue;
+}
+
+/** Reads a numeric attribute off a received span, for use in {@link expectSpanCountMatching}. */
+export function spanNumberAttribute(span: ReceivedSpan, key: string): number | undefined {
+  return span.attributes.find((a) => a.key === key)?.value?.doubleValue;
 }
 
 function getLogMatcher(matcher: ExpectWebdriverIO.PartialMatcher) {
