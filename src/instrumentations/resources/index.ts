@@ -39,6 +39,12 @@ const EXCLUDED_INITIATOR_TYPES = ["fetch", "xmlhttprequest", "beacon", "ping"];
  * an image-heavy page exhausts before `init()` has even run -- and the entries lost are the ones at
  * the start of the page load, which are the ones worth having. Raising it costs a bounded amount of
  * memory and buys the `buffered: true` replay below a complete picture.
+ *
+ * Doubles as the default `maxSpansPerPageLoad`, so one number decides how many assets a page view
+ * can report. Note the two bound different things and only coincide by choice: this one bounds what
+ * the browser buffers for the replay, while the cap bounds what is emitted. An observer keeps
+ * receiving entries after the buffer is full, so dropping the cap would leave a long-lived SPA with
+ * no ceiling at all.
  */
 const RESOURCE_TIMING_BUFFER_SIZE = 1000;
 
@@ -141,7 +147,7 @@ function onEntry(entry: ExtendedResourceTiming): void {
     return;
   }
 
-  const maxSpans = vars.resourceTiming.maxSpansPerPageLoad ?? 100;
+  const maxSpans = vars.resourceTiming.maxSpansPerPageLoad ?? RESOURCE_TIMING_BUFFER_SIZE;
   if (spansEmitted >= maxSpans) {
     if (!capReported) {
       capReported = true;

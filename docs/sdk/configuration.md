@@ -529,14 +529,20 @@ init({
 
 A content-heavy page can reference several hundred assets, all resolving within the first few seconds of the page
 load, so this instrumentation can multiply the number of spans a site produces. `maxSpansPerPageLoad` bounds what any
-one page view contributes — the budget is reset by each page view, including virtual ones, so a single-page app keeps
-reporting assets as the user navigates. The SDK also charges these spans against a transmission budget of their own,
-so a burst of assets cannot crowd out errors, HTTP spans or web vitals.
+one page view contributes, and defaults to 1000 — high enough that a page view normally reports its assets in full.
+Lower it if you would rather trade completeness for volume. The budget is reset by each page view, including virtual
+ones, so a single-page app keeps reporting assets as the user navigates. The SDK also charges these spans against a
+transmission budget of their own, so a burst of assets cannot crowd out errors, HTTP spans or web vitals.
 
 **This instrumentation raises `performance.setResourceTimingBufferSize()` to 1000** when it starts. The browser's
 default of 250 entries is exhausted by an asset-heavy page before `init()` runs, which loses exactly the entries at
 the beginning of the waterfall. This is a page-wide setting: if something else in your application sets a larger
 buffer, enable this instrumentation before it, or raise the value again afterwards.
+
+The buffer size and `maxSpansPerPageLoad` default to the same number, but they are not the same limit. The buffer
+bounds how many entries the browser keeps for the replay of assets loaded before `init()`; the cap bounds how many
+spans are emitted. Once the observer is attached it receives every further entry whether the buffer is full or not,
+so the cap, not the buffer, is what limits a long-running single-page app.
 
 `fetch` and `XMLHttpRequest` are not the only initiator types excluded — `beacon` and `ping` are too. Both are POSTs
 rather than asset loads, and resource timing gives no way to record them as anything but a GET.
@@ -563,7 +569,8 @@ endpoints are never captured.
   key: `resourceTiming.maxSpansPerPageLoad`<br>
   type: `number`<br>
   optional: `true`<br>
-  default: `100`<br>
-  The maximum number of static-asset spans to emit for a single page view. The budget is reset by every page view,
-  including the virtual ones a single-page app produces. Reaching the cap is reported through the SDK's debug log, so
-  a truncated waterfall is not mistaken for a complete one.
+  default: `1000`<br>
+  The maximum number of static-asset spans to emit for a single page view. Defaults to the size of the resource
+  timing buffer the SDK requests, so a page view reports every asset the browser recorded for it unless you lower
+  this. The budget is reset by every page view, including the virtual ones a single-page app produces. Reaching the
+  cap is reported through the SDK's debug log, so a truncated waterfall is not mistaken for a complete one.

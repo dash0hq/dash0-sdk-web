@@ -244,9 +244,9 @@ export const vars: Vars = {
       radiusPixels: 30,
     },
   },
-  resourceTiming: {
-    maxSpansPerPageLoad: 100,
-  },
+  // Left empty on purpose: `maxSpansPerPageLoad` defaults to the resource timing buffer size, which
+  // is resolved in the instrumentation so the two cannot drift apart.
+  resourceTiming: {},
   enableTransportCompression: false,
   isSessionSampled: true,
 };

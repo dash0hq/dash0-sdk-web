@@ -39,12 +39,16 @@ const isSessionRecordingRateLimited = lazyRateLimiter({
 // Static-asset spans get their own budget. A page can reference hundreds of scripts, stylesheets,
 // images and fonts, and they all resolve within the first few seconds -- on the shared budget above
 // a single such page would spend the whole allowance on assets and leave errors, fetch spans and
-// web vitals silently dropped for the rest of the window. The budget is wider than the shared one
-// because asset spans arrive in exactly this kind of burst, while `maxSpansPerPageLoad` bounds how
-// much any single page load can contribute.
+// web vitals silently dropped for the rest of the window.
+//
+// The ten-second budget has to clear a whole page view's worth of assets in one go: the `buffered`
+// replay delivers everything loaded before `init()` in a single callback, so a lower budget would
+// silently truncate what `maxSpansPerPageLoad` allows, and the cap would stop being the number that
+// decides coverage. It is sized just above that cap's default (1000); the ten-minute budget then
+// bounds a session at roughly four such page views.
 const isResourceTimingRateLimited = lazyRateLimiter({
-  maxCallsPerTenMinutes: 2048,
-  maxCallsPerTenSeconds: 256,
+  maxCallsPerTenMinutes: 4096,
+  maxCallsPerTenSeconds: 1024,
 });
 
 export function sendLog(log: LogRecord): void {

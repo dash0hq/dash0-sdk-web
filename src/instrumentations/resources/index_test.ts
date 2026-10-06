@@ -126,7 +126,7 @@ describe("resource timing instrumentation", () => {
     setObserver(FakePerformanceObserver);
     vars.ignoreUrls = [];
     vars.endpoints = [];
-    vars.resourceTiming = { maxSpansPerPageLoad: 100 };
+    vars.resourceTiming = {};
     vars.urlAttributeScrubber = identity;
   });
 
@@ -140,7 +140,7 @@ describe("resource timing instrumentation", () => {
 
     startResourceTimingInstrumentation();
 
-    expect(setBufferSize).toHaveBeenCalled();
+    expect(setBufferSize).toHaveBeenCalledWith(1000);
     // Entries recorded before init() are most of the critical path, so the replay is the point.
     expect(observerInstance().observed).toEqual({ type: "resource", buffered: true });
   });
@@ -283,7 +283,7 @@ describe("resource timing instrumentation", () => {
   });
 
   it("honours an initiatorTypes allow list when one is configured", () => {
-    vars.resourceTiming = { initiatorTypes: ["img"], maxSpansPerPageLoad: 100 };
+    vars.resourceTiming = { initiatorTypes: ["img"] };
     startResourceTimingInstrumentation();
     observerInstance().emit([
       entry({ initiatorType: "script" }),
@@ -291,6 +291,16 @@ describe("resource timing instrumentation", () => {
     ]);
 
     expect(emitted().map((s) => s.name)).toEqual(["img logo.svg"]);
+  });
+
+  it("defaults the cap to the resource timing buffer size, so a page view reports its assets in full", () => {
+    // The two are separate limits that are defaulted to one number on purpose: a page whose assets
+    // the browser could buffer is a page whose assets we emit. 101 entries would have been
+    // truncated under the previous default of 100.
+    startResourceTimingInstrumentation();
+    observerInstance().emit(Array.from({ length: 1001 }, () => entry()));
+
+    expect(emitted()).toHaveLength(1000);
   });
 
   it("stops emitting once maxSpansPerPageLoad is reached", () => {
