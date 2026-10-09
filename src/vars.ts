@@ -4,6 +4,7 @@ import { UrlAttributeScrubber } from "./attributes";
 import { identity } from "./utils";
 import { SessionRecordingSettings } from "./types/session-recording";
 import { FrustrationSignalSettings } from "./types/frustration";
+import { ResourceTimingSettings } from "./types/resource-timing";
 
 export type PropagatorType = "traceparent" | "xray";
 
@@ -182,6 +183,13 @@ export type Vars = {
   frustrationSignals: FrustrationSignalSettings;
 
   /**
+   * Static-asset capture settings. Governs the spans the SDK derives from `PerformanceResourceTiming`
+   * entries for scripts, stylesheets, images, fonts and the like. Fetch and XHR calls are covered by
+   * their own instrumentations and are never captured here.
+   */
+  resourceTiming: ResourceTimingSettings;
+
+  /**
    * Enables telemetry transport compression using gzip.
    * experimental - in rare cases causes Chrome to crash to use at your own risk.
    */
@@ -236,6 +244,9 @@ export const vars: Vars = {
       radiusPixels: 30,
     },
   },
+  // Left empty on purpose: `maxSpansPerPageLoad` defaults to the resource timing buffer size, which
+  // is resolved in the instrumentation so the two cannot drift apart.
+  resourceTiming: {},
   enableTransportCompression: false,
   isSessionSampled: true,
 };
