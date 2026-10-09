@@ -46,6 +46,10 @@ files:
         type: replace-regex
         find: '\]\(\./docs/sdk/configuration\.md#propagators-configuration-recommended\)'
         replace: "](configuration#propagators-configuration-recommended)"
+      - description: rewrite the session recording link into the sibling Setup page
+        type: replace-regex
+        find: '\]\(docs/sdk/setup\.md#session-recording\)'
+        replace: "](setup#session-recording)"
       - description: rewrite the relative DEVELOPMENT.md link to the source repo (page is not synced)
         type: replace-regex
         find: '\]\(\./DEVELOPMENT\.md\)'
