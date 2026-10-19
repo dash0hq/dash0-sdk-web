@@ -239,13 +239,13 @@ dash0("terminateSession");
 **Note:** Sessions are automatically managed by the Dash0 Web SDK based on inactivity and termination timeouts
 configured during initialization. Manual termination is typically only needed for explicit user logout scenarios.
 
-### Session Recording
+### Session Replay
 
 #### `startSessionRecording(recorder)`
 
-Starts recording the session with [rrweb](https://github.com/rrweb-io/rrweb). The recording is transmitted as
+Starts session replay, which records the session with [rrweb](https://github.com/rrweb-io/rrweb). The recording is transmitted as
 `browser.session_recording` log records. All records of one recording share a trace ID that embeds the session ID.
-See [Session recording configuration](./configuration.md#session-recording) for privacy and chunking options.
+See [Session replay configuration](./configuration.md#session-replay) for privacy and chunking options.
 
 The recorder lives in the separate `@dash0/sdk-web/session-recording` bundle. Passing it to `init` through
 `sessionRecording.recorder` is equivalent to calling this function. It is safe to call this before `init`; the

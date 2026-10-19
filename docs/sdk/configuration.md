@@ -449,14 +449,14 @@ for `fetch`, while an `XMLHttpRequest` timeout is an error — this asymmetry is
   - "HASH" changes to the urls hash / fragment
   - "SEARCH" changes to the urls search / query parameters
 
-#### Session recording
+#### Session replay
 
-Session recording captures a replay of the user's session with [rrweb](https://github.com/rrweb-io/rrweb) and
+Session replay captures a replay of the user's session with [rrweb](https://github.com/rrweb-io/rrweb) and
 transmits it as `browser.session_recording` log records. Every record of one recording shares a trace ID that
 embeds the session ID, so a replay can be opened from any span or log of that session.
 
 The recorder ships as a separate bundle, `@dash0/sdk-web/session-recording`, so websites that do not use session
-recording do not pay for it. See [Setup](./setup.md#session-recording) for how to load it. All options below live
+replay do not pay for it. See [Setup](./setup.md#session-replay) for how to load it. All options below live
 under the `sessionRecording` key of the `init` options.
 
 By default, the value of every visible input, textarea and select is replaced with asterisks before it leaves the
@@ -558,7 +558,7 @@ to drop hidden inputs). Set `maskTextSelector` to `"*"` to mask all text on the 
   How often the recorder takes a new full snapshot of the DOM, in milliseconds. A replay can start from any chunk
   that contains a full snapshot.
 
-Session recording can be disabled without removing the recorder bundle by leaving `@dash0/session-recording` out of
+Session replay can be disabled without removing the recorder bundle by leaving `@dash0/session-recording` out of
 `enabledInstrumentations`.
 
 #### Frustration signals
@@ -567,16 +567,16 @@ The `@dash0/frustration-signals` instrumentation watches user interaction for si
 detects rage clicks: a burst of clicks in the same place, which usually means a control did not respond the way the
 user expected.
 
-**Clicks are only observed while a session recording is running.** Detection starts and stops with the recording,
+**Clicks are only observed while session replay is recording.** Detection starts and stops with the recording,
 which itself follows document visibility, so a rage click always comes with the replay that shows it. This
 instrumentation therefore does nothing unless `@dash0/session-recording` is enabled and a recorder is registered —
-see [session recording](./setup.md). A burst that is still open when a recording ends is reported at that point.
+see [session replay](./setup.md#session-replay). A burst that is still open when a recording ends is reported at that point.
 
 Each detected burst is emitted as a `browser.rage_click` event once the burst ends, carrying the number of clicks,
 its duration, a CSS selector and the visible label of the clicked element, the click coordinates, and the
 `dash0.session_recording.id` of the recording it happened in, which lets Dash0 open the replay at that moment. The
 element label is omitted whenever it could carry user data — the element is masked or blocked by the session
-recording configuration (`sessionRecording.maskTextClass`, `maskTextSelector`, `blockClass`, `blockSelector`), or it
+replay configuration (`sessionRecording.maskTextClass`, `maskTextSelector`, `blockClass`, `blockSelector`), or it
 is a field the user types into. Only trusted primary-button clicks are considered, so clicks synthesized by scripts
 are ignored.
 
