@@ -96,9 +96,9 @@ Then find the `dash0.iife.js` file and copy its integrity value.
 Additionally you might need to allow the Dash0 Web SDK to connect to your configured endpoint URL like so:
 `Content-Security-Policy: connect-src 'self' YOUR_ENDPOINT_URL_HERE`
 
-### Session recording
+### Session replay
 
-Session recording is an optional add-on. The recorder ships as its own bundle so websites that do not record pay
+Session replay is an optional add-on. The recorder ships as its own bundle so websites that do not use session replay pay
 nothing for it. Load it in addition to the SDK.
 
 With modules, import the recorder and hand it to `init`:
@@ -126,12 +126,12 @@ matter.
 ></script>
 ```
 
-The recording bundle loads from the same origin as `dash0.iife.js`. A content security policy that allows all of
+The session replay bundle loads from the same origin as `dash0.iife.js`. A content security policy that allows all of
 `https://unpkg.com` (see [Content Security and Integrity](#content-security-and-integrity)) needs no change. If
 you allow a specific file URL or a `sha256-` hash instead, add a second entry for
 `dash0-session-recording.iife.js`; its integrity value is listed next to `dash0.iife.js` in the `?meta` output.
 The recorder requires `Proxy` and `MutationObserver`; the SDK itself keeps working in browsers that lack them,
-only the recording is skipped.
+only session replay is skipped.
 
-Inputs are masked by default. See [Session recording configuration](./configuration.md#session-recording) for
+Inputs are masked by default. See [Session replay configuration](./configuration.md#session-replay) for
 privacy controls, sampling and chunk sizes.
