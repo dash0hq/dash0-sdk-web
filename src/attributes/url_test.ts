@@ -569,6 +569,26 @@ describe("scrubPageUrls", () => {
       scrubPageUrls(`Failed to load '${location.origin}/api?token=secret'`, `${location.origin}/api?token=secret`)
     ).toBe(`Failed to load '[${location.origin}/api]'`);
   });
+
+  it("replaces page urls with brackets, parentheses or braces", () => {
+    history.replaceState(null, "", "/cb?filter[a]=1&next=(home)&q={x}&code=secret");
+
+    expect(scrubPageUrls(`at fn (${location.href}:12:5)`)).toBe(`at fn ([${location.origin}/cb]:12:5)`);
+  });
+
+  it("replaces a request url with brackets", () => {
+    const requestUrl = `${location.origin}/items?filter[status]=open&token=secret`;
+
+    expect(scrubPageUrls(`XMLHttpRequest failed: ${requestUrl}`, requestUrl)).toBe(
+      `XMLHttpRequest failed: [${location.origin}/items]`
+    );
+  });
+
+  it("handles long text without urls", () => {
+    const text = "a".repeat(200000);
+
+    expect(scrubPageUrls(text)).toBe(text);
+  });
 });
 
 describe("url.full rebuilding", () => {

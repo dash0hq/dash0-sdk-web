@@ -98,10 +98,12 @@ export function scrubUrl(url: string): string {
   }
 }
 
-// Any absolute url, up to whitespace, quotes or brackets.
-const URL_TOKEN = /[a-z][a-z\d+.-]*:\/\/[^\s"'`<>()[\]{}]+/gi;
-// Stack frame positions (`:12:5`) and sentence punctuation that can follow a url token.
-const URL_TOKEN_SUFFIX = /(?::\d+){0,2}[.,;!?]*$/;
+const SCHEME_CHAR = /[a-z\d+.-]/i;
+const ABSOLUTE_URL = /^[a-z][a-z\d+.-]*:\/\//i;
+const FRAGMENT = /#[^\s"'`<>()[\]{}]*/y;
+// Stack frame positions (`:12:5`) and sentence punctuation that can follow a url.
+const URL_SUFFIX = /(?::\d+){0,2}[.,;!?]*$/;
+const URL_END = /(?::\d+){0,2}[.,;!?]*(?:$|[\s"'`<>()[\]{}])/y;
 
 /**
  * Error messages and stack traces of inline scripts contain the page url, which can hold sensitive query parameters.
@@ -118,12 +120,41 @@ export function scrubPageUrls(text: string, requestUrl?: string): string {
   ]
     .filter((u): u is string => !!u)
     // Fragments are ignored when comparing: stack frames can omit them, and apps remove them from the page url.
-    .map((u) => u.split("#")[0]);
+    .map((u) => u.split("#")[0]!)
+    .filter((u) => ABSOLUTE_URL.test(u))
+    // Longest first, so a request url is not cut short by a page url it starts with.
+    .sort((a, b) => b.length - a.length);
   if (knownUrls.length === 0) return text;
 
-  return text.replace(URL_TOKEN, (token) => {
-    const suffix = URL_TOKEN_SUFFIX.exec(token)![0];
-    const url = token.slice(0, token.length - suffix.length);
-    return knownUrls.indexOf(url.split("#")[0]!) !== -1 ? scrubUrl(url) + suffix : token;
-  });
+  // Known urls are searched literally instead of tokenizing the text: queries keep `[` `(` `{` unencoded, and a token
+  // cut short at one of them would never match, leaking the whole url.
+  let result = "";
+  let from = 0;
+  for (;;) {
+    let best: { start: number; end: number } | undefined;
+    for (const known of knownUrls) {
+      for (let start = text.indexOf(known, from); start !== -1; start = text.indexOf(known, start + 1)) {
+        if (best && start >= best.start) break;
+        const end = knownUrlEnd(text, start, known);
+        if (end !== -1) {
+          best = { start, end };
+          break;
+        }
+      }
+    }
+    if (!best) return result + text.slice(from);
+    result += text.slice(from, best.start) + scrubUrl(text.slice(best.start, best.end));
+    from = best.end;
+  }
+}
+
+/** End of the known url at `start`, including its fragment, or -1 when it is only part of another url. */
+function knownUrlEnd(text: string, start: number, known: string): number {
+  if (start > 0 && SCHEME_CHAR.test(text[start - 1]!)) return -1;
+  let end = start + known.length;
+  FRAGMENT.lastIndex = end;
+  const fragment = FRAGMENT.exec(text)?.[0];
+  if (fragment) end += fragment.length - URL_SUFFIX.exec(fragment)![0].length;
+  URL_END.lastIndex = end;
+  return URL_END.test(text) ? end : -1;
 }
