@@ -90,7 +90,7 @@ function wrapFetch(original: typeof fetch) {
           if (request?.signal?.aborted) {
             endSpanOnAbort(span);
           } else {
-            endSpanOnError(span, e);
+            endSpanOnError(span, e, request?.url);
           }
         }
       );
@@ -99,7 +99,7 @@ function wrapFetch(original: typeof fetch) {
       if (request?.signal?.aborted) {
         endSpanOnAbort(span);
       } else {
-        endSpanOnError(span, e as Exception);
+        endSpanOnError(span, e as Exception, request?.url);
       }
       throw e;
     }
