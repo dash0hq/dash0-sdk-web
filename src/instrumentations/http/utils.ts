@@ -14,6 +14,7 @@ import { matchesAny } from "../../utils/ignore-rules";
 import { ERROR_TYPE, HTTP_RESPONSE_BODY_SIZE, WEB_REQUEST_CANCELLED } from "../../semantic-conventions";
 import { vars, PropagatorType } from "../../vars";
 import { sendSpan } from "../../transport";
+import { scrubPageUrls } from "../../attributes";
 
 // SEE: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/attributes-registry/http.md?plain=1#L67
 const KNOWN_HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
@@ -67,12 +68,32 @@ export function addResourceSize(span: InProgressSpan, resource: PerformanceResou
 // instrumentations converge here. Note the shapes still differ for cases inherent to the APIs:
 // a fetch that resolves with status 0 (e.g. opaque responses) never reaches this function and
 // instead gets error.type = response.type plus http.response.status_code "0".
-export function endSpanOnError(span: InProgressSpan, error: Exception) {
+export function endSpanOnError(span: InProgressSpan, error: Exception, requestUrl?: string) {
+  error = scrubException(error, requestUrl);
   recordException(span, error);
   const errorType =
     typeof error === "object" && error ? (error.name ?? (error.code != null ? String(error.code) : "error")) : "error";
   addAttribute(span.attributes, ERROR_TYPE, errorType);
   sendSpan(endSpan(span, errorToSpanStatus(error), undefined));
+}
+
+/**
+ * Error messages and stack traces can contain the page url (inline script frames) and the request url (browser
+ * network error messages), so both pass the url attribute scrubber. Non-string values are kept as they are.
+ */
+export function scrubException(error: Exception, requestUrl?: string): Exception {
+  const scrub = (value: unknown) => (typeof value === "string" ? scrubPageUrls(value, requestUrl) : value);
+  if (!error || typeof error !== "object") return scrub(error) as Exception;
+
+  // Error properties are not enumerable and `name` lives on the prototype, so they are copied explicitly. Only
+  // present properties are copied to keep `"message" in error` checks working.
+  const scrubbed: Record<string, unknown> = {};
+  for (const key of ["code", "name", "message", "stack"] as const) {
+    if (key in error) scrubbed[key] = key === "code" ? error[key] : scrub(error[key]);
+  }
+  // Without a message the span status falls back to `String(error)`, which may be a custom text.
+  scrubbed.toString = () => scrubPageUrls(String(error), requestUrl);
+  return scrubbed as unknown as Exception;
 }
 
 // Cancellations are benign: no error status, no error.type. This also covers fetch calls aborted

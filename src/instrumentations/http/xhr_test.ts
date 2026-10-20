@@ -505,6 +505,73 @@ describe("xhr test", () => {
     expect(span.attributes).toContainEqual({ key: "error.type", value: { stringValue: "error" } });
   });
 
+  it("scrubs the url in the failure status message exactly once", () => {
+    const originalScrubber = vars.urlAttributeScrubber;
+    vars.urlAttributeScrubber = (attrs) => ({ ...attrs, "url.full": `[${attrs["url.full"].split("?")[0]}]` });
+    try {
+      instrumentXhr();
+
+      const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+      xhr.open("GET", "/api/test?token=secret");
+      xhr.send();
+      xhr.triggerError();
+    } finally {
+      vars.urlAttributeScrubber = originalScrubber;
+    }
+
+    const span = (sendSpan as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Span;
+    expect(span.status?.message).toBe("XMLHttpRequest failed: [http://localhost:3000/api/test]");
+    const exception = span.events.find((e) => e.name === "exception")!;
+    expect(exception.attributes).toContainEqual({
+      key: "exception.message",
+      value: { stringValue: "XMLHttpRequest failed: [http://localhost:3000/api/test]" },
+    });
+  });
+
+  it("does not scrub the failure status message twice when the request url starts with the page url", () => {
+    const originalScrubber = vars.urlAttributeScrubber;
+    vars.urlAttributeScrubber = (attrs) => ({ ...attrs, "url.full": `[${attrs["url.full"].split("?")[0]}]` });
+    try {
+      instrumentXhr();
+
+      const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+      xhr.open("GET", "/?token=secret");
+      xhr.send();
+      xhr.triggerError();
+    } finally {
+      vars.urlAttributeScrubber = originalScrubber;
+    }
+
+    const span = (sendSpan as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Span;
+    expect(span.status?.message).toBe("XMLHttpRequest failed: [http://localhost:3000/]");
+  });
+
+  it("scrubs the request url in the error of a synchronous send()", () => {
+    const originalScrubber = vars.urlAttributeScrubber;
+    vars.urlAttributeScrubber = (attrs) => ({ ...attrs, "url.full": `[${attrs["url.full"].split("?")[0]}]` });
+    try {
+      instrumentXhr();
+
+      const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+      xhr.open("GET", "/api/test?token=secret", false);
+      xhr.syncSendError = new DOMException(
+        "Failed to load 'http://localhost:3000/api/test?token=secret'.",
+        "NetworkError"
+      );
+      expect(() => xhr.send()).toThrow();
+    } finally {
+      vars.urlAttributeScrubber = originalScrubber;
+    }
+
+    const span = (sendSpan as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Span;
+    const exception = span.events.find((e) => e.name === "exception")!;
+    expect(exception.attributes).toContainEqual({
+      key: "exception.message",
+      value: { stringValue: "Failed to load '[http://localhost:3000/api/test]'." },
+    });
+    expect(span.status?.message).toBe("XMLHttpRequest failed: [http://localhost:3000/api/test]");
+  });
+
   it("records an exception and marks the span as errored on a timeout", () => {
     instrumentXhr();
 

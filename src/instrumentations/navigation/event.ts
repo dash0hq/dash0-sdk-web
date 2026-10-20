@@ -9,7 +9,7 @@ import {
   PAGE_VIEW_TYPE_VALUES,
 } from "../../semantic-conventions";
 import { doc, NO_VALUE_FALLBACK } from "../../utils";
-import { addCommonAttributes } from "../../attributes";
+import { addCommonAttributes, scrubUrl } from "../../attributes";
 import { sendLog } from "../../transport";
 import { PageViewMeta, vars } from "../../vars";
 import { AnyValue, KeyValue, LogRecord } from "../../types/otlp";
@@ -45,7 +45,7 @@ function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
   const bodyAttributes: KeyValue[] = [];
   addAttribute(bodyAttributes, "title", opts.title ?? doc?.title ?? NO_VALUE_FALLBACK);
   if (doc?.referrer) {
-    addAttribute(bodyAttributes, "referrer", doc.referrer);
+    addAttribute(bodyAttributes, "referrer", scrubUrl(doc.referrer));
   }
 
   addAttribute(bodyAttributes, PAGE_VIEW_TYPE, opts.pageViewType);
