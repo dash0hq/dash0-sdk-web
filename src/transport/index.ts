@@ -36,6 +36,21 @@ const isSessionRecordingRateLimited = lazyRateLimiter({
   maxCallsPerTenSeconds: 64,
 });
 
+// Static-asset spans get their own budget. A page can reference hundreds of scripts, stylesheets,
+// images and fonts, and they all resolve within the first few seconds -- on the shared budget above
+// a single such page would spend the whole allowance on assets and leave errors, fetch spans and
+// web vitals silently dropped for the rest of the window.
+//
+// The ten-second budget has to clear a whole page view's worth of assets in one go: the `buffered`
+// replay delivers everything loaded before `init()` in a single callback, so a lower budget would
+// silently truncate what `maxSpansPerPageLoad` allows, and the cap would stop being the number that
+// decides coverage. It is sized just above that cap's default (1000); the ten-minute budget then
+// bounds a session at roughly four such page views.
+const isResourceTimingRateLimited = lazyRateLimiter({
+  maxCallsPerTenMinutes: 4096,
+  maxCallsPerTenSeconds: 1024,
+});
+
 export function sendLog(log: LogRecord): void {
   if (!vars.isSessionSampled) return;
 
@@ -89,11 +104,28 @@ function sendLogs(logs: LogRecord[], opts?: SendOptions): void {
 }
 
 export function sendSpan(span: Span | undefined): void {
+  enqueueSpan(span, isRateLimited, "Transport");
+}
+
+/**
+ * Transmits a span derived from a `PerformanceResourceTiming` entry. Identical to {@link sendSpan}
+ * except for the rate limit it is charged against, so a burst of static assets cannot starve the
+ * other signals.
+ */
+export function sendResourceSpan(span: Span | undefined): void {
+  enqueueSpan(span, isResourceTimingRateLimited, "Resource timing");
+}
+
+/**
+ * The guards every span passes before it is queued, shared so a guard added later cannot apply to
+ * one caller and silently miss the other. Only the budget it is charged against differs.
+ */
+function enqueueSpan(span: Span | undefined, isLimited: () => boolean, limitName: string): void {
   if (!span) return;
   if (!vars.isSessionSampled) return;
 
-  if (isRateLimited()) {
-    debug("Transport rate limit. Will not send item.", span);
+  if (isLimited()) {
+    debug(`${limitName} rate limit. Will not send item.`, span);
     return;
   }
 

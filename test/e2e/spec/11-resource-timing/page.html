@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>resource timing instrumentation test</title>
+
+    <!--
+      Referenced before the SDK snippet on purpose: these are the assets a real page loads first,
+      and they are exactly the ones a PerformanceObserver without `buffered: true` would miss.
+    -->
+    <link rel="stylesheet" href="/e2e/spec/11-resource-timing/asset.css" />
+    <script src="/e2e/spec/11-resource-timing/asset.js"></script>
+
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: [
+          {
+            url: `http://${window.location.hostname}:8011?cors=true`,
+            authToken: "auth_abc123",
+            dataset: "production",
+          },
+        ],
+        // Resource timing is opt-in, so it has to be named here. The others are listed because
+        // naming any instrumentation turns off the "all of them" default -- navigation in
+        // particular, which the test harness waits on to know the SDK is live.
+        enabledInstrumentations: [
+          "@dash0/navigation",
+          "@dash0/error",
+          "@dash0/fetch",
+          "@dash0/xhr",
+          "@dash0/resource-timing",
+        ],
+        ignoreUrls: [/you-cant-see-this/],
+      });
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+
+    <script>
+      function onFetch() {
+        return fetch("/ajax?resource-timing=true");
+      }
+
+      function onIgnoredImage() {
+        const img = new Image();
+        img.src = "/e2e/spec/11-resource-timing/asset.svg?you-cant-see-this";
+        document.body.appendChild(img);
+      }
+    </script>
+  </head>
+  <body>
+    <img src="/e2e/spec/11-resource-timing/asset.svg" alt="same origin asset" />
+    <button onclick="onFetch()">Fetch</button>
+    <button onclick="onIgnoredImage()">Load Ignored Image</button>
+  </body>
+</html>

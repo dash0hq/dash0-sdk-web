@@ -9,7 +9,16 @@ import { debug } from "../debug";
 
 export type InProgressSpan = Omit<Span, "endTimeUnixNano">;
 
-export function startSpan(name: string): InProgressSpan {
+export type StartSpanOptions = {
+  /**
+   * Nanosecond timestamp to use as the span's start instead of the current time. Needed when a span
+   * is reconstructed after the fact from data that carries its own start, e.g. a
+   * `PerformanceResourceTiming` entry observed once the resource has already finished loading.
+   */
+  startTimeUnixNano?: string;
+};
+
+export function startSpan(name: string, opts?: StartSpanOptions): InProgressSpan {
   const traceId = generateTraceId(sessionId);
   const spanId = generateSpanId(traceId);
 
@@ -23,7 +32,7 @@ export function startSpan(name: string): InProgressSpan {
     // Always CLIENT for now https://github.com/open-telemetry/opentelemetry-proto/blob/ac3242b03157295e4ee9e616af53b81517b06559/opentelemetry/proto/trace/v1/trace.proto#L143-L169
     // Note: we directly define otlp here, this differs from the values used by oteljs internally.
     kind: SPAN_KIND_CLIENT,
-    startTimeUnixNano: nowNanos(),
+    startTimeUnixNano: opts?.startTimeUnixNano ?? nowNanos(),
     attributes,
     events: [],
     links: [],
