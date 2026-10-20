@@ -1,0 +1,60 @@
+diff --git a/dist/record.cjs b/dist/record.cjs
+index e38f349829a90ace615031cf10929760da6e10bd..12677bf6bb54cd5c42bd55ab5c1fdeec460abf86 100644
+--- a/dist/record.cjs
++++ b/dist/record.cjs
+@@ -2523,6 +2523,15 @@ function initMutationObserver(options, rootEl) {
+     childList: true,
+     subtree: true
+   });
++  // Patched by @dash0/sdk-web: drop the buffer from the module-level list once its observer is disconnected.
++  // Upstream only ever pushes to `mutationBuffers`, so every stopped recorder (and every shadow root observed
++  // during a recording) stays reachable, together with the full snapshot its closure references.
++  const disconnect = observer.disconnect.bind(observer);
++  observer.disconnect = () => {
++    disconnect();
++    const index = mutationBuffers.indexOf(mutationBuffer);
++    if (index !== -1) mutationBuffers.splice(index, 1);
++  };
+   return [observer, iframeCleanup];
+ }
+ function initMoveObserver({
+diff --git a/dist/record.js b/dist/record.js
+index 0ac65f2b7908bd96d3b5f4af8a30ad8630beb6fb..c2737bd1ae2ea29be909488f2f40675a03fadc04 100644
+--- a/dist/record.js
++++ b/dist/record.js
+@@ -2521,6 +2521,15 @@ function initMutationObserver(options, rootEl) {
+     childList: true,
+     subtree: true
+   });
++  // Patched by @dash0/sdk-web: drop the buffer from the module-level list once its observer is disconnected.
++  // Upstream only ever pushes to `mutationBuffers`, so every stopped recorder (and every shadow root observed
++  // during a recording) stays reachable, together with the full snapshot its closure references.
++  const disconnect = observer.disconnect.bind(observer);
++  observer.disconnect = () => {
++    disconnect();
++    const index = mutationBuffers.indexOf(mutationBuffer);
++    if (index !== -1) mutationBuffers.splice(index, 1);
++  };
+   return [observer, iframeCleanup];
+ }
+ function initMoveObserver({
+diff --git a/dist/record.umd.cjs b/dist/record.umd.cjs
+index 426cd519553f6b43ac28731c6d790f0dd10e1549..00ac4d30c231aea3e9ff06d3f2b7d6edd82bf193 100644
+--- a/dist/record.umd.cjs
++++ b/dist/record.umd.cjs
+@@ -2549,6 +2549,15 @@ function initMutationObserver(options, rootEl) {
+     childList: true,
+     subtree: true
+   });
++  // Patched by @dash0/sdk-web: drop the buffer from the module-level list once its observer is disconnected.
++  // Upstream only ever pushes to `mutationBuffers`, so every stopped recorder (and every shadow root observed
++  // during a recording) stays reachable, together with the full snapshot its closure references.
++  const disconnect = observer.disconnect.bind(observer);
++  observer.disconnect = () => {
++    disconnect();
++    const index = mutationBuffers.indexOf(mutationBuffer);
++    if (index !== -1) mutationBuffers.splice(index, 1);
++  };
+   return [observer, iframeCleanup];
+ }
+ function initMoveObserver({
