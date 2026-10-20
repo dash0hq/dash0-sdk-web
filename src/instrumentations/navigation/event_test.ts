@@ -8,6 +8,7 @@ vi.mock("../../transport", () => ({
 import { sendLog } from "../../transport";
 import { transmitPageViewEvent, transmitManualPageViewEvent } from "./event";
 import { vars } from "../../vars";
+import { doc } from "../../utils/globals";
 
 const sendLogMock = sendLog as unknown as ReturnType<typeof vi.fn>;
 
@@ -54,6 +55,22 @@ describe("transmitPageViewEvent", () => {
         { key: "change_state", value: { stringValue: "replaceState" } },
       ])
     );
+  });
+
+  it("scrubs the referrer with the url attribute scrubber", () => {
+    const originalScrubber = vars.urlAttributeScrubber;
+    vars.urlAttributeScrubber = (attrs) => ({ ...attrs, "url.full": attrs["url.full"].split("?")[0]! });
+    const referrer = vi.spyOn(doc!, "referrer", "get").mockReturnValue("https://example.com/callback?code=secret");
+    try {
+      transmitPageViewEvent("1700000000000000000", new URL("https://example.com/landing"));
+    } finally {
+      vars.urlAttributeScrubber = originalScrubber;
+      referrer.mockRestore();
+    }
+
+    const log = sendLogMock.mock.calls[0]![0] as LogRecord;
+    const bodyValues = log.body?.kvlistValue?.values as KeyValue[];
+    expect(bodyValues).toContainEqual({ key: "referrer", value: { stringValue: "https://example.com/callback" } });
   });
 
   it("applies generateMetadata title and attributes when provided", () => {
