@@ -69,17 +69,15 @@ export function wrapEventTarget(EventTarget: WindowType["EventTarget"] | undefin
       }
     };
 
-    args[1] = addWrappedDomEventListener(target, wrapped, eventName, fn, optionsOrCapture);
+    // Aborting the signal removes the listener without a removeEventListener call. The abort handler is registered on
+    // the unwrapped method so that it does not end up in the registry itself, and is removed again when the
+    // registration ends otherwise, so that a long-lived signal does not keep the target and listener reachable.
+    const onAbort = () => forgetWrappedDomEventListener(target, eventName, fn, optionsOrCapture, wrapped);
+    const release = signal ? () => originalRemoveEventListener.call(signal, "abort", onAbort) : undefined;
+    args[1] = addWrappedDomEventListener(target, wrapped, eventName, fn, optionsOrCapture, release);
 
     if (signal && args[1] === wrapped) {
-      // Aborting the signal removes the listener without a removeEventListener call. Registered on the unwrapped
-      // method so that this bookkeeping listener does not end up in the registry itself.
-      originalAddEventListener.call(
-        signal,
-        "abort",
-        () => forgetWrappedDomEventListener(target, eventName, fn, optionsOrCapture, wrapped),
-        { once: true }
-      );
+      originalAddEventListener.call(signal, "abort", onAbort, { once: true });
     }
 
     return originalAddEventListener.apply(this, args as any);

@@ -20,7 +20,8 @@
 // The registry is consulted on every addEventListener and removeEventListener call of the page, so lookups must not
 // depend on how many listeners a target already has. Wrapped listeners are therefore kept per target in maps keyed by
 // event type and capture flag, and then by the original listener. The registry holds targets weakly, so it never
-// keeps an otherwise unreachable target alive.
+// keeps an otherwise unreachable target alive. Whatever else a registration needs to clean up when it ends is
+// released together with its entry.
 
 export type EventListenerOptionsOrUseCapture =
   | boolean
@@ -32,19 +33,28 @@ export type EventListenerOptionsOrUseCapture =
 
 type Listener = EventListenerOrEventListenerObject;
 
-const registry = new WeakMap<EventTarget, Map<string, Map<Listener, Listener>>>();
+type Registration = {
+  wrapped: Listener;
+  release?: () => void;
+};
+
+const registry = new WeakMap<EventTarget, Map<string, Map<Listener, Registration>>>();
 
 /**
  * Remembers `wrappedListener` as the wrapper of `eventListener` on `target`. When the same listener is already
  * registered for the same event type and capture flag, the existing wrapper is returned instead, so the browser sees
  * the same function again and ignores the duplicate registration, as it would without wrapping.
+ *
+ * `release` runs once the registration ends, however it ends: popped by removeEventListener or forgotten after the
+ * browser removed the listener itself. It is only kept when `wrappedListener` is registered.
  */
 export function addWrappedDomEventListener(
   target: EventTarget,
   wrappedListener: Listener,
   eventName: string,
   eventListener: Listener,
-  optionsOrCapture?: EventListenerOptionsOrUseCapture
+  optionsOrCapture?: EventListenerOptionsOrUseCapture,
+  release?: () => void
 ): Listener {
   if (!target) return wrappedListener;
 
@@ -64,10 +74,10 @@ export function addWrappedDomEventListener(
   const existing = listeners.get(eventListener);
   if (existing) {
     // already registered. Do not allow re-registration
-    return existing;
+    return existing.wrapped;
   }
 
-  listeners.set(eventListener, wrappedListener);
+  listeners.set(eventListener, { wrapped: wrappedListener, release });
   return wrappedListener;
 }
 
@@ -84,8 +94,8 @@ export function popWrappedDomEventListener(
   const byType = target ? registry.get(target) : undefined;
   const key = registryKey(eventName, optionsOrCapture);
   const listeners = byType?.get(key);
-  const wrapped = listeners?.get(eventListener);
-  if (!wrapped) {
+  const registration = listeners?.get(eventListener);
+  if (!registration) {
     return fallback;
   }
 
@@ -93,7 +103,8 @@ export function popWrappedDomEventListener(
   if (listeners!.size === 0) {
     byType!.delete(key);
   }
-  return wrapped;
+  registration.release?.();
+  return registration.wrapped;
 }
 
 /**
@@ -111,7 +122,7 @@ export function forgetWrappedDomEventListener(
   wrappedListener: Listener
 ): void {
   const listeners = target ? registry.get(target)?.get(registryKey(eventName, optionsOrCapture)) : undefined;
-  if (listeners?.get(eventListener) === wrappedListener) {
+  if (listeners?.get(eventListener)?.wrapped === wrappedListener) {
     popWrappedDomEventListener(target, eventName, eventListener, optionsOrCapture);
   }
 }

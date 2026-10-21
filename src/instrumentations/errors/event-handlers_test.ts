@@ -123,6 +123,71 @@ describe("event handler wrapping", () => {
     expect(countWrappedDomEventListeners(target)).toBe(1);
   });
 
+  describe("abort handler on the signal", () => {
+    // A target whose native methods are spies, to observe what the wrapper registers on the signal.
+    class SpiedTarget {}
+    const nativeAdd = vi.fn();
+    const nativeRemove = vi.fn();
+    let spied: EventTarget;
+
+    beforeAll(() => {
+      Object.assign(SpiedTarget.prototype, { addEventListener: nativeAdd, removeEventListener: nativeRemove });
+      wrapEventTarget(SpiedTarget as unknown as typeof EventTarget);
+    });
+
+    beforeEach(() => {
+      nativeAdd.mockClear();
+      nativeRemove.mockClear();
+      spied = new SpiedTarget() as EventTarget;
+    });
+
+    function registered(type: string) {
+      const index = nativeAdd.mock.calls.findIndex(([eventName]) => eventName === type);
+      return { listener: nativeAdd.mock.calls[index]![1], target: nativeAdd.mock.contexts[index] };
+    }
+
+    function expectRemovedFromSignal(signal: AbortSignal, onAbort: unknown) {
+      const index = nativeRemove.mock.calls.findIndex(([eventName]) => eventName === "abort");
+      expect(nativeRemove.mock.calls[index]?.[1]).toBe(onAbort);
+      expect(nativeRemove.mock.contexts[index]).toBe(signal);
+    }
+
+    it("is removed when the listener is removed explicitly", () => {
+      const listener = vi.fn();
+      const { signal } = new AbortController();
+      spied.addEventListener("click", listener, { signal });
+      const onAbort = registered("abort");
+      expect(onAbort.target).toBe(signal);
+
+      spied.removeEventListener("click", listener);
+
+      expectRemovedFromSignal(signal, onAbort.listener);
+    });
+
+    it("is removed when a once listener has run", () => {
+      const listener = vi.fn();
+      const { signal } = new AbortController();
+      spied.addEventListener("click", listener, { once: true, signal });
+      const onAbort = registered("abort");
+
+      // The browser invokes the wrapper, after removing it because of `once`.
+      registered("click").listener(new Event("click"));
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expectRemovedFromSignal(signal, onAbort.listener);
+    });
+
+    it("is not added for a duplicate registration", () => {
+      const listener = vi.fn();
+      spied.addEventListener("click", listener, { signal: new AbortController().signal });
+      nativeAdd.mockClear();
+
+      spied.addEventListener("click", listener, { signal: new AbortController().signal });
+
+      expect(nativeAdd.mock.calls.filter(([eventName]) => eventName === "abort")).toHaveLength(0);
+    });
+  });
+
   it("does not accumulate entries for once and signal listeners that never fire", () => {
     for (let i = 0; i < 1000; i++) {
       doc!.addEventListener("pointerup", () => {}, { once: true });
