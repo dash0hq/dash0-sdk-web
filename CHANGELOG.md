@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.27.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.0...0.27.1) (2026-10-21)
+
+### Bug Fixes
+
+- **url-scrubbing:** apply urlAttributeScrubber to urls reported as plain text ([6c8d55d](https://github.com/dash0hq/dash0-sdk-web/commit/6c8d55d27335251c540f5d1c9d8862baf93f54cc))
+
 ## [0.27.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.26.0...0.27.0) (2026-09-24)
 
 ### Features
