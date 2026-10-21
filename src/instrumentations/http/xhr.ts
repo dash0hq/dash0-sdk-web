@@ -37,8 +37,9 @@ import {
   endSpanOnError,
   HTTP_METHOD_OTHER,
   isWellKnownHttpMethod,
+  scrubException,
 } from "./utils";
-import { addCommonAttributes, addUrlAttributes } from "../../attributes";
+import { addCommonAttributes, addUrlAttributes, scrubUrl } from "../../attributes";
 
 type XhrFailureKind = "error" | "timeout" | "abort";
 
@@ -240,12 +241,13 @@ function endSpanOnSyncSendError(xhr: InstrumentedXhr, state: XhrState, error: un
 
     const failureKind: XhrFailureKind =
       state.failureKind ?? ((error as { name?: unknown } | null)?.name === "TimeoutError" ? "timeout" : "error");
+    const message = `XMLHttpRequest failed: ${scrubUrl(state.url)}`;
     recordException(
       span,
-      (error as Exception) ?? { name: failureKind, message: `XMLHttpRequest failed: ${state.url}` }
+      error != null ? scrubException(error as Exception, state.url) : { name: failureKind, message }
     );
     addAttribute(span.attributes, ERROR_TYPE, failureKind);
-    sendSpan(endSpan(span, { code: SPAN_STATUS_ERROR, message: `XMLHttpRequest failed: ${state.url}` }, undefined));
+    sendSpan(endSpan(span, { code: SPAN_STATUS_ERROR, message }, undefined));
   } catch (_e) {
     // Best-effort only -- never mask the page's original exception from send().
   }
@@ -393,7 +395,7 @@ function onLoadEnd(xhr: InstrumentedXhr, state: XhrState) {
     const failureKind = state.failureKind ?? "error";
     // The failure kind doubles as the exception name, so endSpanOnError derives
     // error.type = failureKind from it.
-    endSpanOnError(span, { name: failureKind, message: `XMLHttpRequest failed: ${state.url}` });
+    endSpanOnError(span, { name: failureKind, message: `XMLHttpRequest failed: ${state.url}` }, state.url);
     return;
   }
 

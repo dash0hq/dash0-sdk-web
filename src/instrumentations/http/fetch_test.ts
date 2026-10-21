@@ -341,6 +341,51 @@ describe("fetch test", () => {
       expect(hasAttribute(span, "error.type", { stringValue: "TypeError" })).toBe(true);
     });
 
+    it("scrubs the request url in the exception message and span status", async () => {
+      const originalScrubber = vars.urlAttributeScrubber;
+      vars.urlAttributeScrubber = (attrs) => ({ ...attrs, "url.full": `[${attrs["url.full"].split("?")[0]}]` });
+      fetchMock.mockImplementation(() =>
+        Promise.reject(new TypeError("Failed to load 'http://localhost:3000/api/test?token=secret'"))
+      );
+
+      try {
+        instrumentFetch();
+        // eslint-disable-next-line no-restricted-globals
+        await expect(fetch("http://localhost:3000/api/test?token=secret")).rejects.toBeInstanceOf(TypeError);
+      } finally {
+        vars.urlAttributeScrubber = originalScrubber;
+      }
+
+      const span = lastSpan();
+      expect(span.status?.message).toBe("Failed to load '[http://localhost:3000/api/test]'");
+      const exception = span.events.find((e) => e.name === "exception")!;
+      expect(exception.attributes).toContainEqual({
+        key: "exception.message",
+        value: { stringValue: "Failed to load '[http://localhost:3000/api/test]'" },
+      });
+    });
+
+    it("keeps the custom text of a rejection without a message as span status", async () => {
+      fetchMock.mockImplementation(() => Promise.reject({ toString: () => "net down" }));
+
+      instrumentFetch();
+      // eslint-disable-next-line no-restricted-globals
+      await expect(fetch("http://localhost:3000/api/test")).rejects.toBeDefined();
+
+      expect(lastSpan().status?.message).toBe("net down");
+    });
+
+    it("passes on rejections with a non-string message unchanged", async () => {
+      const rejection = { name: "CustomError", message: 42 };
+      fetchMock.mockImplementation(() => Promise.reject(rejection));
+
+      instrumentFetch();
+      // eslint-disable-next-line no-restricted-globals
+      await expect(fetch("http://localhost:3000/api/test")).rejects.toBe(rejection);
+
+      expect(sendSpanMock).toHaveBeenCalledTimes(1);
+    });
+
     it("sets error.type from the exception name when reading the response body fails", async () => {
       const body = new ReadableStream({
         start(streamController) {
