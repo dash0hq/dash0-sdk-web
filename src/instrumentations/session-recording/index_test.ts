@@ -17,6 +17,7 @@ type Module = typeof import("./index");
 describe("session recording lifecycle", () => {
   let mod: Module;
   let vars: typeof import("../../vars").vars;
+  let storage: typeof import("../../utils/local-storage");
   let sendSessionRecordingChunk: ReturnType<typeof vi.fn>;
   let stopFn: ReturnType<typeof vi.fn>;
   let recorder: ReturnType<typeof vi.fn> & SessionRecorder;
@@ -29,6 +30,8 @@ describe("session recording lifecycle", () => {
     vars = (await import("../../vars")).vars;
     sendSessionRecordingChunk = (await import("../../transport")).sendSessionRecordingChunk as any;
     sendSessionRecordingChunk.mockClear();
+    storage = await import("../../utils/local-storage");
+    storage.removeItem(mod.SHOWN_RECORDING_STORAGE_KEY);
 
     vars.isSessionSampled = true;
     vars.ignoreUrls = [];
@@ -304,32 +307,208 @@ describe("session recording lifecycle", () => {
       expect(mod.isSessionRecording()).toBe(true);
     });
 
-    it("stops recording while hidden and starts a new run, with a new recording id, when shown again", () => {
+    function recordingIdOf(call: unknown[]): string {
+      return (call[0] as any).attributes.find((a: any) => a.key === "dash0.session_recording.id").value.stringValue;
+    }
+
+    function attributeOf(call: unknown[], key: string): any {
+      return (call[0] as any).attributes.find((a: any) => a.key === key).value;
+    }
+
+    function bodyOf(call: unknown[]): Array<{ type: number; timestamp: number }> {
+      return JSON.parse((call[0] as any).body.stringValue);
+    }
+
+    function withSnapshotOnDemand(): ReturnType<typeof vi.fn> {
+      const takeFullSnapshot = vi.fn(() => {
+        capturedOptions!.emit({ type: 4, timestamp: 900, data: {} });
+        capturedOptions!.emit({ type: 2, timestamp: 901, data: {} });
+      });
+      (recorder as any).takeFullSnapshot = takeFullSnapshot;
+      return takeFullSnapshot;
+    }
+
+    it("keeps the recorder running while hidden and transmits nothing it records then", () => {
       mod.armSessionRecording();
       mod.registerSessionRecorder(recorder);
       capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
 
       setVisibility("hidden");
 
-      expect(stopFn).toHaveBeenCalledTimes(1);
+      expect(stopFn).not.toHaveBeenCalled();
       expect(mod.isSessionRecording()).toBe(false);
+      expect(mod.activeRecordingId()).toBeUndefined();
       // Buffered events are flushed uncompressed: a hidden document may be discarded before an
       // asynchronous gzip completes.
       expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(1);
       expect(sendSessionRecordingChunk.mock.calls[0]![1]).toEqual({ compress: false });
 
+      capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
+      vi.advanceTimersByTime(10_000);
+      globalThis.dispatchEvent(new Event("pagehide"));
+
+      expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(1);
+    });
+
+    it("continues the same run without a new snapshot when no other run was shown while hidden", () => {
+      const takeFullSnapshot = withSnapshotOnDemand();
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
+      setVisibility("hidden");
+      capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
+
       setVisibility("visible");
 
-      expect(recorder).toHaveBeenCalledTimes(2);
-      capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
+      expect(recorder).toHaveBeenCalledTimes(1);
+      expect(takeFullSnapshot).not.toHaveBeenCalled();
+      expect(mod.isSessionRecording()).toBe(true);
+
+      capturedOptions!.emit({ type: 3, timestamp: 3, data: {} });
       vi.advanceTimersByTime(5000);
 
       expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(2);
-      // A separate run, so the replay rebuilds from the full snapshot rrweb takes when it starts.
-      const recordingIds = sendSessionRecordingChunk.mock.calls.map(
-        (c) => c[0].attributes.find((a: any) => a.key === "dash0.session_recording.id").value.stringValue
-      );
-      expect(recordingIds[0]).not.toBe(recordingIds[1]);
+      const [beforeHide, afterShow] = sendSessionRecordingChunk.mock.calls;
+      expect(recordingIdOf(afterShow!)).toBe(recordingIdOf(beforeHide!));
+      expect(mod.activeRecordingId()).toBe(recordingIdOf(beforeHide!));
+      expect(attributeOf(afterShow!, "dash0.session_recording.seq")).toEqual({ intValue: "1" });
+      // What changed while hidden is transmitted once the document is on screen again, ahead of what follows.
+      expect(bodyOf(afterShow!).map((e) => e.timestamp)).toEqual([2, 3]);
+      expect(afterShow![1]).toEqual({ compress: true });
+    });
+
+    it("starts a new run with a snapshot from the running recorder when another run was shown while hidden", () => {
+      const takeFullSnapshot = withSnapshotOnDemand();
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
+      setVisibility("hidden");
+      capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
+      // What another tab writes when its run is shown.
+      storage.setItem(mod.SHOWN_RECORDING_STORAGE_KEY, "another-run");
+
+      setVisibility("visible");
+
+      expect(recorder).toHaveBeenCalledTimes(1);
+      expect(stopFn).not.toHaveBeenCalled();
+      expect(takeFullSnapshot).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(5000);
+
+      expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(2);
+      const [beforeHide, afterShow] = sendSessionRecordingChunk.mock.calls;
+      const newRunId = recordingIdOf(afterShow!);
+      expect(newRunId).not.toBe(recordingIdOf(beforeHide!));
+      expect(attributeOf(afterShow!, "dash0.session_recording.seq")).toEqual({ intValue: "0" });
+      expect(attributeOf(afterShow!, "dash0.session_recording.has_snapshot")).toEqual({ boolValue: true });
+      // Held events belong to a document the replay no longer shows; the snapshot replaces them.
+      expect(bodyOf(afterShow!).map((e) => e.type)).toEqual([4, 2]);
+      expect(storage.getItem(mod.SHOWN_RECORDING_STORAGE_KEY)).toBe(newRunId);
+      expect(mod.activeRecordingId()).toBe(newRunId);
+    });
+
+    it("treats a missing record of the shown run as another run having been shown", () => {
+      const takeFullSnapshot = withSnapshotOnDemand();
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      setVisibility("hidden");
+      storage.removeItem(mod.SHOWN_RECORDING_STORAGE_KEY);
+
+      setVisibility("visible");
+
+      expect(takeFullSnapshot).toHaveBeenCalledTimes(1);
+    });
+
+    it("restarts the recorder when it cannot take a snapshot on demand", () => {
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      setVisibility("hidden");
+      storage.setItem(mod.SHOWN_RECORDING_STORAGE_KEY, "another-run");
+
+      setVisibility("visible");
+
+      expect(stopFn).toHaveBeenCalledTimes(1);
+      expect(recorder).toHaveBeenCalledTimes(2);
+      expect(mod.isSessionRecording()).toBe(true);
+    });
+
+    it("restarts the recorder when taking a snapshot on demand fails", () => {
+      (recorder as any).takeFullSnapshot = vi.fn(() => {
+        throw new Error("boom");
+      });
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      setVisibility("hidden");
+      storage.setItem(mod.SHOWN_RECORDING_STORAGE_KEY, "another-run");
+
+      setVisibility("visible");
+
+      expect(stopFn).toHaveBeenCalledTimes(1);
+      expect(recorder).toHaveBeenCalledTimes(2);
+      expect(mod.isSessionRecording()).toBe(true);
+    });
+
+    it("stops the recorder once too much changed while hidden, and restarts it when shown again", () => {
+      withSnapshotOnDemand();
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      setVisibility("hidden");
+      sendSessionRecordingChunk.mockClear();
+
+      capturedOptions!.emit({ type: 3, timestamp: 2, data: "x".repeat(mod.HIDDEN_EVENTS_MAX_BYTES) });
+      expect(stopFn).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(0);
+      expect(stopFn).toHaveBeenCalledTimes(1);
+
+      setVisibility("visible");
+
+      expect(recorder).toHaveBeenCalledTimes(2);
+      expect(mod.isSessionRecording()).toBe(true);
+      vi.advanceTimersByTime(5000);
+      expect(sendSessionRecordingChunk).not.toHaveBeenCalled();
+    });
+
+    it("takes a snapshot when shown again before a recorder that overflowed while hidden was stopped", () => {
+      const takeFullSnapshot = withSnapshotOnDemand();
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      setVisibility("hidden");
+
+      capturedOptions!.emit({ type: 3, timestamp: 2, data: "x".repeat(mod.HIDDEN_EVENTS_MAX_BYTES) });
+      setVisibility("visible");
+      vi.advanceTimersByTime(0);
+
+      expect(takeFullSnapshot).toHaveBeenCalledTimes(1);
+      expect(stopFn).not.toHaveBeenCalled();
+      expect(mod.isSessionRecording()).toBe(true);
+    });
+
+    it("drops what it held before a checkout taken while hidden", () => {
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      setVisibility("hidden");
+      sendSessionRecordingChunk.mockClear();
+      capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
+      capturedOptions!.emit({ type: 4, timestamp: 3, data: {} });
+      capturedOptions!.emit({ type: 2, timestamp: 4, data: {} });
+
+      setVisibility("visible");
+      vi.advanceTimersByTime(5000);
+
+      expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(1);
+      expect(bodyOf(sendSessionRecordingChunk.mock.calls[0]!).map((e) => e.timestamp)).toEqual([3, 4]);
+    });
+
+    it("stops the recorder and drops what it held when the consumer stops while hidden", () => {
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      setVisibility("hidden");
+      sendSessionRecordingChunk.mockClear();
+      capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
+
+      mod.stopSessionRecording();
+
+      expect(stopFn).toHaveBeenCalledTimes(1);
+      expect(sendSessionRecordingChunk).not.toHaveBeenCalled();
     });
 
     it("does not resurrect a recording the consumer stopped", () => {
@@ -394,11 +573,12 @@ describe("session recording lifecycle", () => {
       expect(listener.mock.calls[0]![0]).toBe(mod.activeRecordingId());
     });
 
-    it("reports each run separately when recording follows visibility", () => {
+    it("reports a pause while hidden and the same recording when the run continues", () => {
       const listener = vi.fn();
       mod.onRecordingStateChange(listener);
       mod.armSessionRecording();
       mod.registerSessionRecorder(recorder);
+      const recordingId = listener.mock.calls[0]![0];
       listener.mockClear();
 
       setVisibility("hidden");
@@ -406,7 +586,38 @@ describe("session recording lifecycle", () => {
 
       expect(listener).toHaveBeenCalledTimes(2);
       expect(listener.mock.calls[0]![0]).toBeUndefined();
+      expect(listener.mock.calls[1]![0]).toBe(recordingId);
+    });
+
+    it("reports a new recording when another run was shown while hidden", () => {
+      const listener = vi.fn();
+      mod.onRecordingStateChange(listener);
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      const recordingId = listener.mock.calls[0]![0];
+      listener.mockClear();
+
+      setVisibility("hidden");
+      storage.setItem(mod.SHOWN_RECORDING_STORAGE_KEY, "another-run");
+      setVisibility("visible");
+
+      expect(listener).toHaveBeenCalledTimes(2);
+      expect(listener.mock.calls[0]![0]).toBeUndefined();
       expect(listener.mock.calls[1]![0]).toEqual(expect.any(String));
+      expect(listener.mock.calls[1]![0]).not.toBe(recordingId);
+    });
+
+    it("does not report a stop again when the consumer stops while hidden", () => {
+      const listener = vi.fn();
+      mod.onRecordingStateChange(listener);
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      setVisibility("hidden");
+      listener.mockClear();
+
+      mod.stopSessionRecording();
+
+      expect(listener).not.toHaveBeenCalled();
     });
 
     it("does not report a stop when nothing was recording", () => {

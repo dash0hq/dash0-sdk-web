@@ -2,7 +2,7 @@ import { setTimeout, clearTimeout } from "../../utils/timers";
 import { SessionRecordingEvent } from "../../types/session-recording";
 
 const RRWEB_EVENT_TYPE_FULL_SNAPSHOT = 2;
-const RRWEB_EVENT_TYPE_META = 4;
+export const RRWEB_EVENT_TYPE_META = 4;
 
 export type Chunk = {
   /**
@@ -29,7 +29,10 @@ export type ChunkerOptions = {
 };
 
 export type Chunker = {
-  add(event: SessionRecordingEvent): void;
+  /**
+   * `json` is the event already serialized, for callers that had to serialize it before handing it over.
+   */
+  add(event: SessionRecordingEvent, json?: string): void;
   flush(): void;
   /**
    * Drops buffered events without emitting a chunk and cancels the pending time-based flush. Used when the
@@ -54,14 +57,13 @@ export function newChunker(opts: ChunkerOptions): Chunker {
 
   return { add, flush, discard };
 
-  function add(event: SessionRecordingEvent): void {
+  function add(event: SessionRecordingEvent, json: string | undefined = JSON.stringify(event)): void {
     // A Meta event announces a new full snapshot. Close the current chunk first so the snapshot starts a fresh
     // one and a replay can begin at that chunk.
     if (event.type === RRWEB_EVENT_TYPE_META && serialized.length > 0) {
       flush();
     }
 
-    const json = JSON.stringify(event);
     if (json == null) return;
 
     if (serialized.length === 0) {
