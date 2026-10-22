@@ -50,7 +50,9 @@ export function recordException(span: InProgressSpan, exception: Exception) {
     if (exception.stack) {
       addAttribute(attributes, EXCEPTION_STACKTRACE, exception.stack);
     }
+  }
 
+  if (attributes.length) {
     addSpanEvent(span, SPAN_EVENT_NAME_EXCEPTION, attributes);
   }
 }

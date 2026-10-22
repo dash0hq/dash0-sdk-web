@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.27.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.1...0.27.2) (2026-10-21)
+
+### Bug Fixes
+
+- **http:** record exception events for string exceptions ([2bc8767](https://github.com/dash0hq/dash0-sdk-web/commit/2bc876762996984337f7687dd89e20c20833e049))
+
 ## [0.27.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.0...0.27.1) (2026-10-21)
 
 ### Bug Fixes
