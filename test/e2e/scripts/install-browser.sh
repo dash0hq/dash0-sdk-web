@@ -46,6 +46,8 @@ install_edge() {
   binary=$(echo "$DIR"/opt/microsoft/msedge*/msedge)
   echo "BROWSER_BINARY=$binary" >> "$GITHUB_ENV"
   echo "BROWSER_VERSION=$("$binary" --version | grep -oE '[0-9]+(\.[0-9]+){3}')" >> "$GITHUB_ENV"
+  # The edgedriver package still defaults to msedgedriver.azureedge.net, which Microsoft has shut down.
+  echo "EDGEDRIVER_CDNURL=https://msedgedriver.microsoft.com" >> "$GITHUB_ENV"
 }
 
 case "$1" in
@@ -65,6 +67,8 @@ case "$1" in
     install_firefox "https://download.mozilla.org/?product=firefox-beta-latest-ssl&os=linux64&lang=en-US"
     ;;
   firefox-baseline)
+    # Older Firefox versions link against dbus-glib, which the runner image does not include.
+    sudo apt-get update -q && sudo apt-get install -y --no-install-recommends libdbus-glib-1-2
     install_firefox "https://ftp.mozilla.org/pub/firefox/releases/$FIREFOX_BASELINE_VERSION/linux-x86_64/en-US/firefox-$FIREFOX_BASELINE_VERSION.tar.bz2"
     ;;
   edge-latest)
