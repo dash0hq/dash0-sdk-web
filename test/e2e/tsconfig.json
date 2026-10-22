@@ -11,5 +11,5 @@
       "@wdio/sauce-service"
     ]
   },
-  "include": ["wdio.conf.ts", "./**/*.ts"]
+  "include": ["./**/*.ts"]
 }
