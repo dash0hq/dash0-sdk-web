@@ -69,6 +69,9 @@ case "$1" in
   firefox-baseline)
     # Older Firefox versions link against dbus-glib, which the runner image does not include.
     sudo apt-get update -q && sudo apt-get install -y --no-install-recommends libdbus-glib-1-2
+    # Ubuntu 24.04 restricts unprivileged user namespaces via AppArmor. Newer Firefox versions detect this, but the
+    # content processes of older versions crash (SIGSEGV) when their sandbox tries to use them.
+    sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
     install_firefox "https://ftp.mozilla.org/pub/firefox/releases/$FIREFOX_BASELINE_VERSION/linux-x86_64/en-US/firefox-$FIREFOX_BASELINE_VERSION.tar.bz2"
     ;;
   edge-latest)
