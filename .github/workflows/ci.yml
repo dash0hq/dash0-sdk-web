@@ -118,9 +118,7 @@ jobs:
     # an empty array directly causes GitHub to fail the run at strategy-evaluation time ("Matrix vector
     # 'capability' does not contain any values") instead of cleanly skipping the job. Gating with `if:` here
     # means the job — and its matrix — is never evaluated at all when there's nothing to run.
-    # Temporarily disabled while the runner-based browser tests (test-e2e-browsers) are being evaluated. Remove the
-    # `false &&` to run the Safari tests on LambdaTest again.
-    if: ${{ false && needs.build.outputs.lambdatest-capabilities != '[]' && needs.build.outputs.lambdatest-capabilities != '' }}
+    if: ${{ needs.build.outputs.lambdatest-capabilities != '[]' && needs.build.outputs.lambdatest-capabilities != '' }}
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
