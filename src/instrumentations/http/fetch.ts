@@ -296,11 +296,39 @@ function wrapResponse(
     },
   });
 
-  return new Response(stream, {
-    status: originalResponse.status,
-    statusText: originalResponse.statusText,
-    headers: originalResponse.headers,
-  });
+  return copyResponseIdentity(
+    originalResponse,
+    new Response(stream, {
+      status: originalResponse.status,
+      statusText: originalResponse.statusText,
+      headers: originalResponse.headers,
+    })
+  );
+}
+
+/**
+ * A constructed Response always reports `url: ""`, `redirected: false` and `type: "default"`, because
+ * ResponseInit has no option for them. Copy them from the original so that application code like
+ * `if (response.redirected) location.href = response.url` keeps working. clone() builds a fresh
+ * Response that would report the defaults again, so it has to be patched as well.
+ */
+function copyResponseIdentity(originalResponse: Response, wrappedResponse: Response): Response {
+  try {
+    const clone = wrappedResponse.clone;
+    Object.defineProperties(wrappedResponse, {
+      url: { value: originalResponse.url },
+      redirected: { value: originalResponse.redirected },
+      type: { value: originalResponse.type },
+      clone: {
+        value: function (this: Response) {
+          return copyResponseIdentity(originalResponse, clone.call(this));
+        },
+      },
+    });
+  } catch (e) {
+    debug("failed to copy response identity onto the wrapped response", e);
+  }
+  return wrappedResponse;
 }
 
 function responseCanHaveBody(response: Response) {

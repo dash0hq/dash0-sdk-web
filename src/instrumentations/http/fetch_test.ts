@@ -414,4 +414,46 @@ describe("fetch test", () => {
       expect(hasAttribute(span, "error.type", { stringValue: "TypeError" })).toBe(true);
     });
   });
+
+  describe("response identity", () => {
+    // A constructed Response cannot be redirected, so the read-only getters are shadowed to stand in
+    // for what the browser hands back after following a redirect.
+    const redirectedResponse = () => {
+      const response = new Response('{"hello":"world"}', {
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+      });
+      Object.defineProperties(response, {
+        url: { value: "http://localhost:3000/landing" },
+        redirected: { value: true },
+        type: { value: "basic" },
+      });
+      return response;
+    };
+
+    it("preserves url, redirected and type on the wrapped response", async () => {
+      fetchMock.mockImplementation(() => Promise.resolve(redirectedResponse()));
+      instrumentFetch();
+      // eslint-disable-next-line no-restricted-globals
+      const response = await fetch("http://localhost:3000/api/submit", { method: "POST", body: "a=1" });
+
+      expect(response.url).toBe("http://localhost:3000/landing");
+      expect(response.redirected).toBe(true);
+      expect(response.type).toBe("basic");
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({ hello: "world" });
+    });
+
+    it("preserves url, redirected and type on a clone of the wrapped response", async () => {
+      fetchMock.mockImplementation(() => Promise.resolve(redirectedResponse()));
+      instrumentFetch();
+      // eslint-disable-next-line no-restricted-globals
+      const clone = (await fetch("http://localhost:3000/api/submit")).clone();
+
+      expect(clone.url).toBe("http://localhost:3000/landing");
+      expect(clone.redirected).toBe(true);
+      expect(clone.type).toBe("basic");
+      await expect(clone.json()).resolves.toEqual({ hello: "world" });
+    });
+  });
 });
