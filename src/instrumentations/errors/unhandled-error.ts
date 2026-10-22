@@ -1,5 +1,5 @@
 import { hasOwnProperty, nowNanos, win } from "../../utils";
-import { isErrorMessageIgnored } from "../../utils/ignore-rules";
+import { isErrorMessageIgnored, isUrlIgnored } from "../../utils/ignore-rules";
 import { sendLog } from "../../transport";
 import {
   EVENT_NAME,
@@ -11,7 +11,7 @@ import {
   LOG_SEVERITIES,
 } from "../../semantic-conventions";
 import { addAttribute, addAttributes } from "../../utils/otel";
-import { addCommonAttributes } from "../../attributes";
+import { addCommonAttributes, scrubPageUrls } from "../../attributes";
 import { KeyValue, LogRecord } from "../../types/otlp";
 import { ReportErrorOpts, ErrorLike } from "../../types/errors";
 
@@ -99,7 +99,7 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
     return;
   }
 
-  if (isErrorMessageIgnored(message)) {
+  if (isErrorMessageIgnored(message) || (win && isUrlIgnored(win.location.href))) {
     return;
   }
 
@@ -108,8 +108,8 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
     numberOfDifferentErrorsSeen = 0;
   }
 
-  message = String(message).substring(0, 300);
-  stack = shortenStackTrace(stack);
+  message = scrubPageUrls(String(message)).substring(0, 300);
+  stack = scrubPageUrls(shortenStackTrace(stack));
   const location = win?.location.href;
   const key = message + stack + location;
 
@@ -131,7 +131,7 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
       addAttribute(attributes, EXCEPTION_STACKTRACE, stack);
     }
     if (opts?.componentStack) {
-      addAttribute(attributes, EXCEPTION_COMPONENT_STACK, opts?.componentStack.substring(0, 2048));
+      addAttribute(attributes, EXCEPTION_COMPONENT_STACK, scrubPageUrls(opts.componentStack).substring(0, 2048));
     }
 
     // Add custom attributes last to allow overrides

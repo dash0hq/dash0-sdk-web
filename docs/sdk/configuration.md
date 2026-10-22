@@ -136,7 +136,10 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   An array of URL regular expression for which no data should be collected.
-  These regular expressions are evaluated against the document, XMLHttpRequest, fetch and resource URLs.
+  These regular expressions are evaluated against the document, XMLHttpRequest and fetch URLs.
+  While the document URL matches, no page views, navigation timings, web vitals, errors or rage clicks are sent, and no session recording is started.
+  Page views from `startView` and custom events from `sendEvent` are always sent.
+  XMLHttpRequest and fetch requests made from an ignored page are still recorded, including the page URL, unless the request URL matches too.
 
 - ** URL Attribute Scrubber**<br>
   key: `urlAttributeScrubber`<br>
@@ -149,6 +152,10 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   and `url.*` attribute namespaces.
   Sensitive parts of the url attributes should be replaced with `REDACTED`,
   avoid partially or fully dropping attributes to preserve telemetry quality.
+  The scrubbed `url.full` value is also used where a url is reported as plain text: the navigation timing `name`, the
+  page view `referrer`, HTTP request failure messages, and the page url inside error messages and stack traces. If the
+  scrubber changes or removes any other url attribute but returns `url.full` unchanged, `url.full` is rebuilt from the
+  scrubbed parts. Session replay data, including the urls it contains, does not pass this scrubber.
   Note: basic auth credentials in urls are automatically redacted before this is invoked.
 
 #### Website Details and Attributes

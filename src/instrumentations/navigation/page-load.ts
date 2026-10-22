@@ -2,7 +2,8 @@ import { addEventListener, debug, doc, win, roundToTwoDecimals, error, toNanosTs
 import { EVENT_NAME, EVENT_NAMES, LOG_SEVERITIES } from "../../semantic-conventions";
 import { sendLog } from "../../transport";
 import { getTraceContextForPageLoad, addAttribute } from "../../utils/otel";
-import { addCommonAttributes } from "../../attributes";
+import { addCommonAttributes, scrubUrl } from "../../attributes";
+import { isUrlIgnored } from "../../utils/ignore-rules";
 import { transmitPageViewEvent } from "./event";
 import { KeyValue, LogRecord } from "../../types/otlp";
 
@@ -42,11 +43,14 @@ function onLoaded() {
     return;
   }
 
+  // Check the original document url: the page may have changed its url via history.replaceState before load.
+  if (nt.name && isUrlIgnored(nt.name)) return;
+
   const attributes: KeyValue[] = [];
   addAttribute(attributes, EVENT_NAME, EVENT_NAMES.NAVIGATION_TIMING);
 
   const bodyAttributes: KeyValue[] = [];
-  addAttribute(bodyAttributes, "name", nt.name);
+  addAttribute(bodyAttributes, "name", scrubUrl(nt.name));
   addNavigationTiming(bodyAttributes, nt, "responseStatus");
 
   addNavigationTiming(bodyAttributes, nt, "fetchStart");
