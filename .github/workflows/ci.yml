@@ -8,6 +8,13 @@ on:
     branches:
       - "*"
 
+# A new push to a pull request cancels the run for the previous commit, which also frees its LambdaTest
+# sessions. GitHub sometimes delivers the same pull_request event twice; this cancels the duplicate run too.
+# Pushes to main get a unique group (the run id), so a run that is releasing is never canceled.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
