@@ -117,16 +117,40 @@ describe("rage click detection", () => {
     expect(bodyValue(log, "text")).toBe("Place order");
   });
 
-  it("does not report rage clicks while the page url matches ignoreUrls", () => {
-    vars.ignoreUrls = [new RegExp(`^${location.origin}/`)];
-    const el = button(`<button id="checkout">Place order</button>`);
+  describe("ignoreUrls", () => {
+    afterEach(() => {
+      history.replaceState(null, "", "/");
+    });
 
-    click(el);
-    click(el);
-    click(el);
-    closeCluster();
+    it("does not report a burst that started on an ignored page, also after navigating away", () => {
+      vars.ignoreUrls = [/\/callback/];
+      history.replaceState(null, "", "/callback");
+      const el = button(`<button id="checkout">Place order</button>`);
 
-    expect(sendLog).not.toHaveBeenCalled();
+      click(el);
+      click(el);
+      click(el);
+      history.replaceState(null, "", "/home");
+      closeCluster();
+
+      expect(sendLog).not.toHaveBeenCalled();
+    });
+
+    it("reports a burst that started on a page that is not ignored with that page's url", () => {
+      vars.ignoreUrls = [/\/callback/];
+      history.replaceState(null, "", "/home");
+      const el = button(`<button id="checkout">Place order</button>`);
+
+      click(el);
+      click(el);
+      click(el);
+      history.replaceState(null, "", "/callback");
+      closeCluster();
+
+      expect(sendLog).toHaveBeenCalledTimes(1);
+      const path = lastLog().attributes.find((kv) => kv.key === "page.url.path");
+      expect(path?.value?.stringValue).toBe("/home");
+    });
   });
 
   it("carries the id of the recording the burst happened in", () => {
