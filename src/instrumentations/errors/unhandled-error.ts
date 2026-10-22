@@ -1,5 +1,5 @@
 import { hasOwnProperty, nowNanos, win } from "../../utils";
-import { isErrorMessageIgnored } from "../../utils/ignore-rules";
+import { isErrorMessageIgnored, isUrlIgnored } from "../../utils/ignore-rules";
 import { sendLog } from "../../transport";
 import {
   EVENT_NAME,
@@ -99,7 +99,7 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
     return;
   }
 
-  if (isErrorMessageIgnored(message)) {
+  if (isErrorMessageIgnored(message) || (win && isUrlIgnored(win.location.href))) {
     return;
   }
 

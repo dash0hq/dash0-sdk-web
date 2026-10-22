@@ -16,6 +16,24 @@ describe("transmitPageViewEvent", () => {
   beforeEach(() => {
     sendLogMock.mockClear();
     vars.pageViewInstrumentation = { trackVirtualPageViews: true, includeParts: [] };
+    vars.ignoreUrls = [];
+  });
+
+  it("does not transmit a page view when the url matches ignoreUrls", () => {
+    vars.ignoreUrls = [/\/callback/];
+
+    transmitPageViewEvent("1700000000000000000", new URL("https://example.com/callback?code=secret"));
+    transmitPageViewEvent("1700000000000000000", new URL("https://example.com/callback"), true);
+
+    expect(sendLogMock).not.toHaveBeenCalled();
+  });
+
+  it("transmits a page view without url even when ignoreUrls is set", () => {
+    vars.ignoreUrls = [/.*/];
+
+    transmitPageViewEvent("1700000000000000000");
+
+    expect(sendLogMock).toHaveBeenCalledTimes(1);
   });
 
   afterEach(() => {

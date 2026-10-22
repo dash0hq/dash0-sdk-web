@@ -136,7 +136,9 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   An array of URL regular expression for which no data should be collected.
-  These regular expressions are evaluated against the document, XMLHttpRequest, fetch and resource URLs.
+  These regular expressions are evaluated against the document, XMLHttpRequest and fetch URLs.
+  While the document URL matches, no page views, navigation timings, web vitals, errors or rage clicks are sent, and no session recording is started.
+  Page views from `startView` and custom events from `sendEvent` are always sent.
 
 - ** URL Attribute Scrubber**<br>
   key: `urlAttributeScrubber`<br>

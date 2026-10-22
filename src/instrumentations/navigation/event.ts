@@ -11,6 +11,7 @@ import {
 import { doc, NO_VALUE_FALLBACK } from "../../utils";
 import { addCommonAttributes, scrubUrl } from "../../attributes";
 import { sendLog } from "../../transport";
+import { isUrlIgnored } from "../../utils/ignore-rules";
 import { PageViewMeta, vars } from "../../vars";
 import { AnyValue, KeyValue, LogRecord } from "../../types/otlp";
 
@@ -75,6 +76,8 @@ function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
 }
 
 export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?: boolean, replaced?: boolean) {
+  if (url && isUrlIgnored(url.href)) return;
+
   const meta = getPageViewMeta(url);
 
   buildAndSendPageViewLog({

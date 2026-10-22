@@ -85,7 +85,9 @@ export type Vars = {
   /**
    * An array of URL regular expression for which no data should be
    * collected. These regular expressions are evaluated against
-   * the document, XMLHttpRequest, fetch and resource URLs.
+   * the document, XMLHttpRequest and fetch URLs. While the document URL
+   * matches, no page views, navigation timings, web vitals, errors or
+   * rage clicks are sent, and no session recording is started.
    */
   ignoreUrls: RegExp[];
 

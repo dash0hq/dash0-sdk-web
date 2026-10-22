@@ -117,6 +117,18 @@ describe("rage click detection", () => {
     expect(bodyValue(log, "text")).toBe("Place order");
   });
 
+  it("does not report rage clicks while the page url matches ignoreUrls", () => {
+    vars.ignoreUrls = [new RegExp(`^${location.origin}/`)];
+    const el = button(`<button id="checkout">Place order</button>`);
+
+    click(el);
+    click(el);
+    click(el);
+    closeCluster();
+
+    expect(sendLog).not.toHaveBeenCalled();
+  });
+
   it("carries the id of the recording the burst happened in", () => {
     const el = button(`<button id="checkout">Place order</button>`);
 
