@@ -16,6 +16,7 @@ describe("reportUnhandledError", () => {
     vi.useFakeTimers();
     reportUnhandledError = (await import("./unhandled-error")).reportUnhandledError;
     sendLog = (await import("../../transport")).sendLog as unknown as ReturnType<typeof vi.fn>;
+    sendLog.mockClear();
     vars = (await import("../../vars")).vars;
   });
 
@@ -47,5 +48,15 @@ describe("reportUnhandledError", () => {
     // Unrelated urls are left untouched.
     expect(attr("exception.stacktrace")).toContain("https://cdn.example.com/app.js?v=1:1:1");
     expect(attr("exception.component_stack")).toBe(`\n    at Login (${scrubbed}:20:3)`);
+  });
+
+  it("does not report errors while the page url matches ignoreUrls", () => {
+    vars.ignoreUrls = [/\/callback/];
+    history.replaceState(null, "", "/callback");
+
+    reportUnhandledError("boom");
+    vi.advanceTimersByTime(1000);
+
+    expect(sendLog).not.toHaveBeenCalled();
   });
 });

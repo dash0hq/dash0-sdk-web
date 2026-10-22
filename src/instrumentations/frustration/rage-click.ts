@@ -7,6 +7,7 @@ import { createRateLimiter, debug, doc, now, toNanosTs, win } from "../../utils"
 import { addEventListener, removeEventListener } from "../../utils/listeners";
 import { clearTimeout, setTimeout } from "../../utils/timers";
 import { onLastChance } from "../../utils/on-last-chance";
+import { isUrlIgnored } from "../../utils/ignore-rules";
 import { onRecordingStateChange } from "../session-recording";
 import { vars } from "../../vars";
 import { buildCssSelector, extractText } from "./element";
@@ -182,6 +183,8 @@ function closeCluster(): void {
 }
 
 function sendRageClick(closed: Cluster): void {
+  if (win && isUrlIgnored(win.location.href)) return;
+
   const attributes: KeyValue[] = [];
   addAttribute(attributes, EVENT_NAME, EVENT_NAMES.RAGE_CLICK);
   addCommonAttributes(attributes);
