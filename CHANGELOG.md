@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.27.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.3...0.27.4) (2026-10-22)
+
+### Bug Fixes
+
+- stop listener wrapping and session recording from leaking ([#126](https://github.com/dash0hq/dash0-sdk-web/issues/126)) ([629ce8f](https://github.com/dash0hq/dash0-sdk-web/commit/629ce8f396fee06562b1d583946b0db9aa9db762))
+
 ## [0.27.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.2...0.27.3) (2026-10-22)
 
 ### Bug Fixes
