@@ -8,11 +8,19 @@ on:
     branches:
       - "*"
 
+# A new push to a pull request cancels the run for the previous commit, which also frees its LambdaTest
+# sessions. GitHub sometimes delivers the same pull_request event twice; this cancels the duplicate run too.
+# Pushes to main get a unique group (the run id), so a run that is releasing is never canceled.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      capabilities: ${{ steps.get-capabilities.outputs.capabilities }}
+      lambdatest-capabilities: ${{ steps.get-capabilities.outputs.lambdatest-capabilities }}
+      browser-capabilities: ${{ steps.get-capabilities.outputs.browser-capabilities }}
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -97,15 +105,18 @@ jobs:
         id: get-capabilities
         run: |
           if [ "${{ steps.docs-only.outputs.only_docs }}" = "true" ]; then
-            echo "capabilities=[]" >> $GITHUB_OUTPUT
+            echo "lambdatest-capabilities=[]" >> $GITHUB_OUTPUT
+            echo "browser-capabilities=[]" >> $GITHUB_OUTPUT
           else
             # Assigning to a variable first (rather than embedding the substitution in `echo`'s argument)
             # matters here: `echo "x=$(cmd)"` always succeeds regardless of cmd's exit status, so a crash in
             # get-wdio-capabilities.ts would otherwise silently write an empty capabilities value instead of
             # failing this step — which the test-e2e `if:` guard would then read as "nothing to run" and
             # skip E2E entirely, turning a real failure into a false green.
-            capabilities=$(pnpm exec tsx ./test/e2e/scripts/get-wdio-capabilities.ts)
-            echo "capabilities=$capabilities" >> $GITHUB_OUTPUT
+            lambdatest_capabilities=$(pnpm exec tsx ./test/e2e/scripts/get-wdio-capabilities.ts lambdatest)
+            echo "lambdatest-capabilities=$lambdatest_capabilities" >> $GITHUB_OUTPUT
+            browser_capabilities=$(pnpm exec tsx ./test/e2e/scripts/get-wdio-capabilities.ts browsers)
+            echo "browser-capabilities=$browser_capabilities" >> $GITHUB_OUTPUT
           fi
 
   test-e2e:
@@ -114,12 +125,12 @@ jobs:
     # an empty array directly causes GitHub to fail the run at strategy-evaluation time ("Matrix vector
     # 'capability' does not contain any values") instead of cleanly skipping the job. Gating with `if:` here
     # means the job — and its matrix — is never evaluated at all when there's nothing to run.
-    if: ${{ needs.build.outputs.capabilities != '[]' && needs.build.outputs.capabilities != '' }}
+    if: ${{ needs.build.outputs.lambdatest-capabilities != '[]' && needs.build.outputs.lambdatest-capabilities != '' }}
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       matrix:
-        capability: ${{ fromJson(needs.build.outputs.capabilities) }}
+        capability: ${{ fromJson(needs.build.outputs.lambdatest-capabilities) }}
       fail-fast: false
 
     steps:
@@ -147,6 +158,44 @@ jobs:
           LT_ACCESS_KEY: ${{ secrets.LT_ACCESS_KEY }}
           WDIO_SELECTED_CAPABILITIES: ${{ matrix.capability }}
 
+  # Chrome, Firefox and Edge run headless on the runner itself instead of LambdaTest. That avoids the LambdaTest
+  # session queue, so these jobs run in parallel.
+  test-e2e-browsers:
+    needs: build
+    # Same empty-matrix guard as test-e2e above.
+    if: ${{ needs.build.outputs.browser-capabilities != '[]' && needs.build.outputs.browser-capabilities != '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        capability: ${{ fromJson(needs.build.outputs.browser-capabilities) }}
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+
+      - name: Use Node.js from .nvmrc
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install browser for ${{ matrix.capability }}
+        run: ./test/e2e/scripts/install-browser.sh ${{ matrix.capability }}
+
+      - name: build
+        run: pnpm run build
+
+      - name: Run E2E test for ${{ matrix.capability }}
+        run: pnpm run test:e2e:browsers
+        env:
+          WDIO_SELECTED_CAPABILITIES: ${{ matrix.capability }}
+
   check-e2e-tests:
     name: Require Passing E2E Tests
     runs-on: ubuntu-latest
@@ -154,8 +203,9 @@ jobs:
     needs:
       - build
       - test-e2e
-    # test-e2e is skipped (not 'success') when the E2E matrix is empty for a docs-only change; without an
-    # `if:` here, GitHub's default needs-cascade would skip this job too, so its own pass/fail logic below
+      - test-e2e-browsers
+    # test-e2e and test-e2e-browsers are skipped (not 'success') when the E2E matrices are empty for a docs-only
+    # change; without an `if:` here, GitHub's default needs-cascade would skip this job too, so its own pass/fail logic below
     # (which does account for 'skipped') would never run. `!cancelled()` (rather than `always()`) still lets a
     # cancelled run skip this gate instead of reporting a false pass. `build` is included in `needs` so a
     # failed `build` shows up as 'failure' in `needs.*.result` below instead of this job passing on the

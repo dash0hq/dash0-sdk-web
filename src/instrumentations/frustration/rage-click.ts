@@ -7,6 +7,7 @@ import { createRateLimiter, debug, doc, now, toNanosTs, win } from "../../utils"
 import { addEventListener, removeEventListener } from "../../utils/listeners";
 import { clearTimeout, setTimeout } from "../../utils/timers";
 import { onLastChance } from "../../utils/on-last-chance";
+import { isUrlIgnored } from "../../utils/ignore-rules";
 import { onRecordingStateChange } from "../session-recording";
 import { vars } from "../../vars";
 import { buildCssSelector, extractText } from "./element";
@@ -24,6 +25,8 @@ type Cluster = {
   count: number;
   firstMillis: number;
   lastMillis: number;
+  /** Page url at the first click. The burst may close after a navigation, so it is the page the clicks happened on. */
+  pageUrl: string;
 };
 
 let cluster: Cluster | undefined;
@@ -114,6 +117,7 @@ function onClick(event: Event): void {
         count: 1,
         firstMillis: timestamp,
         lastMillis: timestamp,
+        pageUrl: win!.location.href,
       };
     }
 
@@ -169,6 +173,8 @@ function closeCluster(): void {
 
   if (closed.count < rageClickSettings().minClicks) return;
 
+  if (isUrlIgnored(closed.pageUrl)) return;
+
   if (isExcessiveUsage()) {
     debug("Suppressing rage click event due to excessive usage");
     return;
@@ -184,7 +190,7 @@ function closeCluster(): void {
 function sendRageClick(closed: Cluster): void {
   const attributes: KeyValue[] = [];
   addAttribute(attributes, EVENT_NAME, EVENT_NAMES.RAGE_CLICK);
-  addCommonAttributes(attributes);
+  addCommonAttributes(attributes, { url: closed.pageUrl });
 
   // Lets the backend deep-link from the event straight into the replay at this timestamp. Always
   // present: clicks are only observed while a recording is running.

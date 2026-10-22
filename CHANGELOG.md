@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.2...0.27.3) (2026-10-22)
+
+### Bug Fixes
+
+- **ignore-urls:** check rage clicks against the page they happened on ([d796af8](https://github.com/dash0hq/dash0-sdk-web/commit/d796af82735c35271e0531286407d16b46bea19d))
+- **ignore-urls:** skip page-level signals while the page url is ignored ([0bbbbb6](https://github.com/dash0hq/dash0-sdk-web/commit/0bbbbb67aaab59f6c44cbaaf70aa3d0392ba67ee))
+
 ## [0.27.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.1...0.27.2) (2026-10-21)
 
 ### Bug Fixes
