@@ -1,20 +1,10 @@
-const WRAPPED_EVENT_HANDLERS_ORIGINAL_FUNCTION_STORAGE_KEY = "__dash0OriginalFunctions";
-
-export type EventListenerOptionsOrUseCapture =
-  | boolean
-  | {
-      capture?: boolean;
-    };
-
 // Asynchronous function wrapping: The process of wrapping a listener which goes into one function, e.g.
 //
 //  - EventTarget#addEventListener
-//  - EventEmitter#on
 //
 // and is removed via another function, e.g.
 //
 //  - EventTarget#removeEventListener
-//  - EventEmitter#off
 //
 // What is complicated about this, is that these methods identify registered listeners by function reference.
 // When we wrap a function, we naturally change the reference. We must therefore keep track of which
@@ -26,95 +16,128 @@ export type EventListenerOptionsOrUseCapture =
 // Note that this file follows the behavior outlined in DOM specification. Among others, this means that it is not
 // possible to register the same listener twice.
 // http://dom.spec.whatwg.org
+//
+// The registry is consulted on every addEventListener and removeEventListener call of the page, so lookups must not
+// depend on how many listeners a target already has. Wrapped listeners are therefore kept per target in maps keyed by
+// event type and capture flag, and then by the original listener. The registry holds targets weakly, so it never
+// keeps an otherwise unreachable target alive. Whatever else a registration needs to clean up when it ends is
+// released together with its entry.
 
-export function addWrappedFunction(
-  storageTarget: EventTarget,
-  wrappedFunction: EventListenerOrEventListenerObject,
-  valuesForEqualityCheck: any[]
-): EventListenerOrEventListenerObject {
-  if (!storageTarget) return wrappedFunction;
+export type EventListenerOptionsOrUseCapture =
+  | boolean
+  | {
+      capture?: boolean;
+      once?: boolean;
+      signal?: AbortSignal;
+    };
 
-  const storage = ((storageTarget as any)[WRAPPED_EVENT_HANDLERS_ORIGINAL_FUNCTION_STORAGE_KEY] =
-    (storageTarget as any)[WRAPPED_EVENT_HANDLERS_ORIGINAL_FUNCTION_STORAGE_KEY] || []);
-  const index = findInStorage(storageTarget, valuesForEqualityCheck);
-  if (index !== -1) {
-    // already registered. Do not allow re-registration
-    return storage[index].wrappedFunction;
-  }
+type Listener = EventListenerOrEventListenerObject;
 
-  storage.push({
-    wrappedFunction,
-    valuesForEqualityCheck,
-  });
-  return wrappedFunction;
-}
+type Registration = {
+  wrapped: Listener;
+  release?: () => void;
+};
 
-function findInStorage(storageTarget: EventTarget, valuesForEqualityCheck: any[]): number {
-  const storage = (storageTarget as any)[WRAPPED_EVENT_HANDLERS_ORIGINAL_FUNCTION_STORAGE_KEY];
-  for (let i = 0; i < storage.length; i++) {
-    const storageItem = storage[i];
+const registry = new WeakMap<EventTarget, Map<string, Map<Listener, Registration>>>();
 
-    if (matchesEqualityCheck(storageItem.valuesForEqualityCheck, valuesForEqualityCheck)) {
-      return i;
-    }
-  }
-  return -1;
-}
-
-export function popWrappedFunction(
-  storageTarget: EventTarget,
-  valuesForEqualityCheck: any[],
-  fallback?: EventListenerOrEventListenerObject
-): EventListenerOrEventListenerObject | undefined {
-  const storage = (storageTarget as any)?.[WRAPPED_EVENT_HANDLERS_ORIGINAL_FUNCTION_STORAGE_KEY];
-  if (storage == null) {
-    return fallback;
-  }
-
-  const index = findInStorage(storageTarget, valuesForEqualityCheck);
-  if (index === -1) {
-    return fallback;
-  }
-
-  const storageItem = storage[index];
-  storage.splice(index, 1);
-  return storageItem.wrappedFunction;
-}
-
-function matchesEqualityCheck(valuesForEqualityCheckA: any, valuesForEqualityCheckB: any) {
-  if (valuesForEqualityCheckA.length !== valuesForEqualityCheckB.length) {
-    return false;
-  }
-
-  for (let i = 0; i < valuesForEqualityCheckA.length; i++) {
-    if (valuesForEqualityCheckA[i] !== valuesForEqualityCheckB[i]) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
+/**
+ * Remembers `wrappedListener` as the wrapper of `eventListener` on `target`. When the same listener is already
+ * registered for the same event type and capture flag, the existing wrapper is returned instead, so the browser sees
+ * the same function again and ignores the duplicate registration, as it would without wrapping.
+ *
+ * `release` runs once the registration ends, however it ends: popped by removeEventListener or forgotten after the
+ * browser removed the listener itself. It is only kept when `wrappedListener` is registered.
+ */
 export function addWrappedDomEventListener(
-  storageTarget: EventTarget,
-  wrappedFunction: EventListenerOrEventListenerObject,
+  target: EventTarget,
+  wrappedListener: Listener,
   eventName: string,
-  eventListener: EventListenerOrEventListenerObject,
-  optionsOrCapture?: EventListenerOptionsOrUseCapture
-): EventListenerOrEventListenerObject {
-  return addWrappedFunction(
-    storageTarget,
-    wrappedFunction,
-    getDomEventListenerValuesForEqualityCheck(eventName, eventListener, optionsOrCapture)
-  );
+  eventListener: Listener,
+  optionsOrCapture?: EventListenerOptionsOrUseCapture,
+  release?: () => void
+): Listener {
+  if (!target) return wrappedListener;
+
+  let byType = registry.get(target);
+  if (!byType) {
+    byType = new Map();
+    registry.set(target, byType);
+  }
+
+  const key = registryKey(eventName, optionsOrCapture);
+  let listeners = byType.get(key);
+  if (!listeners) {
+    listeners = new Map();
+    byType.set(key, listeners);
+  }
+
+  const existing = listeners.get(eventListener);
+  if (existing) {
+    // already registered. Do not allow re-registration
+    return existing.wrapped;
+  }
+
+  listeners.set(eventListener, { wrapped: wrappedListener, release });
+  return wrappedListener;
 }
 
-function getDomEventListenerValuesForEqualityCheck(
+/**
+ * Removes and returns the wrapper of `eventListener` on `target`, or `fallback` when none is registered.
+ */
+export function popWrappedDomEventListener(
+  target: EventTarget,
   eventName: string,
-  eventListener: EventListenerOrEventListenerObject,
-  optionsOrCapture?: EventListenerOptionsOrUseCapture
-): any[] {
-  return [eventName, eventListener, getDomEventListenerCaptureValue(optionsOrCapture)];
+  eventListener: Listener,
+  optionsOrCapture?: EventListenerOptionsOrUseCapture,
+  fallback?: Listener
+): Listener | undefined {
+  const byType = target ? registry.get(target) : undefined;
+  const key = registryKey(eventName, optionsOrCapture);
+  const listeners = byType?.get(key);
+  const registration = listeners?.get(eventListener);
+  if (!registration) {
+    return fallback;
+  }
+
+  listeners!.delete(eventListener);
+  if (listeners!.size === 0) {
+    byType!.delete(key);
+  }
+  registration.release?.();
+  return registration.wrapped;
+}
+
+/**
+ * Drops the registration of `eventListener` on `target`, but only while `wrappedListener` is still its wrapper.
+ *
+ * Used when the browser removes a listener without a removeEventListener call: after a `once` listener ran, or when
+ * the `signal` it was registered with aborted. The identity check keeps a later registration of the same listener
+ * intact.
+ */
+export function forgetWrappedDomEventListener(
+  target: EventTarget,
+  eventName: string,
+  eventListener: Listener,
+  optionsOrCapture: EventListenerOptionsOrUseCapture | undefined,
+  wrappedListener: Listener
+): void {
+  const listeners = target ? registry.get(target)?.get(registryKey(eventName, optionsOrCapture)) : undefined;
+  if (listeners?.get(eventListener)?.wrapped === wrappedListener) {
+    popWrappedDomEventListener(target, eventName, eventListener, optionsOrCapture);
+  }
+}
+
+/**
+ * Test seam: the number of wrapped listeners currently registered on `target`.
+ */
+export function countWrappedDomEventListeners(target: EventTarget): number {
+  let count = 0;
+  registry.get(target)?.forEach((listeners) => (count += listeners.size));
+  return count;
+}
+
+function registryKey(eventName: string, optionsOrCapture?: EventListenerOptionsOrUseCapture): string {
+  return (getDomEventListenerCaptureValue(optionsOrCapture) ? "c:" : "b:") + eventName;
 }
 
 export function getDomEventListenerCaptureValue(optionsOrCapture?: EventListenerOptionsOrUseCapture): boolean {
@@ -140,18 +163,4 @@ export function getDomEventListenerCaptureValue(optionsOrCapture?: EventListener
     return Boolean(optionsOrCapture.capture);
   }
   return Boolean(optionsOrCapture);
-}
-
-export function popWrappedDomEventListener(
-  storageTarget: EventTarget,
-  eventName: string,
-  eventListener: EventListenerOrEventListenerObject,
-  optionsOrCapture?: EventListenerOptionsOrUseCapture,
-  fallback?: EventListenerOrEventListenerObject
-): EventListenerOrEventListenerObject | undefined {
-  return popWrappedFunction(
-    storageTarget,
-    getDomEventListenerValuesForEqualityCheck(eventName, eventListener, optionsOrCapture),
-    fallback
-  );
 }
