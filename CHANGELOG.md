@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.28.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.4...0.28.0) (2026-10-22)
+
+### Features
+
+- **session-recording:** resume the same run when a tab is shown again ([#128](https://github.com/dash0hq/dash0-sdk-web/issues/128)) ([581ad9d](https://github.com/dash0hq/dash0-sdk-web/commit/581ad9d805b25f757da1188ab6e8d2bdd8e22d57)), closes [#115](https://github.com/dash0hq/dash0-sdk-web/issues/115) [#115](https://github.com/dash0hq/dash0-sdk-web/issues/115)
+
 ## [0.27.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.3...0.27.4) (2026-10-22)
 
 ### Bug Fixes
