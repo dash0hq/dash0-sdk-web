@@ -287,6 +287,34 @@ stopSessionRecording();
 dash0("stopSessionRecording");
 ```
 
+### Trace Context
+
+#### `setParentTraceContext(traceparent)`
+
+Makes every fetch and XHR span that starts afterwards join an outside trace. Each span takes the trace id of the
+given W3C `traceparent` and uses its span id as parent, until the context is cleared with `undefined`. The request's
+own `traceparent` header then names the browser span, so backend spans join the same trace. An invalid
+`traceparent` clears the context.
+
+**Parameters:**
+
+- `traceparent` (string | undefined): A W3C `traceparent` value, or `undefined` to clear it.
+
+**Example:**
+
+```js
+import { setParentTraceContext } from "@dash0/sdk-web";
+
+setParentTraceContext("00-643073796e74a1b2c3d4e5f6a7b8c9d0-a1b2c3d4e5f6a7b8-01");
+await fetch("/api/cart");
+setParentTraceContext(undefined);
+
+dash0("setParentTraceContext", "00-643073796e74a1b2c3d4e5f6a7b8c9d0-a1b2c3d4e5f6a7b8-01");
+```
+
+**Note:** The parent is read when a span starts. A request still in flight when the context changes keeps the parent it
+started with.
+
 ### Internal Telemetry
 
 #### `setActiveLogLevel(logLevel)`
