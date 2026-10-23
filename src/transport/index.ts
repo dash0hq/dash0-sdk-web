@@ -100,20 +100,24 @@ export function sendSpan(span: Span | undefined): void {
   spanBatcher.send(span);
 }
 
-function sendSpans(spans: Span[]): void {
-  send("/v1/traces", {
-    resourceSpans: [
-      {
-        resource: vars.resource,
-        scopeSpans: [
-          {
-            scope: vars.scope,
-            spans: spans,
-          },
-        ],
-      },
-    ],
-  } satisfies ExportTraceServiceRequest).catch((err) => {
+function sendSpans(spans: Span[], opts?: SendOptions): void {
+  send(
+    "/v1/traces",
+    {
+      resourceSpans: [
+        {
+          resource: vars.resource,
+          scopeSpans: [
+            {
+              scope: vars.scope,
+              spans: spans,
+            },
+          ],
+        },
+      ],
+    } satisfies ExportTraceServiceRequest,
+    opts
+  ).catch((err) => {
     error("Failed to transmit spans", err);
   });
 }

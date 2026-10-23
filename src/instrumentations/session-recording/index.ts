@@ -7,7 +7,7 @@ import { generateTraceId } from "../../utils/trace-id";
 import { generateSpanId } from "../../utils/span-id";
 import { isUrlIgnored } from "../../utils/ignore-rules";
 import { addEventListener } from "../../utils/listeners";
-import { onLastChance } from "../../utils/on-last-chance";
+import { LAST_CHANCE_PRIORITY_LARGE_PAYLOAD, onLastChance } from "../../utils/on-last-chance";
 import { sendSessionRecordingChunk } from "../../transport";
 import { SessionRecorder, SessionRecordingEvent } from "../../types/session-recording";
 import { Chunker, newChunker, RRWEB_EVENT_TYPE_META } from "./chunker";
@@ -483,7 +483,7 @@ function start(): void {
       } finally {
         flushingWhileDocumentMayEnd = false;
       }
-    });
+    }, LAST_CHANCE_PRIORITY_LARGE_PAYLOAD);
   }
 
   markShown(s.recordingId);

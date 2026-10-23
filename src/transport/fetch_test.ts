@@ -354,6 +354,16 @@ describe("fetch transport keepalive handling", () => {
       expect(init.body).toBeInstanceOf(ArrayBuffer);
     });
 
+    it("does not gzip when opts.compress is false even though enableTransportCompression is on", async () => {
+      vars.enableTransportCompression = true;
+
+      await send("/v1/logs", { data: "x".repeat(1000) }, { compress: false });
+
+      const init = fetchMock.mock.calls[0]![1];
+      expect(init.headers["Content-Encoding"]).toBeUndefined();
+      expect(typeof init.body).toBe("string");
+    });
+
     it("does not gzip without opts.compress when enableTransportCompression is off", async () => {
       vars.enableTransportCompression = false;
 

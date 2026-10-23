@@ -1,6 +1,7 @@
 import { hasOwnProperty, nowNanos, win } from "../../utils";
 import { isErrorMessageIgnored, isUrlIgnored } from "../../utils/ignore-rules";
 import { sendLog } from "../../transport";
+import { onLastChance } from "../../utils/on-last-chance";
 import {
   EVENT_NAME,
   EVENT_NAMES,
@@ -35,6 +36,10 @@ let scheduledTransmissionTimeoutHandle: ReturnType<typeof setTimeout> | null;
 // result, it is not possible to just mark an error as reported. The simplest way to
 // avoid double reporting is to temporarily disable the global onError handler…
 let ignoreNextOnError = false;
+
+// Errors wait up to a second in `seenErrors` before they reach the log batcher. Drain them when the document
+// may be unloaded. The log batcher flushes after this.
+onLastChance(send);
 
 export function ignoreNextOnErrorEvent() {
   ignoreNextOnError = true;

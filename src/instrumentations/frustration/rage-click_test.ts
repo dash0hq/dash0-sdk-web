@@ -117,6 +117,18 @@ describe("rage click detection", () => {
     expect(bodyValue(log, "text")).toBe("Place order");
   });
 
+  it("reports an open burst when the page is unloaded", () => {
+    const el = button(`<button id="checkout">Place order</button>`);
+
+    click(el);
+    click(el);
+    click(el);
+    globalThis.dispatchEvent(new Event("beforeunload"));
+
+    expect(sendLog).toHaveBeenCalledTimes(1);
+    expect(bodyValue(lastLog(), "click_count")).toBe(3);
+  });
+
   describe("ignoreUrls", () => {
     afterEach(() => {
       history.replaceState(null, "", "/");

@@ -88,3 +88,51 @@ describe("sendSessionRecordingChunk", () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("sendLog", () => {
+  let mod: Module;
+  let vars: typeof import("../vars").vars;
+  let send: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    mod = await import("./index");
+    vars = (await import("../vars")).vars;
+    send = (await import("./fetch")).send as any;
+    send.mockClear();
+    vars.isSessionSampled = true;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("sends batches with the default compression setting", () => {
+    mod.sendLog(log(0));
+    vi.advanceTimersByTime(1000);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]![2]).toBeUndefined();
+  });
+
+  it("flushes queued logs uncompressed when the page is unloaded", () => {
+    mod.sendLog(log(0));
+    globalThis.dispatchEvent(new Event("beforeunload"));
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]![2]).toEqual({ compress: false });
+  });
+
+  it("includes logs that other last chance callbacks send on their way out, even when registered later", async () => {
+    const { onLastChance } = await import("../utils/on-last-chance");
+    mod.sendLog(log(0));
+    onLastChance(() => mod.sendLog(log(1)));
+
+    globalThis.dispatchEvent(new Event("beforeunload"));
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]![1].resourceLogs[0].scopeLogs[0].logRecords).toHaveLength(2);
+    expect(send.mock.calls[0]![2]).toEqual({ compress: false });
+  });
+});

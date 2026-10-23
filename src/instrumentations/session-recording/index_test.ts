@@ -209,6 +209,22 @@ describe("session recording lifecycle", () => {
     expect(sendSessionRecordingChunk).not.toHaveBeenCalled();
   });
 
+  it("flushes on the last chance after the batchers, so their small requests keep the keepalive budget", async () => {
+    const { onLastChance, LAST_CHANCE_PRIORITY_BATCH_FLUSH } = await import("../../utils/on-last-chance");
+    mod.armSessionRecording();
+    mod.registerSessionRecorder(recorder);
+    const batchFlush = vi.fn();
+    onLastChance(batchFlush, LAST_CHANCE_PRIORITY_BATCH_FLUSH);
+
+    capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
+    globalThis.dispatchEvent(new Event("pagehide"));
+
+    expect(sendSessionRecordingChunk).toHaveBeenCalledTimes(1);
+    expect(batchFlush.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      sendSessionRecordingChunk.mock.invocationCallOrder[0]!
+    );
+  });
+
   it("compresses periodic chunks but sends the last-chance flush uncompressed", () => {
     mod.armSessionRecording();
     mod.registerSessionRecorder(recorder);

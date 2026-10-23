@@ -11,8 +11,9 @@ let pendingRequestCount = 0;
 
 export type SendOptions = {
   /**
-   * Compress this request regardless of `vars.enableTransportCompression`. Used for payloads that are
-   * large and highly compressible, such as session recording chunks.
+   * Overrides `vars.enableTransportCompression` for this request. `true` is used for payloads that are large and
+   * highly compressible, such as session recording chunks. `false` is used while the document may be unloaded:
+   * compression is asynchronous, and the page may be gone before `fetch()` is ever called.
    */
   compress?: boolean;
 };
@@ -26,7 +27,7 @@ export async function send(path: string, body: unknown, opts?: SendOptions): Pro
   let isCompressed = false;
 
   // Try to compress if supported
-  if (typeof CompressionStream !== "undefined" && (vars.enableTransportCompression || opts?.compress)) {
+  if (typeof CompressionStream !== "undefined" && (opts?.compress ?? vars.enableTransportCompression)) {
     requestBody = await compressWithGzip(jsonString);
     byteLength = requestBody.byteLength;
     isCompressed = true;
