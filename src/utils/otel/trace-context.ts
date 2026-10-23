@@ -4,7 +4,7 @@ import { InProgressSpan } from "./span";
 
 const TRACE_PARENT_HEADER = "traceparent";
 
-type TraceContext = {
+export type TraceContext = {
   traceId?: string;
   spanId?: string;
 };
@@ -13,6 +13,18 @@ type TraceContext = {
  * See https://www.w3.org/TR/trace-context/#traceparent-header
  */
 const w3cTraceparentFormat = /^00-([a-f0-9]{32})-([a-f0-9]{16})-[0-9]{1,2}$/;
+
+export function parseTraceparent(traceparent: string): Required<TraceContext> | undefined {
+  const match = traceparent.trim().match(w3cTraceparentFormat);
+  if (!match || isAllZeros(match[1]!) || isAllZeros(match[2]!)) {
+    return undefined;
+  }
+  return { traceId: match[1]!, spanId: match[2]! };
+}
+
+function isAllZeros(hex: string): boolean {
+  return /^0+$/.test(hex);
+}
 
 export function getTraceContextForPageLoad(): TraceContext | undefined {
   const match =
