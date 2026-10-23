@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>parent trace context test</title>
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+      dash0("init", {
+        serviceName: "parent-trace-context-test",
+        serviceVersion: "1.0.0",
+        environment: "test",
+        endpoint: [
+          {
+            url: `http://${window.location.hostname}:8011?cors=true`,
+            authToken: "auth_parent123",
+            dataset: "parent-testing",
+          },
+        ],
+        propagators: [
+          {
+            type: "traceparent",
+            match: [new RegExp(`http://${window.location.hostname}:8012`)],
+          },
+        ],
+      });
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+  </head>
+  <body>
+    <button onclick="dash0('setParentTraceContext', '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01')">
+      Set Parent
+    </button>
+    <button onclick="dash0('setParentTraceContext', 'not-a-traceparent')">Set Invalid Parent</button>
+    <button onclick="dash0('setParentTraceContext', undefined)">Clear Parent</button>
+    <button onclick="fetch(`http://${window.location.hostname}:8012/ajax?parent=fetch&cors=true`)">
+      Cross Origin Fetch
+    </button>
+    <button
+      onclick="(function(){
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `http://${window.location.hostname}:8012/ajax?parent=xhr&cors=true`);
+        xhr.send();
+      })()"
+    >
+      Cross Origin XHR
+    </button>
+  </body>
+</html>
