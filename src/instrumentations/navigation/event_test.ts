@@ -34,6 +34,8 @@ describe("transmitPageViewEvent", () => {
     transmitPageViewEvent("1700000000000000000");
 
     expect(sendLogMock).toHaveBeenCalledTimes(1);
+    const log = sendLogMock.mock.calls[0]![0] as LogRecord;
+    expect(log.attributes.some((a) => a.key.startsWith("page.url."))).toBe(false);
   });
 
   afterEach(() => {
@@ -89,6 +91,20 @@ describe("transmitPageViewEvent", () => {
     const log = sendLogMock.mock.calls[0]![0] as LogRecord;
     const bodyValues = log.body?.kvlistValue?.values as KeyValue[];
     expect(bodyValues).toContainEqual({ key: "referrer", value: { stringValue: "https://example.com/callback" } });
+  });
+
+  it("does not transmit a referrer that matches ignoreUrls", () => {
+    vars.ignoreUrls = [/\/callback/];
+    const referrer = vi.spyOn(doc!, "referrer", "get").mockReturnValue("https://example.com/callback?code=secret");
+    try {
+      transmitPageViewEvent("1700000000000000000", new URL("https://example.com/landing"));
+    } finally {
+      referrer.mockRestore();
+    }
+
+    const log = sendLogMock.mock.calls[0]![0] as LogRecord;
+    const bodyValues = log.body?.kvlistValue?.values as KeyValue[];
+    expect(bodyValues.find((v) => v.key === "referrer")).toBeUndefined();
   });
 
   it("applies generateMetadata title and attributes when provided", () => {

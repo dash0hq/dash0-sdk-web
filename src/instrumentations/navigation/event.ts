@@ -11,7 +11,7 @@ import {
 import { doc, NO_VALUE_FALLBACK } from "../../utils";
 import { addCommonAttributes, scrubUrl } from "../../attributes";
 import { sendLog } from "../../transport";
-import { isUrlIgnored } from "../../utils/ignore-rules";
+import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
 import { PageViewMeta, vars } from "../../vars";
 import { AnyValue, KeyValue, LogRecord } from "../../types/otlp";
 
@@ -45,7 +45,8 @@ function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
 
   const bodyAttributes: KeyValue[] = [];
   addAttribute(bodyAttributes, "title", opts.title ?? doc?.title ?? NO_VALUE_FALLBACK);
-  if (doc?.referrer) {
+  // The referrer can be an ignored page, e.g. an OAuth callback that redirected to this page.
+  if (doc?.referrer && !matchesAny(vars.ignoreUrls, doc.referrer)) {
     addAttribute(bodyAttributes, "referrer", scrubUrl(doc.referrer));
   }
 

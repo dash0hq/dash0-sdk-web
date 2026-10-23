@@ -89,7 +89,10 @@ export type Vars = {
    * matches, no page views, navigation timings, web vitals, errors or
    * rage clicks are sent, and no session recording is started.
    * XMLHttpRequest and fetch requests made from an ignored page are still
-   * recorded, including the page URL, unless the request URL matches too.
+   * recorded, unless the request URL matches too. Signals from an ignored
+   * page have no page URL attributes. Matching referrers are not sent. In
+   * error messages and stack traces, the page, referrer, document and
+   * request URLs are redacted when they match. Other URLs are not changed.
    */
   ignoreUrls: RegExp[];
 

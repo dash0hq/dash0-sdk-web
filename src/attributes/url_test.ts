@@ -468,6 +468,7 @@ describe("scrubPageUrls", () => {
 
   afterEach(() => {
     vars.urlAttributeScrubber = originalScrubber;
+    vars.ignoreUrls = [];
     history.replaceState(null, "", "/");
     vi.restoreAllMocks();
   });
@@ -478,6 +479,15 @@ describe("scrubPageUrls", () => {
     expect(
       scrubPageUrls(`at ${location.origin}/callback?code=secret:1:2 at https://cdn.example.com/a.js?v=1:3:4`)
     ).toBe(`at [${location.origin}/callback]:1:2 at https://cdn.example.com/a.js?v=1:3:4`);
+  });
+
+  it("redacts a page url that matches ignoreUrls", () => {
+    vars.ignoreUrls = [/\/callback/];
+    history.replaceState(null, "", "/callback?code=secret");
+
+    expect(scrubPageUrls(`at ${location.origin}/callback?code=secret:1:2 at ${location.origin}/app.js:3:4`)).toBe(
+      `at REDACTED:1:2 at ${location.origin}/app.js:3:4`
+    );
   });
 
   it("replaces a page url with a fragment", () => {

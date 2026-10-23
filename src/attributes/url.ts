@@ -3,6 +3,7 @@ import { URL_DOMAIN, URL_FRAGMENT, URL_FULL, URL_PATH, URL_QUERY, URL_SCHEME } f
 import { debug, doc, identity, parseUrl, perf, win } from "../utils";
 import { KeyValue } from "../types/otlp";
 import { vars } from "../vars";
+import { matchesAny } from "../utils/ignore-rules";
 
 export type UrlAttributeRecord = {
   [URL_FULL]: string;
@@ -111,6 +112,7 @@ type Match = { start: number; end: number };
 /**
  * Error messages and stack traces of inline scripts contain the page url, which can hold sensitive query parameters.
  * Only urls equal to a page url or the given request url are replaced, so unrelated script urls stay untouched.
+ * Urls that match ignoreUrls are redacted entirely.
  */
 export function scrubPageUrls(text: string, requestUrl?: string): string {
   let result = "";
@@ -118,7 +120,8 @@ export function scrubPageUrls(text: string, requestUrl?: string): string {
   for (const { start, end } of findKnownUrls(text, knownUrls(requestUrl))) {
     // Skipping overlaps scrubs every url once, so scrubbed output is never scrubbed again.
     if (start < from) continue;
-    result += text.slice(from, start) + scrubUrl(text.slice(start, end));
+    const url = text.slice(start, end);
+    result += text.slice(from, start) + (matchesAny(vars.ignoreUrls, url) ? REDACTED : scrubUrl(url));
     from = end;
   }
   return result + text.slice(from);

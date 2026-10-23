@@ -139,7 +139,11 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   These regular expressions are evaluated against the document, XMLHttpRequest and fetch URLs.
   While the document URL matches, no page views, navigation timings, web vitals, errors or rage clicks are sent, and no session recording is started.
   Page views from `startView` and custom events from `sendEvent` are always sent.
-  XMLHttpRequest and fetch requests made from an ignored page are still recorded, including the page URL, unless the request URL matches too.
+  XMLHttpRequest and fetch requests made from an ignored page are still recorded, unless the request URL matches too.
+  Signals sent from an ignored page have no `page.url.*` attributes, unless `startView` sets the URL explicitly.
+  A page view has no `referrer` when the referrer matches.
+  In error messages and stack traces, the page URL, the referrer, the URL the document was loaded with and the request URL are replaced with `REDACTED` when they match.
+  Other URLs in these texts are not changed.
 
 - ** URL Attribute Scrubber**<br>
   key: `urlAttributeScrubber`<br>
