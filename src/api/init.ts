@@ -8,6 +8,7 @@ import {
   SERVICE_NAMESPACE,
   SERVICE_VERSION,
   USER_AGENT,
+  USER_AGENT_SYNTHETIC_TYPE,
 } from "../semantic-conventions";
 import {
   fetch,
@@ -37,6 +38,8 @@ import { BrowserBuildEnv, pickFirstString } from "./browser-env";
 import { applyVcsResourceAttributes } from "./vcs";
 import { armSessionRecording } from "../instrumentations/session-recording";
 import { startRageClickInstrumentation } from "../instrumentations/frustration/rage-click";
+import { classifySyntheticTraffic } from "../utils/synthetic-traffic";
+import { SyntheticTrafficType } from "../types/synthetic-traffic";
 
 declare const process: { env?: BrowserBuildEnv } | undefined;
 
@@ -90,6 +93,7 @@ export function init(opts: InitOptions) {
         "pageViewInstrumentation",
         "sessionRecording",
         "frustrationSignals",
+        "syntheticTraffic",
         "enableTransportCompression",
       ])
     )
@@ -97,14 +101,22 @@ export function init(opts: InitOptions) {
 
   initializePropagators(opts);
 
+  const syntheticType = classifySyntheticTraffic(vars.syntheticTraffic, nav, win);
+
   initializeResourceAttributes(opts);
-  initializeSignalAttributes(opts);
+  initializeSignalAttributes(opts, syntheticType);
   initializeTabId();
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
 
   if (opts.sessionSamplingRate != null) {
     const rate = Math.max(0, Math.min(100, opts.sessionSamplingRate));
     vars.isSessionSampled = sessionId != null ? isSessionSampledIn(sessionId, rate) : rate > 0;
+  }
+
+  if (syntheticType && isSyntheticTrafficIgnored(syntheticType)) {
+    // Decided before any instrumentation starts, so ignored traffic costs the page nothing beyond this check.
+    debug(`Page view classified as synthetic traffic (${syntheticType}). No telemetry will be transmitted.`);
+    vars.isSessionSampled = false;
   }
 
   if (!vars.isSessionSampled) {
@@ -167,15 +179,23 @@ function initializeResourceAttributes(opts: InitOptions) {
   applyVcsResourceAttributes(opts);
 }
 
-function initializeSignalAttributes(opts: InitOptions) {
+function initializeSignalAttributes(opts: InitOptions, syntheticType: SyntheticTrafficType | undefined) {
   addAttribute(vars.signalAttributes, PAGE_LOAD_ID, generateUniqueId(PAGE_LOAD_ID_BYTES));
   addAttribute(vars.signalAttributes, USER_AGENT, nav?.userAgent ?? NO_VALUE_FALLBACK);
+  if (syntheticType) {
+    addAttribute(vars.signalAttributes, USER_AGENT_SYNTHETIC_TYPE, syntheticType);
+  }
 
   if (opts.additionalSignalAttributes) {
     Object.entries(opts.additionalSignalAttributes).forEach(([key, value]) => {
       addAttribute(vars.signalAttributes, key, value);
     });
   }
+}
+
+function isSyntheticTrafficIgnored(type: SyntheticTrafficType): boolean {
+  const policy = type === "bot" ? vars.syntheticTraffic.bots : vars.syntheticTraffic.tests;
+  return policy === "ignore";
 }
 
 function isSupported() {

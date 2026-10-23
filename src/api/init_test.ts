@@ -14,7 +14,9 @@ import {
   VCS_REF_HEAD_REVISION,
   VCS_REPOSITORY_NAME,
   VCS_REPOSITORY_URL_FULL,
+  USER_AGENT_SYNTHETIC_TYPE,
 } from "../semantic-conventions";
+import { nav } from "../utils";
 import { init as initFun } from "./init";
 
 // Mock all the instrumentation modules
@@ -294,6 +296,90 @@ describe("init", () => {
 
       expect(vars.propagators).toEqual([]);
       expect(spyOnWarn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("synthetic traffic", () => {
+    const GOOGLEBOT = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
+    const CHROME =
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36";
+
+    function simulateBrowser(userAgent: string, webdriver = false) {
+      vi.spyOn(nav!, "userAgent", "get").mockReturnValue(userAgent);
+      // jsdom does not implement navigator.webdriver.
+      Object.defineProperty(nav!, "webdriver", { configurable: true, get: () => webdriver });
+    }
+
+    function syntheticTypeAttribute() {
+      return vars.signalAttributes.find((attr) => attr.key === USER_AGENT_SYNTHETIC_TYPE)?.value.stringValue;
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      delete (nav as { webdriver?: boolean }).webdriver;
+    });
+
+    it("does not tag real-user traffic", () => {
+      simulateBrowser(CHROME);
+      init(baseOptions);
+
+      expect(syntheticTypeAttribute()).toBeUndefined();
+      expect(vars.isSessionSampled).toBe(true);
+      expect(startNavigationInstrumentation).toHaveBeenCalled();
+    });
+
+    it("ignores bots by default without starting any instrumentation", () => {
+      simulateBrowser(GOOGLEBOT);
+      init(baseOptions);
+
+      expect(vars.isSessionSampled).toBe(false);
+      expect(startNavigationInstrumentation).not.toHaveBeenCalled();
+      expect(startErrorInstrumentation).not.toHaveBeenCalled();
+      expect(instrumentFetch).not.toHaveBeenCalled();
+      expect(armSessionRecording).not.toHaveBeenCalled();
+    });
+
+    it("transmits and tags automated tests by default", () => {
+      simulateBrowser(CHROME, true);
+      init(baseOptions);
+
+      expect(vars.isSessionSampled).toBe(true);
+      expect(syntheticTypeAttribute()).toBe("test");
+      expect(startNavigationInstrumentation).toHaveBeenCalled();
+    });
+
+    it("transmits and tags bots when configured to", () => {
+      simulateBrowser(GOOGLEBOT);
+      init({ ...baseOptions, syntheticTraffic: { bots: "transmit" } });
+
+      expect(vars.isSessionSampled).toBe(true);
+      expect(syntheticTypeAttribute()).toBe("bot");
+      expect(startNavigationInstrumentation).toHaveBeenCalled();
+    });
+
+    it("ignores automated tests when configured to", () => {
+      simulateBrowser(CHROME, true);
+      init({ ...baseOptions, syntheticTraffic: { tests: "ignore" } });
+
+      expect(vars.isSessionSampled).toBe(false);
+      expect(startNavigationInstrumentation).not.toHaveBeenCalled();
+    });
+
+    it("keeps the default policies when only patterns are configured", () => {
+      simulateBrowser("AcmeArchiver 3");
+      init({ ...baseOptions, syntheticTraffic: { botUserAgents: [/AcmeArchiver/] } });
+
+      expect(vars.syntheticTraffic.bots).toBe("ignore");
+      expect(vars.syntheticTraffic.tests).toBe("transmit");
+      expect(vars.isSessionSampled).toBe(false);
+    });
+
+    it("applies a custom classifier", () => {
+      simulateBrowser(CHROME, true);
+      init({ ...baseOptions, syntheticTraffic: { classify: () => "human" } });
+
+      expect(syntheticTypeAttribute()).toBeUndefined();
+      expect(startNavigationInstrumentation).toHaveBeenCalled();
     });
   });
 

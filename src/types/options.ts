@@ -145,6 +145,7 @@ export type InitOptions = {
     | "pageViewInstrumentation"
     | "sessionRecording"
     | "frustrationSignals"
+    | "syntheticTraffic"
     | "enableTransportCompression"
   >
 >;
