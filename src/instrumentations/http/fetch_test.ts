@@ -196,6 +196,25 @@ describe("fetch test", () => {
     expect(fetchHeaders.get("X-Amzn-Trace-Id")).toBeNull();
   });
 
+  it("sends the span and trace header of a request from an ignored page, without the page url", async () => {
+    vi.stubGlobal("location", { origin: "http://localhost:3000", href: "http://localhost:3000/callback?code=secret" });
+    vars.ignoreUrls = [/\/callback/];
+    vars.propagators = [{ type: "traceparent", match: [] }];
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    instrumentFetch();
+
+    // eslint-disable-next-line no-restricted-globals
+    await expect(fetch("http://localhost:3000/oauth/token")).rejects.toThrow();
+
+    const fetchHeaders = (fetchMock.mock.calls[0]!.at(1)! as { headers: Headers }).headers;
+    expect(fetchHeaders.get("traceparent")).not.toBeNull();
+    const sendSpanMock = sendSpan as unknown as ReturnType<typeof vi.fn>;
+    expect(sendSpanMock).toHaveBeenCalledTimes(1);
+    const span = sendSpanMock.mock.calls[0]![0] as Span;
+    expect(span.attributes.some((a) => a.key.startsWith("page.url."))).toBe(false);
+    expect(span.attributes).toContainEqual(expect.objectContaining({ key: "url.full" }));
+  });
+
   // SDK-internal errors (e.g. config typos) must degrade to an uninstrumented fetch call, never
   // to a rejected promise the page did not cause.
 

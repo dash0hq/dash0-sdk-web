@@ -489,6 +489,25 @@ describe("xhr test", () => {
     });
   });
 
+  it("sends the span and trace header of a request from an ignored page, without the page url", () => {
+    vi.stubGlobal("location", { origin: "http://localhost:3000", href: "http://localhost:3000/callback?code=secret" });
+    vars.ignoreUrls = [/\/callback/];
+    vars.propagators = [{ type: "traceparent", match: [] }];
+    instrumentXhr();
+
+    const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+    xhr.open("POST", "/oauth/token");
+    xhr.send();
+    xhr.triggerError();
+
+    expect(xhr.requestHeaders["traceparent"]).toBeDefined();
+    const sendSpanMock = sendSpan as unknown as ReturnType<typeof vi.fn>;
+    expect(sendSpanMock).toHaveBeenCalledTimes(1);
+    const span = sendSpanMock.mock.calls[0]![0] as Span;
+    expect(span.attributes.some((a) => a.key.startsWith("page.url."))).toBe(false);
+    expect(span.attributes).toContainEqual(expect.objectContaining({ key: "url.full" }));
+  });
+
   it("records an exception and marks the span as errored on a network error", () => {
     instrumentXhr();
 
