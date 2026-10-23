@@ -59,4 +59,14 @@ describe("reportUnhandledError", () => {
 
     expect(sendLog).not.toHaveBeenCalled();
   });
+
+  it("drains buffered errors into the log batcher when the page is unloaded", () => {
+    reportUnhandledError(new Error("boom"));
+    expect(sendLog).not.toHaveBeenCalled();
+
+    globalThis.dispatchEvent(new Event("beforeunload"));
+
+    expect(sendLog).toHaveBeenCalledTimes(1);
+    expect((sendLog.mock.calls[0]![0] as LogRecord).body).toEqual({ stringValue: "boom" });
+  });
 });
