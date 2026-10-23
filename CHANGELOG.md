@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.28.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.0...0.28.1) (2026-10-23)
+
+### Bug Fixes
+
+- **http:** keep url, redirected and type on instrumented fetch responses ([ec3e975](https://github.com/dash0hq/dash0-sdk-web/commit/ec3e97582e061bc056bfbf14223bbf67e5d66aa0))
+
 ## [0.28.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.4...0.28.0) (2026-10-22)
 
 ### Features
