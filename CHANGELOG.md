@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.28.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.1...0.28.2) (2026-10-23)
+
+### Bug Fixes
+
+- **errors:** send errors and rage clicks captured just before a page unload ([11a422e](https://github.com/dash0hq/dash0-sdk-web/commit/11a422ed6e79ada8c9e9116d2d7e67ba2f6fbde1))
+
 ## [0.28.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.0...0.28.1) (2026-10-23)
 
 ### Bug Fixes
