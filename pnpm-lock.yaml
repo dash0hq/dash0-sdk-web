@@ -7,11 +7,6 @@ settings:
 overrides:
   conventional-changelog-conventionalcommits: 8.0.0
 
-patchedDependencies:
-  '@rrweb/record@2.1.1':
-    hash: dfb3ae4326a2041bfbda6387db857f6e2463227b274148e32d25c5808fafc96c
-    path: patches/@rrweb__record@2.1.1.patch
-
 importers:
 
   .:
@@ -42,8 +37,8 @@ importers:
         specifier: ^0.4.4
         version: 0.4.4(rollup@4.39.0)
       '@rrweb/record':
-        specifier: ^2.1.1
-        version: 2.1.1(patch_hash=dfb3ae4326a2041bfbda6387db857f6e2463227b274148e32d25c5808fafc96c)
+        specifier: ^2.2.0
+        version: 2.2.0
       '@types/body-parser':
         specifier: ^1.19.5
         version: 1.19.5
@@ -1378,14 +1373,14 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@rrweb/record@2.1.1':
-    resolution: {integrity: sha512-c2u175R+daC37PhbjaQV0migxtIXsLuD0mRgRstj/x/CRmLGctRlDi373/4miIUclleq4eZIQXAglH9opclFRQ==}
+  '@rrweb/record@2.2.0':
+    resolution: {integrity: sha512-hJYM4yaS3aFAGPuK1X80kgWod4g3FxG3fymfXLjDkBQvcDrGKTluLENnXYVklbt97eXOJ117uwV9y+xFFYmTIQ==}
 
-  '@rrweb/types@2.1.1':
-    resolution: {integrity: sha512-g0I3nCNL1S7slDXwhunxOuOoswkY8WVZJQrPFiwixOc6xoD514d1JLTuyAzCKIox8g/PaLKtV5g31Uk42inQSQ==}
+  '@rrweb/types@2.2.0':
+    resolution: {integrity: sha512-2gTA/pRpIbuET123oSdX5ZUDZfWCOIMYBvpSai3fr5pk9LcbccPqqaXflX+roP4oKenLjNtJPGpFK3BfYeBKnA==}
 
-  '@rrweb/utils@2.1.1':
-    resolution: {integrity: sha512-x2SgJAD3YJ9eVcLZ5l6OqWMtczdA3VfS5XqPeqpZdQgV9oh6Id5GK2cDN4bimnkqryOcIJdz8cTvV0yNvqQ+nA==}
+  '@rrweb/utils@2.2.0':
+    resolution: {integrity: sha512-e8FEp8wLswqgjDHpQNUUVfEXeDsrRMOVouvqIGKvnPxKYonjLlh0mU3O/17QNvCixFG5eUFR1B2jgTdiLlZxeQ==}
 
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
@@ -4331,17 +4326,17 @@ packages:
     resolution: {integrity: sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ==}
     engines: {node: '>= 18'}
 
-  rrdom@2.1.1:
-    resolution: {integrity: sha512-VBkTF3bGNqcZjqnbo/gKi9GVQPIxiG0dofw7CQdAZQFQ2juJdt2YKIf3oS9QudL8HTpGh9bz5TUN+3amBn1Geg==}
+  rrdom@2.2.0:
+    resolution: {integrity: sha512-gxcBJWVtS/Xz+Ys8xcjPoWqr+C7wz/MS8NgmKw136I47Xygy17FYOGZqoGwEyvBn724jRDK1ljS+8w9FsZStOg==}
 
   rrweb-cssom@0.8.0:
     resolution: {integrity: sha512-guoltQEx+9aMf2gDZ0s62EcV8lsXR+0w8915TC3ITdn2YueuNjdAYh/levpU9nFaoChh9RUS5ZdQMrKfVEN9tw==}
 
-  rrweb-snapshot@2.1.1:
-    resolution: {integrity: sha512-al4Kx7Am7YlIn/5Yb2EMr7cdmjGiK+cLhdilJEXqkFXgpnys8t/yMJumXy2Ormgirpg3MBnFha0GTgny+iIL2w==}
+  rrweb-snapshot@2.2.0:
+    resolution: {integrity: sha512-Tg/PiCLy+zV9C0Jfb4IAGABtt5l/UOvwW5xjFk41ZQhBfUjeqPP1rZ9HMDrFPc7cawCUEenWw54+g/4vluO5lg==}
 
-  rrweb@2.1.1:
-    resolution: {integrity: sha512-ToxhJg3SsrAhw+/DPhI/2iiwZQIrGK5BGkZ0kHn4qUExcvQYRaolkciD1FWX2+r6vf1IxFyhsoRY18h3D+XoCg==}
+  rrweb@2.2.0:
+    resolution: {integrity: sha512-ofVzPq11/yIQ7WhVb++rJGI2LoPPrxdqu0QAvRA4KGeXJ7LH52jQ0VlRH4+VXn5PA/7pz85/rRkQyBUqT1LraQ==}
 
   run-applescript@7.0.0:
     resolution: {integrity: sha512-9by4Ij99JUr/MCFBUkDKLWK3G9HVXmabKz9U5MlIAIuvuzkiOicRYs8XJLxX+xahD+mLiiCYDqF9dKAgtzKP1A==}
@@ -6558,15 +6553,15 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.39.0':
     optional: true
 
-  '@rrweb/record@2.1.1(patch_hash=dfb3ae4326a2041bfbda6387db857f6e2463227b274148e32d25c5808fafc96c)':
+  '@rrweb/record@2.2.0':
     dependencies:
-      '@rrweb/types': 2.1.1
-      '@rrweb/utils': 2.1.1
-      rrweb: 2.1.1
+      '@rrweb/types': 2.2.0
+      '@rrweb/utils': 2.2.0
+      rrweb: 2.2.0
 
-  '@rrweb/types@2.1.1': {}
+  '@rrweb/types@2.2.0': {}
 
-  '@rrweb/utils@2.1.1': {}
+  '@rrweb/utils@2.2.0': {}
 
   '@sec-ant/readable-stream@0.4.1': {}
 
@@ -10015,26 +10010,26 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  rrdom@2.1.1:
+  rrdom@2.2.0:
     dependencies:
-      rrweb-snapshot: 2.1.1
+      rrweb-snapshot: 2.2.0
 
   rrweb-cssom@0.8.0: {}
 
-  rrweb-snapshot@2.1.1:
+  rrweb-snapshot@2.2.0:
     dependencies:
       postcss: 8.5.3
 
-  rrweb@2.1.1:
+  rrweb@2.2.0:
     dependencies:
-      '@rrweb/types': 2.1.1
-      '@rrweb/utils': 2.1.1
+      '@rrweb/types': 2.2.0
+      '@rrweb/utils': 2.2.0
       '@types/css-font-loading-module': 0.0.7
       '@xstate/fsm': 1.6.5
       base64-arraybuffer: 1.0.2
       mitt: 3.0.1
-      rrdom: 2.1.1
-      rrweb-snapshot: 2.1.1
+      rrdom: 2.2.0
+      rrweb-snapshot: 2.2.0
 
   run-applescript@7.0.0: {}
 
