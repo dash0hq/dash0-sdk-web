@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.28.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.2...0.28.3) (2026-10-26)
+
+### Bug Fixes
+
+- **ignore-urls:** do not send the url of an ignored page with other signals ([9e929a0](https://github.com/dash0hq/dash0-sdk-web/commit/9e929a08983c880771283534e2cbd77d49dc1d21))
+
 ## [0.28.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.1...0.28.2) (2026-10-23)
 
 ### Bug Fixes
