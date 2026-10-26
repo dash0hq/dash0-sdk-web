@@ -310,6 +310,71 @@ The SDK auto-detects VCS (version control) context from the build environment an
   The default session termination timeout. Session termination is the maximum allowed time to pass since session start
   before the session is considered to be expired.
 
+#### Synthetic traffic
+
+Not every page view comes from a person. Search engines, AI crawlers and link previewers render pages to index them,
+and end-to-end tests, synthetic monitoring and performance audits drive real browsers. Counted as real users, they
+inflate session counts, skew Web Vitals with lab measurements and fill session replay with recordings nobody watches.
+
+The SDK classifies every page view once, when `init()` runs, into one of the categories of the OpenTelemetry
+attribute `user_agent.synthetic.type`:
+
+- `bot`: crawlers, link previewers, SEO and uptime tools. Detected from the user agent, which bots use to identify
+  themselves (`Googlebot/2.1`, `+http://…` contact links and similar).
+- `test`: automated browsers. Detected from `navigator.webdriver`, which every WebDriver and DevTools Protocol based
+  tool sets (Selenium, WebdriverIO, Playwright, Puppeteer), from headless Chrome in the user agent or its client hint
+  brands, from test runner and audit tools (Cypress, Lighthouse and PageSpeed Insights, WebPageTest, GTmetrix), and
+  from the globals of legacy headless browsers.
+
+Each category then follows its policy. `ignore` means the SDK starts no instrumentation and transmits nothing, exactly
+as for a sampled-out session. `transmit` means telemetry is collected as usual and every signal carries
+`user_agent.synthetic.type`, so it can be filtered or analyzed separately. By default, bots are ignored and automated
+tests are transmitted, which keeps synthetic checks and end-to-end tests visible without mixing them into real-user
+numbers.
+
+- **Bots**<br>
+  key: `syntheticTraffic.bots`<br>
+  type: `"ignore" | "transmit"`<br>
+  optional: `true`<br>
+  default: `"ignore"`<br>
+  What to do with page views from crawlers and other bots.
+- **Automated Tests**<br>
+  key: `syntheticTraffic.tests`<br>
+  type: `"ignore" | "transmit"`<br>
+  optional: `true`<br>
+  default: `"transmit"`<br>
+  What to do with page views from automated browsers.
+- **Additional Bot User Agents**<br>
+  key: `syntheticTraffic.botUserAgents`<br>
+  type: `RegExp[]`<br>
+  optional: `true`<br>
+  Additional user agent patterns that identify bots, on top of the built-in ones.
+- **Additional Test User Agents**<br>
+  key: `syntheticTraffic.testUserAgents`<br>
+  type: `RegExp[]`<br>
+  optional: `true`<br>
+  Additional patterns that identify automated tests, matched against the user agent and its client hint brands. Use
+  this when a synthetic monitoring tool sets a custom user agent.
+- **Custom Classifier**<br>
+  key: `syntheticTraffic.classify`<br>
+  type: `(navigator: Navigator) => "bot" | "test" | "human" | undefined`<br>
+  optional: `true`<br>
+  Runs before the built-in rules. Return `"bot"` or `"test"` to classify the page view, `"human"` to treat it as
+  real-user traffic regardless of the built-in rules, or `undefined` to fall back to them. Use it for signals only
+  your application knows about, such as a query parameter or cookie your synthetic checks set.
+
+```js
+init({
+  // ...
+  syntheticTraffic: {
+    // Keep crawler visits, e.g. to see how search engines render the site.
+    bots: "transmit",
+    // Our uptime checks set this cookie.
+    classify: () => (document.cookie.includes("synthetic-check=1") ? "test" : undefined),
+  },
+});
+```
+
 #### Error tracking
 
 - **Ignore Error Messages**<br>

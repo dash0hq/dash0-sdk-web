@@ -23,6 +23,7 @@ export const WEB_REQUEST_CANCELLED = "dash0.web.request.cancelled";
 export const PAGE_LOAD_ID = "page.load.id";
 export const SESSION_ID = "session.id";
 export const USER_AGENT = "user_agent.original";
+export const USER_AGENT_SYNTHETIC_TYPE = "user_agent.synthetic.type";
 export const BROWSER_TAB_ID = "browser.tab.id";
 export const WINDOW_WIDTH = "browser.window.width";
 export const WINDOW_HEIGHT = "browser.window.height";

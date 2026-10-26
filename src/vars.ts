@@ -4,6 +4,7 @@ import { UrlAttributeScrubber } from "./attributes";
 import { identity } from "./utils";
 import { SessionRecordingSettings } from "./types/session-recording";
 import { FrustrationSignalSettings } from "./types/frustration";
+import { SyntheticTrafficSettings } from "./types/synthetic-traffic";
 
 export type PropagatorType = "traceparent" | "xray";
 
@@ -192,6 +193,12 @@ export type Vars = {
   frustrationSignals: FrustrationSignalSettings;
 
   /**
+   * How page views from bots and automated browsers are handled. They are classified once during `init()` and
+   * either ignored entirely or transmitted with a `user_agent.synthetic.type` attribute on every signal.
+   */
+  syntheticTraffic: SyntheticTrafficSettings;
+
+  /**
    * Enables telemetry transport compression using gzip.
    * experimental - in rare cases causes Chrome to crash to use at your own risk.
    */
@@ -245,6 +252,10 @@ export const vars: Vars = {
       windowMillis: 1000,
       radiusPixels: 30,
     },
+  },
+  syntheticTraffic: {
+    bots: "ignore",
+    tests: "transmit",
   },
   enableTransportCompression: false,
   isSessionSampled: true,
