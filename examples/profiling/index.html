@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Dash0 Web SDK profiling example</title>
+    <!--
+      Served by `pnpm sink` at http://localhost:4318/examples/profiling/ with `Document-Policy: js-profiling`.
+      Query parameters:
+        profiling=off  run the same work without the profiling instrumentation (overhead baseline)
+        policy=off     serve the page without the header; the SDK then reports the profiler as unavailable
+        chunk=<ms>     chunk length, default 15000
+        rounds=<n>     benchmark rounds, default 40
+        sleep=<ms>     idle time between rounds, default 250
+    -->
+    <script>
+      const params = new URLSearchParams(location.search);
+      const profilingEnabled = params.get("profiling") !== "off";
+
+      (function (d, a, s, h, z) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+
+      if (params.get("debug") != null) dash0("setActiveLogLevel", "debug");
+      dash0("init", {
+        serviceName: "profiling-example",
+        // A different origin than the page: the SDK ignores pages whose URL starts with the endpoint URL.
+        endpoint: { url: "http://127.0.0.1:" + location.port, authToken: "local" },
+        enabledInstrumentations: ["@dash0/navigation", "@dash0/error"].concat(
+          profilingEnabled ? ["@dash0/profiling"] : []
+        ),
+        profiling: { sampleRate: 100, chunkDurationMs: Number(params.get("chunk") ?? 15000) },
+      });
+    </script>
+    <!-- The encoder must be in place before the SDK runs `init()`. -->
+    <script src="/dist/dash0-profiling.iife.js"></script>
+    <script src="/dist/dash0.iife.js"></script>
+  </head>
+  <body>
+    <h1>Profiling example</h1>
+    <p id="status">Running…</p>
+    <pre id="result"></pre>
+
+    <script>
+      function fibonacci(n) {
+        return n < 2 ? n : fibonacci(n - 1) + fibonacci(n - 2);
+      }
+
+      function sortNumbers(count) {
+        const values = Array.from({ length: count }, (_, i) => (i * 7919) % 104729);
+        return values.sort((a, b) => a - b)[0];
+      }
+
+      function buildAndParseJson(items) {
+        const payload = Array.from({ length: items }, (_, i) => ({ id: i, name: "item-" + i, tags: ["a", "b", "c"] }));
+        return JSON.parse(JSON.stringify(payload)).length;
+      }
+
+      function oneRound() {
+        fibonacci(25);
+        sortNumbers(50000);
+        buildAndParseJson(5000);
+      }
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      async function run() {
+        const rounds = Number(params.get("rounds") ?? 40);
+        const durations = [];
+        for (let i = 0; i < rounds; i++) {
+          const start = performance.now();
+          oneRound();
+          durations.push(performance.now() - start);
+          // Idle time between rounds, so the profiler also records samples without a stack.
+          await sleep(Number(params.get("sleep") ?? 250));
+        }
+        durations.sort((a, b) => a - b);
+        const result = {
+          profiling: profilingEnabled,
+          policy: params.get("policy") !== "off",
+          rounds,
+          medianMs: Number(durations[Math.floor(rounds / 2)].toFixed(2)),
+          totalMs: Number(durations.reduce((a, b) => a + b, 0).toFixed(1)),
+          userAgent: navigator.userAgent,
+        };
+        document.getElementById("result").textContent = JSON.stringify(result, null, 2);
+        document.getElementById("status").textContent = "Done";
+        await fetch("/bench", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(result),
+        });
+      }
+
+      run();
+    </script>
+  </body>
+</html>

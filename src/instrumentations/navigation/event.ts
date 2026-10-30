@@ -31,7 +31,16 @@ type BuildPageViewLogOptions = {
   changeState?: (typeof PAGE_VIEW_CHANGE_STATE_VALUES)[keyof typeof PAGE_VIEW_CHANGE_STATE_VALUES];
 };
 
+type PageViewListener = (url?: URL) => void;
+const pageViewListeners: PageViewListener[] = [];
+
+export function onPageView(listener: PageViewListener): void {
+  pageViewListeners.push(listener);
+}
+
 function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
+  pageViewListeners.forEach((listener) => listener(opts.url));
+
   const attributes: KeyValue[] = [];
   addAttribute(attributes, EVENT_NAME, EVENT_NAMES.PAGE_VIEW);
 

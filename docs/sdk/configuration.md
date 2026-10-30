@@ -127,7 +127,8 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
-  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals'`
+  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals' | '@dash0/profiling'`
+  `'@dash0/profiling'` is not part of the default: it only runs when listed here.
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
 - **Ignore URLs**<br>
@@ -611,3 +612,69 @@ are ignored.
   default: `30`<br>
   How far apart, in CSS pixels, two clicks may be and still count as the same spot. Only applies to clicks that did
   not land on the same element; clicks on one element always belong together.
+
+#### Profiling
+
+The `@dash0/profiling` instrumentation samples the JavaScript call stack with the
+[JS Self-Profiling API](https://wicg.github.io/js-self-profiling/) and sends the samples as OTLP profiles to
+`<endpoint>/v1development/profiles`. They appear in Dash0 under Telemetry > Profiling, with the same resource as
+the website's other telemetry. The API exists in Chromium-based browsers only. Other browsers send nothing.
+
+Profiling is off by default. It runs only when all of these hold:
+
+- `@dash0/profiling` is listed in `enabledInstrumentations`.
+- The encoder from `@dash0/sdk-web/profiling` is provided. See [Setup](./setup.md#profiling).
+- The session is sampled by `sessionSamplingRate`, and then by `profiling.sampleRate`.
+- The page is served with the `Document-Policy: js-profiling` response header.
+
+The profiler runs in chunks. Each chunk is sent when it ends, on every page view, when the tab is hidden, and when
+the page is unloaded, so one chunk covers one page. Profiling pauses while the tab is hidden. Each profile carries
+the same attributes as web events, such as `session.id` and `page.url.*` (after `urlAttributeScrubber`), and every
+frame carries `profile.frame.type=v8js`.
+Samples taken while no JavaScript ran are counted in `dash0.profiling.idle_sample_count` and not sent.
+
+When the browser has no `Profiler` or refuses to start it, the SDK sends one `browser.profiling_unavailable` event
+per page load. Its body holds a `reason`:
+
+- `api_missing`: the browser does not implement the API.
+- `document_policy`: the page was served without `Document-Policy: js-profiling`.
+- `start_failed`: the profiler failed to start for another reason.
+
+The auth token needs the `ingest:profiles` permission. Without it, the request succeeds but Dash0 drops the
+profiles.
+
+Scripts from another origin only show up in profiles when they are loaded with CORS: add
+`crossorigin="anonymous"` to the `<script>` tag and serve the script with an `Access-Control-Allow-Origin` header.
+Without CORS the browser leaves their frames out of the samples.
+
+Function names, files, lines and columns are sent as the browser reports them. For a minified bundle they are
+minified names and positions: the SDK does not apply source maps.
+
+- **Sampling Rate**<br>
+  key: `profiling.sampleRate`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `10`<br>
+  The percentage of sessions that are profiled, between 0 and 100. The decision is deterministic per session ID
+  and uses the same hash as `sessionSamplingRate`, so profiled sessions are always a subset of the sessions for
+  which telemetry is transmitted.
+- **Sample Interval**<br>
+  key: `profiling.sampleIntervalMs`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `10`<br>
+  The requested time between two samples, in milliseconds. Browsers may sample less often; the profile records the
+  interval the browser used.
+- **Chunk Duration**<br>
+  key: `profiling.chunkDurationMs`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `15000`<br>
+  How long one profile covers before it is sent and a new one starts.
+- **Encoder**<br>
+  key: `profiling.encoder`<br>
+  type: `ProfileEncoder`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  The encoder to use. Pass `encoder` from `@dash0/sdk-web/profiling`. When omitted, the SDK uses the one the
+  `dash0-profiling.iife.js` script registers, if that script ran before `init`.

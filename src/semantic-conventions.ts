@@ -77,6 +77,7 @@ export const EVENT_NAMES = {
   ERROR: "browser.error",
   SESSION_RECORDING: "browser.session_recording",
   RAGE_CLICK: "browser.rage_click",
+  PROFILING_UNAVAILABLE: "browser.profiling_unavailable",
 };
 export const SPAN_EVENT_NAME_EXCEPTION = "exception";
 

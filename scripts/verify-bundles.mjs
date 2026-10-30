@@ -15,6 +15,9 @@ const RECORDING_BUNDLES = [
   "dist/dash0-session-recording.iife.js",
 ];
 const SDK_BUNDLES = ["dist/dash0.js", "dist/dash0.umd.cjs", "dist/dash0.iife.js"];
+// The profiling bundles carry the protobuf encoder. Like rrweb, it must stay out of the main SDK bundles.
+const PROFILING_BUNDLES = ["dist/dash0-profiling.js", "dist/dash0-profiling.umd.cjs", "dist/dash0-profiling.iife.js"];
+const ENCODER_MARKERS = ["profile.frame.type", "dash0.profiling.idle_sample_count"];
 
 let failed = false;
 
@@ -61,5 +64,23 @@ assertHasMarkers(
     `no longer contains the rrweb markers ${JSON.stringify(missing)}. Update RRWEB_MARKERS in scripts/verify-bundles.mjs.`
 );
 
+assertNoMarkers(
+  PROFILING_BUNDLES,
+  SDK_MARKERS,
+  (marker) => `SDK code (found "${marker}"). Profiling entrypoints must only import src/profiling.`
+);
+assertNoMarkers(
+  SDK_BUNDLES,
+  ENCODER_MARKERS,
+  (marker) => `the profile encoder (found ${JSON.stringify(marker)}). Only the profiling entrypoints may import it.`
+);
+assertHasMarkers(
+  PROFILING_BUNDLES,
+  ENCODER_MARKERS,
+  (missing) => `no longer contains the encoder markers ${JSON.stringify(missing)}. Update ENCODER_MARKERS.`
+);
+
 if (failed) process.exit(1);
-console.log("Bundle verification passed: session recording bundles contain no SDK code, SDK bundles contain no rrweb.");
+console.log(
+  "Bundle verification passed: session recording and profiling bundles contain no SDK code, SDK bundles contain no rrweb or profile encoder."
+);

@@ -44,6 +44,18 @@ describe("fetch transport keepalive handling", () => {
     expect(fetchOptions.keepalive).toBe(true);
   });
 
+  it("should send encoded bytes as protobuf instead of JSON", async () => {
+    const body = new Uint8Array([10, 2, 8, 1]);
+
+    await send("/v1development/profiles", body);
+
+    const [url, fetchOptions] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe("https://api.example.com/v1development/profiles");
+    expect(fetchOptions.headers["Content-Type"]).toBe("application/x-protobuf");
+    expect(fetchOptions.headers["Authorization"]).toBe("Bearer test-token");
+    expect(fetchOptions.body).toBe(body);
+  });
+
   it("should set keepalive=false when body size exceeds BEACON_BODY_SIZE_LIMIT", async () => {
     // Create a large body that exceeds 60KB
     const largeBody = { data: "x".repeat(65000) };
