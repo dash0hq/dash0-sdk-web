@@ -10,6 +10,7 @@ export * from "../api/log-level";
 export { terminateSession } from "../api/session";
 export { reportError } from "../api/report-error";
 export { startView } from "../api/start-view";
+export { setParentTraceContext } from "../api/parent-trace-context";
 export { startSessionRecording, stopSessionRecording } from "../api/session-recording";
 
 // Additional utility types

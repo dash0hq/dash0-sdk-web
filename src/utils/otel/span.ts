@@ -6,11 +6,13 @@ import { generateSpanId } from "../span-id";
 import { addAttribute } from "./attributes";
 import { KeyValue, Span, SpanStatus } from "../../types/otlp";
 import { debug } from "../debug";
+import { getParentTraceContext } from "../../api/parent-trace-context";
 
 export type InProgressSpan = Omit<Span, "endTimeUnixNano">;
 
 export function startSpan(name: string): InProgressSpan {
-  const traceId = generateTraceId(sessionId);
+  const parent = getParentTraceContext();
+  const traceId = parent?.traceId ?? generateTraceId(sessionId);
   const spanId = generateSpanId(traceId);
 
   const attributes: KeyValue[] = [];
@@ -28,6 +30,7 @@ export function startSpan(name: string): InProgressSpan {
     events: [],
     links: [],
     status: { code: SPAN_STATUS_UNSET },
+    ...(parent ? { parentSpanId: parent.spanId } : {}),
   };
 }
 
