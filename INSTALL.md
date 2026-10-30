@@ -30,4 +30,4 @@ Once you have the prerequisites above, follow these guides:
   configuration auto-detection (Vercel, VCS context), website attributes, telemetry transmission, session tracking,
   error tracking, HTTP request and page-view instrumentation.
 - **[API](docs/sdk/api.md)** — runtime API functions: `addSignalAttribute`, `removeSignalAttribute`, `identify`,
-  `sendEvent`, `reportError`, `terminateSession`, and `setActiveLogLevel`.
+  `sendEvent`, `reportError`, `terminateSession`, `setParentTraceContext`, and `setActiveLogLevel`.
