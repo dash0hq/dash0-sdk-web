@@ -14,6 +14,8 @@ import { ExportProfilesServiceRequest } from "./otlp/opentelemetry/proto/collect
 export const FRAME_TYPE_ATTRIBUTE = "profile.frame.type";
 export const FRAME_TYPE_V8JS = "v8js";
 export const IDLE_SAMPLE_COUNT_ATTRIBUTE = "dash0.profiling.idle_sample_count";
+// One of the build ID keys the Dash0 collector reads from a mapping; v8js frames with a UUID there get source maps.
+export const BUILD_ID_ATTRIBUTE = "process.executable.build_id.htlhash";
 const ANONYMOUS_FUNCTION = "(anonymous)";
 const NANOS_PER_MILLI = 1_000_000;
 
@@ -36,11 +38,14 @@ export function toExportRequest(chunk: ProfileChunk): {
   const locationOfFrame = (frameId: number): number => {
     const frame = trace.frames[frameId];
     if (!frame) return 0;
+    const resource = resourceOf(trace, frame.resourceId);
+    const debugId = chunk.debugIds?.[resource];
     return dict.location(
-      dict.func(frame.name || ANONYMOUS_FUNCTION, resourceOf(trace, frame.resourceId)),
+      dict.func(frame.name || ANONYMOUS_FUNCTION, resource),
       frame.line ?? 0,
       frame.column ?? 0,
-      frameTypeAttribute
+      frameTypeAttribute,
+      debugId ? dict.mapping(resource, dict.attribute(BUILD_ID_ATTRIBUTE, { stringValue: debugId })) : 0
     );
   };
 
@@ -142,9 +147,25 @@ function newDictionary() {
         startLine: 0n,
       }));
     },
-    location: (functionIndex: number, line: number, column: number, attributeIndex: number): number =>
-      intern(tables.locationTable, `l${functionIndex}:${line}:${column}`, () => ({
-        mappingIndex: 0,
+    mapping: (file: string, buildIdAttributeIndex: number): number => {
+      const filenameStrindex = dict.string(file);
+      return intern(tables.mappingTable, `m${filenameStrindex}:${buildIdAttributeIndex}`, () => ({
+        memoryStart: 0n,
+        memoryLimit: 0n,
+        fileOffset: 0n,
+        filenameStrindex,
+        attributeIndices: [buildIdAttributeIndex],
+      }));
+    },
+    location: (
+      functionIndex: number,
+      line: number,
+      column: number,
+      attributeIndex: number,
+      mappingIndex: number
+    ): number =>
+      intern(tables.locationTable, `l${functionIndex}:${line}:${column}:${mappingIndex}`, () => ({
+        mappingIndex,
         address: 0n,
         lines: [{ functionIndex, line: BigInt(line), column: BigInt(column) }],
         attributeIndices: [attributeIndex],

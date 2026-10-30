@@ -31,9 +31,9 @@ page sent 16 samples, and Dash0 returned 160 ms of self time at a 10 ms period. 
 ## A larger React app
 
 A Next.js app with React, run as a development build, sent its profiles through this build after adding the
-`Document-Policy: js-profiling` header in `next.config`. Its first 5 chunks held 2269 samples, all accepted, and
-Dash0 returned 22,690 ms of self time, which is 2269 samples at 10 ms, and Telemetry > Profiling drew the flame
-graph.
+`Document-Policy: js-profiling` header in `next.config`. In one 44 minute window it sent 56 chunks, all accepted,
+with 6753 samples with a stack and 46,289 idle samples. Dash0 returned 67,530 ms of self time, which is 6753
+samples at 10 ms, so idle samples do not count as CPU. Telemetry > Profiling drew the flame graph.
 
 Filtering on `page.url.path` returned only that page's samples, and a value that was never sent returned nothing.
 Each page had different top app functions, which the merged view hides.
@@ -85,6 +85,27 @@ each, alternating.
 The difference (0.2%) is smaller than the spread between runs. Encoding one 15 s chunk of a busy page (1250
 samples, 60 stacks) takes about 0.1 ms in Node 24.
 
+With Chrome's CPU throttling, same page and work, five runs each, alternating:
+
+| Throttling | Profiling | Median total time | Range               |
+| ---------- | --------- | ----------------- | ------------------- |
+| 4x         | On        | 9503 ms           | 9478 to 10,025 ms   |
+| 4x         | Off       | 9569 ms           | 9491 to 9770 ms     |
+| 6x         | On        | 14,831 ms         | 14,466 to 15,150 ms |
+| 6x         | Off       | 14,796 ms         | 14,459 to 15,365 ms |
+
+The difference stays inside the spread between runs. Main thread time of each step, measured in the page:
+
+| Step                                     | 4x            | 6x            |
+| ---------------------------------------- | ------------- | ------------- |
+| `new Profiler()`                         | 0.1 to 0.8 ms | 0.2 to 1.3 ms |
+| `stop()` until it returns                | 1.4 to 1.5 ms | 1.6 to 2.2 ms |
+| Encoding a 15 s chunk (about 400 stacks) | 2.8 to 8.9 ms | 3.5 to 9.9 ms |
+
+Encoding is the one step above 5 ms, and the first chunk of a page is the slowest. It runs once per chunk, in the
+promise callback after `stop()`. Running it in an idle callback or a worker would take it off the input path; this
+was not done.
+
 ## Manual test
 
 1. `pnpm build`, then `pnpm sink`, then open http://localhost:4318/examples/profiling/ in Chrome. The sink prints
@@ -100,8 +121,11 @@ A profile carries the same attributes as web events, from the same code: `page.u
 `session.id`, `browser.tab.id`, `page.load.id`, the window size and the signal attributes the app sets. Apps that
 call `identify()` therefore send user fields such as `user.email` on profiles too, as they do on web events.
 
-A chunk ends on every page view, so each profile covers one page and carries that page's URL. In the React app
-test, the chunks followed client-side navigation, one URL per chunk.
+The profiler runs for as long as the page is visible and starts a new chunk every 15 s. A chunk also ends on every
+page view, so a profile never spans two pages and carries that page's URL. In the React app test, the chunks
+followed client-side navigation, one URL per chunk. On the example page left open for 136 s, with a 300 ms function
+run at 90 s, the profiler rotated 9 times, the chunk sent at 91 s held 29 samples, and Dash0 returned 280 ms of
+self time for that function.
 
 ## Decisions
 

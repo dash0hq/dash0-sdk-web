@@ -40,6 +40,8 @@ export type ProfileChunk = {
   resource: Resource;
   scope: InstrumentationScope;
   attributes: KeyValue[];
+  /** Debug ID of each script in `trace.resources` that has one, keyed by its URL. */
+  debugIds?: Record<string, string>;
 };
 
 export type EncodedProfile = {

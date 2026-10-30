@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { encodeProfile, FRAME_TYPE_ATTRIBUTE, IDLE_SAMPLE_COUNT_ATTRIBUTE } from "./encode";
+import { BUILD_ID_ATTRIBUTE, encodeProfile, FRAME_TYPE_ATTRIBUTE, IDLE_SAMPLE_COUNT_ATTRIBUTE } from "./encode";
 import { ExportProfilesServiceRequest } from "./otlp-test/opentelemetry/proto/collector/profiles/v1development/profiles_service";
 import type { ProfileChunk, ProfilerTrace } from "../types/profiling";
 
@@ -40,8 +40,8 @@ const chunk: ProfileChunk = {
   ],
 };
 
-function decode() {
-  const encoded = encodeProfile(chunk);
+function decode(input: ProfileChunk = chunk) {
+  const encoded = encodeProfile(input);
   const request = ExportProfilesServiceRequest.decode(encoded.body);
   const dict = request.dictionary!;
   const profile = request.resourceProfiles[0]!.scopeProfiles[0]!.profiles[0]!;
@@ -143,5 +143,23 @@ describe("encodeProfile", () => {
       "cpu",
       "nanoseconds",
     ]);
+  });
+
+  it("points frames of a script with a debug ID at a mapping that carries it as the build ID", () => {
+    const debugId = "a1b2c3d4-0000-4000-8000-000000000001";
+    const { dict, str, attribute } = decode({ ...chunk, debugIds: { [APP_JS]: debugId } });
+
+    const mappingOf = (functionName: string) =>
+      dict.locationTable.find((location) => {
+        const line = location.lines[0];
+        return line != null && str(dict.functionTable[line.functionIndex]!.nameStrindex) === functionName;
+      })!.mappingIndex;
+
+    const appMapping = dict.mappingTable[mappingOf("main")]!;
+    expect(mappingOf("main")).toBeGreaterThan(0);
+    expect(mappingOf("work")).toBe(mappingOf("main"));
+    expect(str(appMapping.filenameStrindex)).toBe(APP_JS);
+    expect(appMapping.attributeIndices.map(attribute)).toEqual([[BUILD_ID_ATTRIBUTE, { stringValue: debugId }]]);
+    expect(mappingOf("(anonymous)")).toBe(0);
   });
 });

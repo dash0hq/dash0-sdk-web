@@ -11,6 +11,7 @@ import { addCommonAttributes } from "../../attributes";
 import { sendLog, sendProfile } from "../../transport";
 import { EVENT_NAME, EVENT_NAMES } from "../../semantic-conventions";
 import { onPageView } from "../navigation/event";
+import { readDebugIds } from "./debug-ids";
 import { KeyValue } from "../../types/otlp";
 import { ProfileEncoder, ProfilerTrace } from "../../types/profiling";
 
@@ -121,9 +122,18 @@ function emit(trace: ProfilerTrace, chunk: Running, endTime: number, compress: b
   const attributes: KeyValue[] = [];
   addCommonAttributes(attributes, { url: chunk.url });
 
+  const resources = trace.resources.map(scrubUrl);
+  const debugIdByUrl = readDebugIds();
+  const debugIds: Record<string, string> = {};
+  trace.resources.forEach((url, i) => {
+    const debugId = debugIdByUrl.get(url);
+    if (debugId) debugIds[resources[i]!] = debugId;
+  });
+
   try {
     const encoded = encoder({
-      trace: { ...trace, resources: trace.resources.map(scrubUrl) },
+      trace: { ...trace, resources },
+      debugIds,
       timeOrigin: perf.timeOrigin,
       startTime: chunk.startTime,
       endTime,
