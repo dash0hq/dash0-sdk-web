@@ -101,6 +101,7 @@ describe("profiling", () => {
 
     profiling.startProfiling();
     await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1);
 
     expect(FakeProfiler.instances).toHaveLength(2);
     expect(FakeProfiler.instances[0]!.stopped).toBe(true);
@@ -128,6 +129,7 @@ describe("profiling", () => {
     profiling.startProfiling();
     navigation.transmitPageViewEvent("0", new URL("https://example.com/next"), true);
     await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1);
 
     expect(FakeProfiler.instances).toHaveLength(3);
     expect(pageUrl(0)).toEqual({ stringValue: win!.location.href });
@@ -156,6 +158,7 @@ describe("profiling", () => {
 
     setVisibility("visible");
     await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1);
     expect(sent()).toEqual([{ compress: false }, { compress: true }]);
   });
 
@@ -166,5 +169,56 @@ describe("profiling", () => {
     profiling.startProfiling();
 
     expect(FakeProfiler.instances).toHaveLength(0);
+  });
+
+  describe("with requestIdleCallback", () => {
+    let idleCallbacks: { run: () => void; timeout: number }[];
+
+    beforeEach(() => {
+      idleCallbacks = [];
+      (win as any).requestIdleCallback = (run: () => void, opts: { timeout: number }) =>
+        idleCallbacks.push({ run, timeout: opts.timeout });
+    });
+
+    afterEach(() => {
+      delete (win as any).requestIdleCallback;
+    });
+
+    it("encodes a rotated chunk in idle time, with a timeout", async () => {
+      const { profiling, vars } = await load();
+      vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder };
+
+      profiling.startProfiling();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(encoder).not.toHaveBeenCalled();
+      expect(idleCallbacks.map((c) => c.timeout)).toEqual([2000]);
+
+      idleCallbacks[0]!.run();
+      expect(encoder).toHaveBeenCalledTimes(1);
+    });
+
+    it("sends a chunk still waiting for idle time on the last chance, once", async () => {
+      const { profiling, transport, vars } = await load();
+      const body = new Uint8Array([7]);
+      const ownEncoder = vi.fn<ProfileEncoder>(() => ({ body, sampleCount: 1, idleSampleCount: 0 }));
+      vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder: ownEncoder };
+      const sent = () =>
+        vi
+          .mocked(transport.sendProfile)
+          .mock.calls.filter(([b]) => b === body)
+          .map(([, o]) => o);
+
+      profiling.startProfiling();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(sent()).toEqual([]);
+
+      setVisibility("hidden");
+      expect(sent()).toEqual([{ compress: false }]);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(sent()).toEqual([{ compress: false }, { compress: false }]);
+
+      idleCallbacks[0]!.run();
+      expect(sent()).toHaveLength(2);
+    });
   });
 });

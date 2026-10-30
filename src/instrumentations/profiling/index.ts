@@ -27,10 +27,18 @@ type JsProfiler = {
 type JsProfilerConstructor = new (opts: { sampleInterval: number; maxBufferSize: number }) => JsProfiler;
 
 type Running = { profiler: JsProfiler; startTime: number; url: string | undefined };
+type Stopped = { trace: ProfilerTrace; chunk: Running; endTime: number };
+type IdleScheduler = (callback: () => void, opts: { timeout: number }) => number;
+
+// Encoding a chunk takes up to 10 ms on a slow CPU, so it waits for idle time; the timeout keeps a busy page
+// from holding chunks back for long.
+const IDLE_ENCODE_TIMEOUT_MS = 2000;
 
 let encoder: ProfileEncoder | undefined;
 let running: Running | undefined;
 let rotateTimer: ReturnType<typeof setTimeout> | undefined;
+let waitingForIdle: Stopped[] = [];
+let idleScheduled = false;
 let unavailable = false;
 
 /**
@@ -100,7 +108,12 @@ function startChunk(url = win?.location.href): void {
   }, chunkDurationMs);
 }
 
+/**
+ * `compress` is false on the last chance to send, where the document may be gone before an idle period or a
+ * gzip stream: those chunks, and any still waiting for idle time, are encoded and sent synchronously.
+ */
 function stopChunk(compress: boolean): void {
+  if (!compress) sendWaitingChunks();
   if (rotateTimer != null) {
     clearTimeout(rotateTimer);
     rotateTimer = undefined;
@@ -112,11 +125,38 @@ function stopChunk(compress: boolean): void {
   const endTime = perf.now();
   current.profiler
     .stop()
-    .then((trace) => emit(trace, current, endTime, compress))
+    .then((trace) => {
+      const stopped = { trace, chunk: current, endTime };
+      if (compress) sendWhenIdle(stopped);
+      else emit(stopped, false);
+    })
     .catch((e) => debug("Failed to stop profiler", e));
 }
 
-function emit(trace: ProfilerTrace, chunk: Running, endTime: number, compress: boolean): void {
+function sendWhenIdle(stopped: Stopped): void {
+  waitingForIdle.push(stopped);
+  if (idleScheduled) return;
+  idleScheduled = true;
+  const requestIdleCallback = (win as unknown as { requestIdleCallback?: IdleScheduler } | undefined)
+    ?.requestIdleCallback;
+  const run = () => {
+    idleScheduled = false;
+    const chunks = waitingForIdle;
+    waitingForIdle = [];
+    chunks.forEach((chunk) => emit(chunk, true));
+  };
+  if (typeof requestIdleCallback === "function")
+    requestIdleCallback.call(win, run, { timeout: IDLE_ENCODE_TIMEOUT_MS });
+  else setTimeout(run, 0);
+}
+
+function sendWaitingChunks(): void {
+  const chunks = waitingForIdle;
+  waitingForIdle = [];
+  chunks.forEach((chunk) => emit(chunk, false));
+}
+
+function emit({ trace, chunk, endTime }: Stopped, compress: boolean): void {
   if (!encoder || !chunk.url || isUrlIgnored(chunk.url)) return;
 
   const attributes: KeyValue[] = [];

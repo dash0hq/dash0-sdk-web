@@ -10,6 +10,7 @@
         policy=off     serve the page without the header; the SDK then reports the profiler as unavailable
         chunk=<ms>     chunk length, default 15000
         rounds=<n>     benchmark rounds, default 40
+        run=<id>       adds test.run.id=<id> to every signal, to find one test run in Dash0
         sleep=<ms>     idle time between rounds, default 250
     -->
     <script>
@@ -36,6 +37,7 @@
           profilingEnabled ? ["@dash0/profiling"] : []
         ),
         profiling: { sampleRate: 100, chunkDurationMs: Number(params.get("chunk") ?? 15000) },
+        additionalSignalAttributes: params.get("run") ? { "test.run.id": params.get("run") } : undefined,
       });
     </script>
     <!-- The encoder must be in place before the SDK runs `init()`. -->

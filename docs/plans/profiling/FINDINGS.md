@@ -102,9 +102,35 @@ The difference stays inside the spread between runs. Main thread time of each st
 | `stop()` until it returns                | 1.4 to 1.5 ms | 1.6 to 2.2 ms |
 | Encoding a 15 s chunk (about 400 stacks) | 2.8 to 8.9 ms | 3.5 to 9.9 ms |
 
-Encoding is the one step above 5 ms, and the first chunk of a page is the slowest. It runs once per chunk, in the
-promise callback after `stop()`. Running it in an idle callback or a worker would take it off the input path; this
-was not done.
+Encoding is the one step above 5 ms, and the first chunk of a page is the slowest. It runs once per chunk.
+
+A chunk that ends on a rotation or a page view is encoded in a `requestIdleCallback`, with a 2 s timeout, or in a
+`setTimeout` where the API is missing. A chunk that ends on the last chance to send (tab hidden or `pagehide`) is
+encoded at once, together with any chunk still waiting for idle time, because the document may be gone before an
+idle period. Same page, measured again with the encoder wrapped and the idle callback recorded:
+
+| Page                          | Throttling | Longest profiler step | Encodes in an idle callback | Encodes longer than the idle time left |
+| ----------------------------- | ---------- | --------------------- | --------------------------- | -------------------------------------- |
+| Busy, no pause between rounds | 4x         | 6.5 ms                | 2 of 2                      | 2 (2 to 4 ms left)                     |
+| Busy, no pause between rounds | 6x         | 12.7 ms               | 3 of 3                      | 2 (2 to 13 ms left)                    |
+| 250 ms pause between rounds   | 4x         | 5.9 ms                | 4 of 4                      | 0                                      |
+| 250 ms pause between rounds   | 6x         | 9.0 ms                | 4 of 4                      | 0                                      |
+
+No encode waited for the timeout. Moving the encode changes when it runs, not how long it takes: on a page with
+pauses it fits in the idle time, and on a busy page the idle periods are a few milliseconds long, so an input can
+still wait for an encode. The longest step was the first encode of the page in every run.
+
+A worker was not tried. Copying the trace to it costs main thread time too, adds bundle size, and may need
+`worker-src` in the page's Content Security Policy. It stays an option if the busy-page numbers matter.
+
+Cost per minute of a visible page, 4 chunks, from the same runs:
+
+| Page                          | Throttling | Main thread, all profiler steps | Sent, gzip |
+| ----------------------------- | ---------- | ------------------------------- | ---------- |
+| Busy, no pause between rounds | 4x         | 24 ms                           | 12.6 KB    |
+| Busy, no pause between rounds | 6x         | 36 ms                           | 12.4 KB    |
+| 250 ms pause between rounds   | 4x         | 15 ms                           | 4.9 KB     |
+| 250 ms pause between rounds   | 6x         | 29 ms                           | 5.6 KB     |
 
 ## Manual test
 
@@ -126,6 +152,13 @@ page view, so a profile never spans two pages and carries that page's URL. In th
 followed client-side navigation, one URL per chunk. On the example page left open for 136 s, with a 300 ms function
 run at 90 s, the profiler rotated 9 times, the chunk sent at 91 s held 29 samples, and Dash0 returned 280 ms of
 self time for that function.
+
+Totals match exactly when the query covers one run only. A repeat of the 136 s test sent 10 chunks with 43 samples,
+counted by the proxy in `otlp-sink`, the last one on `pagehide`. Filtered on that run's `page.load.id`, Dash0
+returned 430 ms, which is 43 samples at 10 ms. The same time range without that filter returned 3110 ms, because
+it also covered the end of the previous run. That explains the 700 ms against 470 ms of the first test. The example
+page takes `?run=<id>` and sends it as `test.run.id` through `additionalSignalAttributes`, but filtering on
+`test.run.id` returned no rows, and the cause is not known.
 
 ## Decisions
 
@@ -170,3 +203,5 @@ For the SDK:
 - `pagehide` flush depends on `Profiler.stop()`, which is asynchronous. It worked on navigation in these runs.
   Closing a tab was not tested.
 - The script-tag build reads `window.dash0ProfileEncoder` once in `init`, so the profiling script must load first.
+- Not verified on a real Android device. Chrome's CPU throttling only slows the CPU down; it does not reproduce a
+  phone's memory, thermal limits or timer behaviour.
