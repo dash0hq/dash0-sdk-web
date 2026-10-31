@@ -203,8 +203,9 @@ For Dash0:
 
 - Do browser profiles show up next to the website that sent them? The SDK sends the same resource as for web
   events, but it is not known whether Dash0 links them to the website.
-- Source maps: frames from minified bundles carry minified names and positions. Profiles carry the file, line and
-  column a source map lookup needs, the same inputs as error stack traces.
+- Source maps: the Dash0 collector's `dash0sourcemap` processor resolves v8js frames on ingest, the same way as error
+  stack traces, from the script and source map URLs. Tested locally with a terser bundle: `r` became
+  `computeFibonacci` in `app.js`. It is not yet enabled in the production profiles pipeline.
 - Linking slow interactions to profiles: a slow INP or long animation frame event already has a `session.id` and a
   time, which is enough to open the matching profile with the filters that work today.
 - Showing app code first: most self time lands in framework internals.

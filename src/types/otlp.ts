@@ -139,7 +139,7 @@ export type ScopeProfiles = {
 
 /** Index 0 of every table holds the zero value; an index of 0 means "unset". */
 export type ProfilesDictionary = {
-  mappingTable: Mapping[];
+  mappingTable: object[];
   locationTable: Location[];
   functionTable: ProfileFunction[];
   linkTable: object[];
@@ -169,13 +169,7 @@ export type Sample = {
   timestampsUnixNano: string[];
 };
 
-export type Mapping = {
-  filenameStrindex?: number;
-  attributeIndices?: number[];
-};
-
 export type Location = {
-  mappingIndex?: number;
   lines?: Line[];
   attributeIndices?: number[];
 };

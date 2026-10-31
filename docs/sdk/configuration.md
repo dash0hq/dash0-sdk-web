@@ -647,8 +647,10 @@ Scripts from another origin only show up in profiles when they are loaded with C
 `crossorigin="anonymous"` to the `<script>` tag and serve the script with an `Access-Control-Allow-Origin` header.
 Without CORS the browser leaves their frames out of the samples.
 
-Function names, files, lines and columns are sent as the browser reports them. For a minified bundle they are
-minified names and positions: the SDK does not apply source maps.
+Function names, files, lines and columns are sent as the browser reports them. Dash0 maps minified frames back to
+your source code the same way it does for error stack traces: it downloads each script and the source map named in
+its `//# sourceMappingURL` comment. The source map has to be reachable from Dash0, either public or behind the
+credentials of a source map integration. Anonymous functions stay `(anonymous)`, with their original file and line.
 
 - **Sampling Rate**<br>
   key: `profiling.sampleRate`<br>

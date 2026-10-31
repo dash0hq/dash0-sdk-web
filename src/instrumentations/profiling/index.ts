@@ -12,7 +12,6 @@ import { addCommonAttributes } from "../../attributes";
 import { sendLog, sendProfile } from "../../transport";
 import { EVENT_NAME, EVENT_NAMES } from "../../semantic-conventions";
 import { onPageView } from "../navigation/event";
-import { readDebugIds } from "./debug-ids";
 import { KeyValue } from "../../types/otlp";
 import { ProfileChunk, ProfileEncoder, ProfilerTrace } from "../../types/profiling";
 
@@ -166,10 +165,9 @@ function flushWaiting(compress: boolean): void {
 function emit(stoppedChunks: Stopped[], compress: boolean): void {
   if (!encoder) return;
   lastSendTime = perf.now();
-  const debugIdByUrl = readDebugIds();
 
   try {
-    const encoded = encoder(stoppedChunks.map((stopped) => toProfileChunk(stopped, debugIdByUrl)));
+    const encoded = encoder(stoppedChunks.map(toProfileChunk));
     if (encoded.sampleCount === 0) return;
     debug("Sending profile", encoded);
     sendProfile(encoded.body, { compress });
@@ -178,21 +176,13 @@ function emit(stoppedChunks: Stopped[], compress: boolean): void {
   }
 }
 
-function toProfileChunk({ trace, chunk, endTime }: Stopped, debugIdByUrl: Map<string, string>): ProfileChunk {
+function toProfileChunk({ trace, chunk, endTime }: Stopped): ProfileChunk {
   const attributes: KeyValue[] = [];
   addCommonAttributes(attributes, { url: chunk.url });
 
-  const resources = trace.resources.map(scrubUrl);
-  const debugIds: Record<string, string> = {};
-  trace.resources.forEach((url, i) => {
-    const debugId = debugIdByUrl.get(url);
-    if (debugId) debugIds[resources[i]!] = debugId;
-  });
-
   return {
     profileId: generateUniqueId(TRACE_ID_BYTES),
-    trace: { ...trace, resources },
-    debugIds,
+    trace: { ...trace, resources: trace.resources.map(scrubUrl) },
     timeOrigin: perf.timeOrigin,
     startTime: chunk.startTime,
     endTime,
