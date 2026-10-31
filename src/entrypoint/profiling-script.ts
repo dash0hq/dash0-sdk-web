@@ -3,6 +3,6 @@
  * `window.dash0ProfileEncoder` once.
  */
 /* eslint-disable no-restricted-globals */
-import { encodeProfile } from "../profiling/encode";
+import { encodeProfiles } from "../profiling/encode";
 
-(window as unknown as { dash0ProfileEncoder?: unknown }).dash0ProfileEncoder = encodeProfile;
+(window as unknown as { dash0ProfileEncoder?: unknown }).dash0ProfileEncoder = encodeProfiles;

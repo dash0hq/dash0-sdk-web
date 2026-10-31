@@ -53,13 +53,16 @@ export type EncodedProfile = {
 };
 
 /**
- * Turns a profiler trace into an OTLP `ExportProfilesServiceRequest`. Provided by the
+ * Turns profiler chunks into one OTLP `ExportProfilesServiceRequest`, one profile per chunk. Provided by the
  * `@dash0/sdk-web/profiling` entrypoint, so the main bundle does not carry the encoder.
  */
-export type ProfileEncoder = (chunk: ProfileChunk) => EncodedProfile;
+export type ProfileEncoder = (chunks: ProfileChunk[]) => EncodedProfile;
 
 export type ProfilingSettings = {
-  /** Percentage (0-100) of sampled sessions that are profiled, on top of `sessionSamplingRate`. Default 10. */
+  /**
+   * Percentage (0-100) of sessions that are profiled. Default 10. It uses the same session hash as
+   * `sessionSamplingRate`, so the share of sessions profiled is the smaller of the two rates, not their product.
+   */
   sampleRate?: number;
 
   /** Requested sampling interval. Browsers may sample at a coarser interval. Default 10. */

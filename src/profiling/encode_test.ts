@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILD_ID_ATTRIBUTE, encodeProfile, FRAME_TYPE_ATTRIBUTE, IDLE_SAMPLE_COUNT_ATTRIBUTE } from "./encode";
+import { BUILD_ID_ATTRIBUTE, encodeProfiles, FRAME_TYPE_ATTRIBUTE, IDLE_SAMPLE_COUNT_ATTRIBUTE } from "./encode";
 import type { ProfileChunk, ProfilerTrace } from "../types/profiling";
 
 const APP_JS = "https://example.com/app.js";
@@ -41,7 +41,7 @@ const chunk: ProfileChunk = {
 };
 
 function decode(input: ProfileChunk = chunk) {
-  const encoded = encodeProfile(input);
+  const encoded = encodeProfiles([input]);
   const request = JSON.parse(encoded.body);
   const dict = request.dictionary!;
   const profile = request.resourceProfiles[0]!.scopeProfiles[0]!.profiles[0]!;
@@ -58,7 +58,7 @@ function decode(input: ProfileChunk = chunk) {
   return { encoded, request, dict, profile, str, functionNames, attribute };
 }
 
-describe("encodeProfile", () => {
+describe("encodeProfiles", () => {
   it("keeps the zero value at index 0 of every dictionary table", () => {
     const { dict } = decode();
     expect(dict.stringTable[0]).toBe("");

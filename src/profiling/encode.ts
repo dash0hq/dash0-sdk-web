@@ -9,10 +9,22 @@ export const BUILD_ID_ATTRIBUTE = "process.executable.build_id.htlhash";
 const ANONYMOUS_FUNCTION = "(anonymous)";
 const NANOS_PER_MILLI = 1_000_000;
 
+/** One request for all chunks, each its own profile, so they share one dictionary. */
+export function encodeProfiles(chunks: ProfileChunk[]): EncodedProfile {
+  const dict = newDictionary();
+  let sampleCount = 0;
+  const resourceProfiles = chunks.map((chunk) => {
+    const encoded = toProfile(dict, chunk);
+    sampleCount += encoded.sampleCount;
+    return { resource: chunk.resource, scopeProfiles: [{ scope: chunk.scope, profiles: [encoded.profile] }] };
+  });
+  const request: ExportProfilesServiceRequest = { resourceProfiles, dictionary: dict.tables };
+  return { body: JSON.stringify(request), sampleCount };
+}
+
 // Samples carry timestamps only, which the spec counts as one occurrence each. Samples without a
 // stack were taken while no JavaScript ran: they are counted, not sent.
-export function encodeProfile(chunk: ProfileChunk): EncodedProfile {
-  const dict = newDictionary();
+function toProfile(dict: Dictionary, chunk: ProfileChunk): { profile: Profile; sampleCount: number } {
   const { trace } = chunk;
   const unixNanos = unixNanosSince(chunk.timeOrigin);
 
@@ -76,12 +88,10 @@ export function encodeProfile(chunk: ProfileChunk): EncodedProfile {
     attributeIndices,
   };
 
-  const request: ExportProfilesServiceRequest = {
-    resourceProfiles: [{ resource: chunk.resource, scopeProfiles: [{ scope: chunk.scope, profiles: [profile] }] }],
-    dictionary: dict.tables,
-  };
-  return { body: JSON.stringify(request), sampleCount: trace.samples.length - idleSampleCount };
+  return { profile, sampleCount: trace.samples.length - idleSampleCount };
 }
+
+type Dictionary = ReturnType<typeof newDictionary>;
 
 function newDictionary() {
   // Index 0 of every table must be present and hold the zero value; index 0 means "unset".

@@ -8,7 +8,7 @@ import {
   PAGE_VIEW_TYPE,
   PAGE_VIEW_TYPE_VALUES,
 } from "../../semantic-conventions";
-import { doc, NO_VALUE_FALLBACK } from "../../utils";
+import { debug, doc, NO_VALUE_FALLBACK } from "../../utils";
 import { addCommonAttributes, scrubUrl } from "../../attributes";
 import { sendLog } from "../../transport";
 import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
@@ -39,8 +39,6 @@ export function onPageView(listener: PageViewListener): void {
 }
 
 function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
-  pageViewListeners.forEach((listener) => listener(opts.url));
-
   const attributes: KeyValue[] = [];
   addAttribute(attributes, EVENT_NAME, EVENT_NAMES.PAGE_VIEW);
 
@@ -86,6 +84,14 @@ function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
 }
 
 export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?: boolean, replaced?: boolean) {
+  // Listeners run for ignored pages too, so they can stop collecting there.
+  for (const listener of pageViewListeners) {
+    try {
+      listener(url);
+    } catch (e) {
+      debug("Page view listener failed", e);
+    }
+  }
   if (url && isUrlIgnored(url.href)) return;
 
   const meta = getPageViewMeta(url);

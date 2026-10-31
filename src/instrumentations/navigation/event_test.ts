@@ -6,7 +6,7 @@ vi.mock("../../transport", () => ({
 }));
 
 import { sendLog } from "../../transport";
-import { transmitPageViewEvent, transmitManualPageViewEvent } from "./event";
+import { onPageView, transmitPageViewEvent, transmitManualPageViewEvent } from "./event";
 import { vars } from "../../vars";
 import { doc } from "../../utils/globals";
 
@@ -26,6 +26,21 @@ describe("transmitPageViewEvent", () => {
     transmitPageViewEvent("1700000000000000000", new URL("https://example.com/callback"), true);
 
     expect(sendLogMock).not.toHaveBeenCalled();
+  });
+
+  it("tells page view listeners about ignored pages, and still sends the log when a listener throws", () => {
+    vars.ignoreUrls = [/\/callback/];
+    const seen: Array<string | undefined> = [];
+    onPageView((url) => seen.push(url?.pathname));
+    onPageView(() => {
+      throw new Error("listener failed");
+    });
+
+    transmitPageViewEvent("1700000000000000000", new URL("https://example.com/callback"));
+    transmitPageViewEvent("1700000000000000000", new URL("https://example.com/landing"));
+
+    expect(seen).toEqual(["/callback", "/landing"]);
+    expect(sendLogMock).toHaveBeenCalledTimes(1);
   });
 
   it("transmits a page view without url even when ignoreUrls is set", () => {

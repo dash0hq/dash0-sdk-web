@@ -24,9 +24,11 @@ The profile type matches the OpenTelemetry eBPF profiler: sample type `samples`/
 
 ## Ingress
 
-Tested end to end against a non-production Dash0 environment. Every profile was accepted, and Dash0's profiling
-queries returned the right function names, lines and frame type (`v8js`). The sample counts matched: the example
-page sent 16 samples, and Dash0 returned 160 ms of self time at a 10 ms period. Production ingestion was not tested.
+Tested end to end against a non-production Dash0 environment with the earlier protobuf encoder. Every profile was
+accepted, and Dash0's profiling queries returned the right function names, lines and frame type (`v8js`). The sample
+counts matched: the example page sent 16 samples, and Dash0 returned 160 ms of self time at a 10 ms period. The
+OTLP/JSON encoder was tested against a local Dash0 stack only: a chunk with 7 samples returned 70 ms with the right
+function, file and line. Production ingestion was not tested.
 
 ## A larger React app
 
@@ -48,18 +50,18 @@ What makes the merged view hard to use:
 
 ## Payload size per chunk
 
-Headless Chrome 156 on macOS, example page, 10 ms requested interval (Chrome reported 10 ms), 15 s chunks.
+Headless Chrome 156 on macOS, example page, OTLP/JSON encoder, 10 ms requested interval, 15 s chunks, five runs
+each. The busy page runs 1200 rounds with no pause; the other page waits 250 ms between rounds.
 
-| Page                                    | Samples with a stack | Idle samples | Stacks   | Protobuf      | Gzip   | OTLP/JSON (estimate) |
-| --------------------------------------- | -------------------- | ------------ | -------- | ------------- | ------ | -------------------- |
-| Busy, about half the time in JavaScript | 235 to 242           | 995 to 1022  | 22 to 24 | 3.2 to 3.3 KB | 2.0 KB | 11.9 to 13.3 KB      |
-| Mostly idle, 10 ms of work every 260 ms | 11 to 13             | 1160 to 1175 | 4 to 6   | 0.9 to 1.0 KB | 0.7 KB | not measured         |
+| Page           | Throttling | Samples with a stack | OTLP/JSON       | Gzip          |
+| -------------- | ---------- | -------------------- | --------------- | ------------- |
+| Busy, no pause | 4x         | 334 to 373           | 12.2 to 16.5 KB | 2.6 to 3.1 KB |
+| Busy, no pause | 6x         | 334 to 424           | 11.9 to 17.1 KB | 2.6 to 3.2 KB |
+| 250 ms pause   | 1x         | 8 to 24              | 3.5 to 4.8 KB   | 1.1 to 1.2 KB |
+| 250 ms pause   | 6x         | 40 to 95             | 4.5 to 10.1 KB  | 1.3 to 1.9 KB |
 
-The SDK sends OTLP/JSON, like logs and traces. These runs used the earlier protobuf encoder: the JSON column is that
-request serialized with int64 as strings and bytes as base64, close to the OTLP/JSON the SDK sends now. The JSON
-encoder was not re-measured in a browser. A synthetic busy chunk measured 3.4 KB gzip as protobuf and 3.3 KB as JSON,
-so compressed chunks cost about the same. Chunks sent while the page hides or unloads are not compressed: about 4 times
-larger as JSON, up to about 13 KB in these runs, still below the 60 KB keepalive budget.
+Chunks sent while the page hides or unloads are not compressed. In these 30 runs they were 3.3 to 15.1 KB, below the
+60 KB keepalive budget.
 
 ## Bundle size
 
@@ -67,11 +69,11 @@ Built with `pnpm build`, gzip sizes from `build:stats`.
 
 | Bundle                     | Before                | After                 |
 | -------------------------- | --------------------- | --------------------- |
-| `dash0.js`                 | 89.0 kB, 27.3 kB gzip | 91.5 kB, 28.2 kB gzip |
-| `dash0.iife.js`            | 89.4 kB, 27.5 kB gzip | 91.9 kB, 28.3 kB gzip |
+| `dash0.js`                 | 89.0 kB, 27.3 kB gzip | 92.3 kB, 28.5 kB gzip |
+| `dash0.iife.js`            | 89.4 kB, 27.5 kB gzip | 92.7 kB, 28.7 kB gzip |
 | `dash0-profiling.js` (new) |                       | 2.7 kB, 1.2 kB gzip   |
 
-The main bundle grows by 0.9 kB gzip for the controller, which runs only when profiling is enabled. The encoder is only
+The main bundle grows by 1.2 kB gzip for the controller, which runs only when profiling is enabled. The encoder is only
 in the profiling bundle; `scripts/verify-bundles.mjs` fails the build otherwise. With protobuf and
 `@bufbuild/protobuf`, the profiling bundle was 20.5 kB, 5.6 kB gzip.
 
@@ -85,8 +87,8 @@ each, alternating.
 | On        | 2453 ms                     | 2420 to 2481 ms |
 | Off       | 2449 ms                     | 2414 to 2493 ms |
 
-The difference (0.2%) is smaller than the spread between runs. Encoding one 15 s chunk of a busy page (1250
-samples, 60 stacks) takes about 0.1 ms in Node 24.
+The difference (0.2%) is smaller than the spread between runs. This table and the next one were measured with the
+earlier protobuf encoder.
 
 With Chrome's CPU throttling, same page and work, five runs each, alternating:
 
@@ -97,43 +99,53 @@ With Chrome's CPU throttling, same page and work, five runs each, alternating:
 | 6x         | On        | 14,831 ms         | 14,466 to 15,150 ms |
 | 6x         | Off       | 14,796 ms         | 14,459 to 15,365 ms |
 
-The difference stays inside the spread between runs. Main thread time of each step, measured in the page:
+The difference stays inside the spread between runs. Main thread time of each step, measured in the page with the
+OTLP/JSON encoder, busy and paused pages together, five runs each:
 
-| Step                                     | 4x            | 6x            |
-| ---------------------------------------- | ------------- | ------------- |
-| `new Profiler()`                         | 0.1 to 0.8 ms | 0.2 to 1.3 ms |
-| `stop()` until it returns                | 1.4 to 1.5 ms | 1.6 to 2.2 ms |
-| Encoding a 15 s chunk (about 400 stacks) | 2.8 to 8.9 ms | 3.5 to 9.9 ms |
+| Step                      | 4x            | 6x            |
+| ------------------------- | ------------- | ------------- |
+| `new Profiler()`          | 0.0 to 1.1 ms | 0.1 to 2.4 ms |
+| `stop()` until it returns | 0.2 to 1.6 ms | 0.6 to 6.8 ms |
+| Encoding a 15 s chunk     | 0.0 to 2.1 ms | 0.1 to 5.2 ms |
 
-Encoding is the one step above 5 ms, and the first chunk of a page is the slowest. It runs once per chunk.
+At 4x every step stayed under 2.2 ms. At 6x, encoding reached 5.2 ms and `stop()` 6.8 ms. Encoding runs once per
+chunk.
 
 A chunk that ends on a rotation or a page view is encoded in a `requestIdleCallback`, with a 2 s timeout, or in a
 `setTimeout` where the API is missing. A chunk that ends on the last chance to send (tab hidden or `pagehide`) is
 encoded at once, together with any chunk still waiting for idle time, because the document may be gone before an
-idle period. Same page, measured again with the encoder wrapped and the idle callback recorded:
+idle period.
+
+The SDK sends at most one request every 5 s. Chunks that end sooner wait and go out together in one request, one
+profile per chunk with a shared dictionary. Rapid page views would otherwise run into the transport's limit of 4
+profiles per 10 s and lose chunks. The last chance does not wait. The runs below predate this change and encoded one
+chunk per idle callback.
+
+Same runs, with the encoder wrapped and the idle callback recorded:
 
 | Page                          | Throttling | Longest profiler step | Encodes in an idle callback | Encodes longer than the idle time left |
 | ----------------------------- | ---------- | --------------------- | --------------------------- | -------------------------------------- |
-| Busy, no pause between rounds | 4x         | 6.5 ms                | 2 of 2                      | 2 (2 to 4 ms left)                     |
-| Busy, no pause between rounds | 6x         | 12.7 ms               | 3 of 3                      | 2 (2 to 13 ms left)                    |
-| 250 ms pause between rounds   | 4x         | 5.9 ms                | 4 of 4                      | 0                                      |
-| 250 ms pause between rounds   | 6x         | 9.0 ms                | 4 of 4                      | 0                                      |
+| Busy, no pause between rounds | 4x         | 1.5 to 2.1 ms         | 10 of 10                    | 4                                      |
+| Busy, no pause between rounds | 6x         | 2.7 to 6.8 ms         | 17 of 17                    | 5                                      |
+| 250 ms pause between rounds   | 4x         | 1.0 to 1.8 ms         | 20 of 20                    | 0                                      |
+| 250 ms pause between rounds   | 6x         | 2.2 to 5.2 ms         | 20 of 20                    | 0                                      |
 
 No encode waited for the timeout. Moving the encode changes when it runs, not how long it takes: on a page with
 pauses it fits in the idle time, and on a busy page the idle periods are a few milliseconds long, so an input can
-still wait for an encode. The longest step was the first encode of the page in every run.
+still wait for an encode.
 
 A worker was not tried. Copying the trace to it costs main thread time too, adds bundle size, and may need
 `worker-src` in the page's Content Security Policy. It stays an option if the busy-page numbers matter.
 
-Cost per minute of a visible page, 4 chunks, from the same runs:
+Cost per minute of a visible page, from the same runs: the time of all profiler steps and the gzip bytes of the
+rotated chunks, divided by the length of the run.
 
 | Page                          | Throttling | Main thread, all profiler steps | Sent, gzip |
 | ----------------------------- | ---------- | ------------------------------- | ---------- |
-| Busy, no pause between rounds | 4x         | 24 ms                           | 12.6 KB    |
-| Busy, no pause between rounds | 6x         | 36 ms                           | 12.4 KB    |
-| 250 ms pause between rounds   | 4x         | 15 ms                           | 4.9 KB     |
-| 250 ms pause between rounds   | 6x         | 29 ms                           | 5.6 KB     |
+| Busy, no pause between rounds | 4x         | 11 ms                           | 9.5 KB     |
+| Busy, no pause between rounds | 6x         | 18 ms                           | 10.1 KB    |
+| 250 ms pause between rounds   | 4x         | 8 ms                            | 4.8 KB     |
+| 250 ms pause between rounds   | 6x         | 14 ms                           | 5.2 KB     |
 
 ## Manual test
 
@@ -161,7 +173,9 @@ counted by the proxy in `otlp-sink`, the last one on `pagehide`. Filtered on tha
 returned 430 ms, which is 43 samples at 10 ms. The same time range without that filter returned 3110 ms, because
 it also covered the end of the previous run. That explains the 700 ms against 470 ms of the first test. The example
 page takes `?run=<id>` and sends it as `test.run.id` through `additionalSignalAttributes`, but filtering on
-`test.run.id` returned no rows, and the cause is not known.
+`test.run.id` returned no rows. The SDK sends it on every chunk, next to `page.load.id`. The cause is on the Dash0
+side: a profile with an attribute key Dash0 had never seen, written to its storage without the SDK or the collector,
+was not found by that key either, while `page.load.id` on the same profile was.
 
 ## Decisions
 

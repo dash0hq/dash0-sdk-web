@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ProfileEncoder, ProfilerTrace } from "../../types/profiling";
+import type { ProfileChunk, ProfileEncoder, ProfilerTrace } from "../../types/profiling";
 import { doc, win } from "../../utils";
 
 vi.mock("../../transport", () => ({ sendLog: vi.fn(), sendProfile: vi.fn() }));
@@ -15,7 +15,7 @@ class FakeProfiler {
   static instances: FakeProfiler[] = [];
   readonly sampleInterval = 16;
   stopped = false;
-  constructor() {
+  constructor(readonly options: { sampleInterval: number; maxBufferSize: number }) {
     FakeProfiler.instances.push(this);
   }
   stop(): Promise<ProfilerTrace> {
@@ -39,6 +39,8 @@ function setVisibility(state: DocumentVisibilityState) {
 
 describe("profiling", () => {
   const encoder = vi.fn<ProfileEncoder>(() => ({ body: "{}", sampleCount: 1 }));
+  const encodedChunks = () => encoder.mock.calls.flatMap(([chunks]) => chunks);
+  const pageUrlOf = (chunk: ProfileChunk) => chunk.attributes.find((a) => a.key === "page.url.full")?.value;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -107,7 +109,7 @@ describe("profiling", () => {
     expect(FakeProfiler.instances[0]!.stopped).toBe(true);
     expect(transport.sendProfile).toHaveBeenCalledWith("{}", { compress: true });
 
-    const chunk = encoder.mock.calls[0]![0];
+    const chunk = encodedChunks()[0]!;
     expect(chunk.profileId).toMatch(/^[0-9a-f]{32}$/);
     expect(chunk.sampleIntervalMs).toBe(16);
     expect(chunk.attributes).toEqual(
@@ -124,17 +126,57 @@ describe("profiling", () => {
     const { profiling, vars } = await load();
     const navigation = await import("../navigation/event");
     vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder };
-    const pageUrl = (call: number) =>
-      encoder.mock.calls[call]![0].attributes.find((a) => a.key === "page.url.full")?.value;
 
     profiling.startProfiling();
     navigation.transmitPageViewEvent("0", new URL("https://example.com/next"), true);
     await vi.advanceTimersByTimeAsync(1000);
-    await vi.advanceTimersByTimeAsync(1);
+    await vi.advanceTimersByTimeAsync(5000);
 
-    expect(FakeProfiler.instances).toHaveLength(3);
-    expect(pageUrl(0)).toEqual({ stringValue: win!.location.href });
-    expect(pageUrl(1)).toEqual({ stringValue: "https://example.com/next" });
+    expect(FakeProfiler.instances.length).toBeGreaterThanOrEqual(3);
+    expect(encodedChunks().slice(0, 2).map(pageUrlOf)).toEqual([
+      { stringValue: win!.location.href },
+      { stringValue: "https://example.com/next" },
+    ]);
+  });
+
+  it("stops on an ignored page and starts again on the next page that is not ignored", async () => {
+    const { profiling, vars } = await load();
+    const navigation = await import("../navigation/event");
+    vars.ignoreUrls = [/\/callback/];
+    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder };
+
+    profiling.startProfiling();
+    navigation.transmitPageViewEvent("0", new URL("https://example.com/callback"), true);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(FakeProfiler.instances).toHaveLength(1);
+    expect(encodedChunks().map(pageUrlOf)).toEqual([{ stringValue: win!.location.href }]);
+
+    navigation.transmitPageViewEvent("0", new URL("https://example.com/next"), true);
+    expect(FakeProfiler.instances).toHaveLength(2);
+  });
+
+  it("starts again on the next page view after a last chance that did not unload the page", async () => {
+    const { profiling, vars } = await load();
+    const navigation = await import("../navigation/event");
+    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder };
+
+    profiling.startProfiling();
+    win!.dispatchEvent(new Event("beforeunload"));
+    expect(FakeProfiler.instances[0]!.stopped).toBe(true);
+
+    navigation.transmitPageViewEvent("0", new URL("https://example.com/next"), true);
+    expect(FakeProfiler.instances).toHaveLength(2);
+  });
+
+  it("clamps a zero interval and chunk length", async () => {
+    const { profiling, vars } = await load();
+    vars.profiling = { ...vars.profiling, sampleRate: 100, sampleIntervalMs: 0, chunkDurationMs: 0, encoder };
+
+    profiling.startProfiling();
+    await vi.advanceTimersByTimeAsync(999);
+
+    expect(FakeProfiler.instances).toHaveLength(1);
+    expect(FakeProfiler.instances[0]!.options).toEqual({ sampleInterval: 1, maxBufferSize: 2000 });
   });
 
   it("flushes uncompressed when hidden and resumes when visible", async () => {
@@ -161,6 +203,29 @@ describe("profiling", () => {
     await vi.advanceTimersByTimeAsync(1000);
     await vi.advanceTimersByTimeAsync(1);
     expect(sent()).toEqual([{ compress: false }, { compress: true }]);
+  });
+
+  it("batches chunks from rapid page views into at most one request every 5 s", async () => {
+    const { profiling, transport, vars } = await load();
+    const navigation = await import("../navigation/event");
+    const body = '{"chunk":"burst"}';
+    const ownEncoder = vi.fn<ProfileEncoder>(() => ({ body, sampleCount: 1 }));
+    vars.profiling = { ...vars.profiling, sampleRate: 100, encoder: ownEncoder };
+    const sendTimes: number[] = [];
+    vi.mocked(transport.sendProfile).mockImplementation((b) => {
+      if (b === body) sendTimes.push(Date.now());
+    });
+
+    profiling.startProfiling();
+    for (let page = 0; page < 6; page++) {
+      await vi.advanceTimersByTimeAsync(1500);
+      navigation.transmitPageViewEvent("0", new URL(`https://example.com/${page}`), true);
+    }
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(ownEncoder.mock.calls.flatMap(([chunks]) => chunks)).toHaveLength(6);
+    expect(sendTimes.length).toBeGreaterThan(1);
+    sendTimes.slice(1).forEach((time, i) => expect(time - sendTimes[i]!).toBeGreaterThanOrEqual(5000));
   });
 
   it("does not profile sessions outside the profiling sample rate", async () => {
