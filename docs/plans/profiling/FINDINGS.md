@@ -69,11 +69,11 @@ Built with `pnpm build`, gzip sizes from `build:stats`.
 
 | Bundle                     | Before                | After                 |
 | -------------------------- | --------------------- | --------------------- |
-| `dash0.js`                 | 89.0 kB, 27.3 kB gzip | 92.3 kB, 28.5 kB gzip |
-| `dash0.iife.js`            | 89.4 kB, 27.5 kB gzip | 92.7 kB, 28.7 kB gzip |
-| `dash0-profiling.js` (new) |                       | 2.7 kB, 1.2 kB gzip   |
+| `dash0.js`                 | 89.0 kB, 27.3 kB gzip | 92.6 kB, 28.6 kB gzip |
+| `dash0.iife.js`            | 89.4 kB, 27.5 kB gzip | 93.0 kB, 28.8 kB gzip |
+| `dash0-profiling.js` (new) |                       | 2.8 kB, 1.3 kB gzip   |
 
-The main bundle grows by 1.2 kB gzip for the controller, which runs only when profiling is enabled. The encoder is only
+The main bundle grows by 1.3 kB gzip for the controller, which runs only when profiling is enabled. The encoder is only
 in the profiling bundle; `scripts/verify-bundles.mjs` fails the build otherwise. With protobuf and
 `@bufbuild/protobuf`, the profiling bundle was 20.5 kB, 5.6 kB gzip.
 
