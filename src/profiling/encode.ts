@@ -9,7 +9,7 @@ import type {
   Sample,
   Stack,
 } from "./otlp/opentelemetry/proto/profiles/v1development/profiles";
-import { ExportProfilesServiceRequest } from "./otlp/opentelemetry/proto/collector/profiles/v1development/profiles_service";
+import type { ExportProfilesServiceRequest } from "./otlp/opentelemetry/proto/collector/profiles/v1development/profiles_service";
 
 export const FRAME_TYPE_ATTRIBUTE = "profile.frame.type";
 export const FRAME_TYPE_V8JS = "v8js";
@@ -21,7 +21,16 @@ const NANOS_PER_MILLI = 1_000_000;
 
 export function encodeProfile(chunk: ProfileChunk): EncodedProfile {
   const { request, sampleCount, idleSampleCount } = toExportRequest(chunk);
-  return { body: ExportProfilesServiceRequest.encode(request).finish(), sampleCount, idleSampleCount };
+  return { body: JSON.stringify(request, toOtlpJsonValue), sampleCount, idleSampleCount };
+}
+
+// OTLP/JSON writes 64-bit integers as strings and IDs as hex
+// (https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding). The only other bytes field,
+// `originalPayload`, is always empty, so hex is correct for every bytes value written here.
+function toOtlpJsonValue(_key: string, value: unknown): unknown {
+  if (typeof value === "bigint") return String(value);
+  if (value instanceof Uint8Array) return Array.from(value, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return value;
 }
 
 // Samples carry timestamps only, which the spec counts as one occurrence each. Samples without a

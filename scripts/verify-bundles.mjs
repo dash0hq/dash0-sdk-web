@@ -15,7 +15,7 @@ const RECORDING_BUNDLES = [
   "dist/dash0-session-recording.iife.js",
 ];
 const SDK_BUNDLES = ["dist/dash0.js", "dist/dash0.umd.cjs", "dist/dash0.iife.js"];
-// The profiling bundles carry the protobuf encoder. Like rrweb, it must stay out of the main SDK bundles.
+// The profiling bundles carry the OTLP/JSON encoder. Like rrweb, it must stay out of the main SDK bundles.
 const PROFILING_BUNDLES = ["dist/dash0-profiling.js", "dist/dash0-profiling.umd.cjs", "dist/dash0-profiling.iife.js"];
 const ENCODER_MARKERS = ["profile.frame.type", "dash0.profiling.idle_sample_count"];
 

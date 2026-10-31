@@ -5,8 +5,7 @@
 // source: opentelemetry/proto/collector/profiles/v1development/profiles_service.proto
 
 /* eslint-disable */
-import { type BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
-import { ProfilesDictionary, ResourceProfiles } from "../../../profiles/v1development/profiles";
+import type { ProfilesDictionary, ResourceProfiles } from "../../../profiles/v1development/profiles";
 
 export const protobufPackage = "opentelemetry.proto.collector.profiles.v1development";
 
@@ -67,55 +66,10 @@ export interface ExportProfilesPartialSuccess {
   errorMessage: string;
 }
 
-export const ExportProfilesServiceRequest: MessageFns<ExportProfilesServiceRequest> = {
-  encode(message: ExportProfilesServiceRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    for (const v of message.resourceProfiles) {
-      ResourceProfiles.encode(v!, writer.uint32(10).fork()).join();
-    }
-    if (message.dictionary !== undefined) {
-      ProfilesDictionary.encode(message.dictionary, writer.uint32(18).fork()).join();
-    }
-    return writer;
-  },
-
-  decode(_: BinaryReader | Uint8Array, length?: number): ExportProfilesServiceRequest {
-    throw new Error("decode not generated for ExportProfilesServiceRequest");
-  },
-};
-
-export const ExportProfilesServiceResponse: MessageFns<ExportProfilesServiceResponse> = {
-  encode(message: ExportProfilesServiceResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.partialSuccess !== undefined) {
-      ExportProfilesPartialSuccess.encode(message.partialSuccess, writer.uint32(10).fork()).join();
-    }
-    return writer;
-  },
-
-  decode(_: BinaryReader | Uint8Array, length?: number): ExportProfilesServiceResponse {
-    throw new Error("decode not generated for ExportProfilesServiceResponse");
-  },
-};
-
-export const ExportProfilesPartialSuccess: MessageFns<ExportProfilesPartialSuccess> = {
-  encode(message: ExportProfilesPartialSuccess, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.rejectedProfiles !== 0n) {
-      if (BigInt.asIntN(64, message.rejectedProfiles) !== message.rejectedProfiles) {
-        throw new globalThis.Error("value provided for field message.rejectedProfiles of type int64 too large");
-      }
-      writer.uint32(8).int64(message.rejectedProfiles);
-    }
-    if (message.errorMessage !== "") {
-      writer.uint32(18).string(message.errorMessage);
-    }
-    return writer;
-  },
-
-  decode(_: BinaryReader | Uint8Array, length?: number): ExportProfilesPartialSuccess {
-    throw new Error("decode not generated for ExportProfilesPartialSuccess");
-  },
-};
-
-export interface MessageFns<T> {
-  encode(message: T, writer?: BinaryWriter): BinaryWriter;
-  decode(input: BinaryReader | Uint8Array, length?: number): T;
+/**
+ * Service that can be used to push profiles between one Application instrumented with
+ * OpenTelemetry and a collector, or between a collector and a central collector.
+ */
+export interface ProfilesService {
+  Export(request: ExportProfilesServiceRequest): Promise<ExportProfilesServiceResponse>;
 }

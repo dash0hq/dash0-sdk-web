@@ -45,14 +45,15 @@ export type ProfileChunk = {
 };
 
 export type EncodedProfile = {
-  body: Uint8Array;
+  /** OTLP/JSON `ExportProfilesServiceRequest`. */
+  body: string;
   sampleCount: number;
   idleSampleCount: number;
 };
 
 /**
  * Turns a profiler trace into an OTLP `ExportProfilesServiceRequest`. Provided by the
- * `@dash0/sdk-web/profiling` entrypoint, so the main bundle does not carry the protobuf encoder.
+ * `@dash0/sdk-web/profiling` entrypoint, so the main bundle does not carry the encoder.
  */
 export type ProfileEncoder = (chunk: ProfileChunk) => EncodedProfile;
 

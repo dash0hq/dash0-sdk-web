@@ -138,7 +138,7 @@ privacy controls, sampling and chunk sizes.
 
 ### Profiling
 
-Profiling is an optional add-on for Chromium-based browsers. The protobuf encoder ships as its own bundle, so
+Profiling is an optional add-on for Chromium-based browsers. The encoder ships as its own bundle, so
 websites that do not profile pay nothing for it.
 
 With modules, import the encoder, hand it to `init` and enable the instrumentation:

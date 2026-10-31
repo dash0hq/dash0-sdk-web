@@ -43,9 +43,9 @@ const isProfileRateLimited = lazyRateLimiter({
 });
 
 /**
- * Sends an OTLP `ExportProfilesServiceRequest` that the profiling encoder already serialized to protobuf.
+ * Sends an OTLP `ExportProfilesServiceRequest` that the profiling encoder already serialized to OTLP/JSON.
  */
-export function sendProfile(body: Uint8Array, opts?: SendOptions): void {
+export function sendProfile(body: string, opts?: SendOptions): void {
   if (!vars.isSessionSampled) return;
 
   if (isProfileRateLimited()) {

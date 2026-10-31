@@ -27,7 +27,7 @@
   "scripts": {
     "build": "run-s build:clean build:typescript build:rollup build:verify build:stats",
     "build:clean": "rm -rf dist",
-    "gen:proto": "buf generate && prettier --write src/profiling/otlp src/profiling/otlp-test",
+    "gen:proto": "buf generate && prettier --write src/profiling/otlp",
     "build:typescript": "tsc -b",
     "build:rollup": "rollup -c -m",
     "build:verify": "node scripts/verify-bundles.mjs",
@@ -67,8 +67,7 @@
   "files": [
     "src",
     "dist",
-    "LICENSE",
-    "!**/otlp-test"
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18"
@@ -89,7 +88,6 @@
     "@babel/core": "^7.26.10",
     "@babel/preset-env": "^7.26.9",
     "@bufbuild/buf": "1.73.0",
-    "@bufbuild/protobuf": "2.16.0",
     "@release-it/conventional-changelog": "^10.0.1",
     "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-node-resolve": "^16.0.1",

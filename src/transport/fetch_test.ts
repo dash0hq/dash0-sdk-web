@@ -44,14 +44,14 @@ describe("fetch transport keepalive handling", () => {
     expect(fetchOptions.keepalive).toBe(true);
   });
 
-  it("should send encoded bytes as protobuf instead of JSON", async () => {
-    const body = new Uint8Array([10, 2, 8, 1]);
+  it("should send an already serialized body as is", async () => {
+    const body = '{"resourceProfiles":[]}';
 
     await send("/v1development/profiles", body);
 
     const [url, fetchOptions] = fetchMock.mock.calls[0]!;
     expect(String(url)).toBe("https://api.example.com/v1development/profiles");
-    expect(fetchOptions.headers["Content-Type"]).toBe("application/x-protobuf");
+    expect(fetchOptions.headers["Content-Type"]).toBe("application/json");
     expect(fetchOptions.headers["Authorization"]).toBe("Bearer test-token");
     expect(fetchOptions.body).toBe(body);
   });

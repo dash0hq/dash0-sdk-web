@@ -125,10 +125,4 @@ const configs = [
   },
 ];
 
-// @bufbuild/protobuf's TypeScript helpers reference top-level `this`. The affected code is tree-shaken away.
-const onwarn = (warning, warn) => {
-  if (warning.code === "THIS_IS_UNDEFINED" && warning.id?.includes("@bufbuild/protobuf")) return;
-  warn(warning);
-};
-
-export default configs.map((config) => ({ ...config, onwarn }));
+export default configs;

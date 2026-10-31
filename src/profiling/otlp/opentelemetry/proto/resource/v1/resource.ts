@@ -5,8 +5,7 @@
 // source: opentelemetry/proto/resource/v1/resource.proto
 
 /* eslint-disable */
-import { type BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
-import { EntityRef, KeyValue } from "../../common/v1/common";
+import type { EntityRef, KeyValue } from "../../common/v1/common";
 
 export const protobufPackage = "opentelemetry.proto.resource.v1";
 
@@ -32,28 +31,4 @@ export interface Resource {
    * Status: [Development]
    */
   entityRefs: EntityRef[];
-}
-
-export const Resource: MessageFns<Resource> = {
-  encode(message: Resource, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    for (const v of message.attributes) {
-      KeyValue.encode(v!, writer.uint32(10).fork()).join();
-    }
-    if (message.droppedAttributesCount !== 0) {
-      writer.uint32(16).uint32(message.droppedAttributesCount);
-    }
-    for (const v of message.entityRefs) {
-      EntityRef.encode(v!, writer.uint32(26).fork()).join();
-    }
-    return writer;
-  },
-
-  decode(_: BinaryReader | Uint8Array, length?: number): Resource {
-    throw new Error("decode not generated for Resource");
-  },
-};
-
-export interface MessageFns<T> {
-  encode(message: T, writer?: BinaryWriter): BinaryWriter;
-  decode(input: BinaryReader | Uint8Array, length?: number): T;
 }

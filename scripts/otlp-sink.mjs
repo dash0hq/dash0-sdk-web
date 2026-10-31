@@ -12,18 +12,11 @@
 //
 // Gzip request bodies (which the SDK uses for recording chunks) are inflated by body-parser.
 //
-// Profiles (POST /v1development/profiles) are protobuf. Each one is decoded with the generated code and summarized,
-// and http://localhost:4318/examples/profiling/ serves the profiling example page with `Document-Policy: js-profiling`.
+// Profiles (POST /v1development/profiles) are summarized one line per chunk, and http://localhost:4318/examples/profiling/ serves the profiling example page with `Document-Policy: js-profiling`.
 import express from "express";
 import bodyParser from "body-parser";
 import { appendFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
-import { tsImport } from "tsx/esm/api";
-
-const { ExportProfilesServiceRequest } = await tsImport(
-  "../src/profiling/otlp-test/opentelemetry/proto/collector/profiles/v1development/profiles_service.ts",
-  import.meta.url
-);
 const ROOT = path.resolve(import.meta.dirname, "..");
 
 const PORT = parseInt(process.env.PORT ?? "4318", 10);
@@ -43,23 +36,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// Registered before the JSON parser, which would otherwise try to parse the protobuf body.
-app.post("/v1development/profiles", bodyParser.raw({ limit: "50mb", type: () => true }), (req, res) => {
+app.post("/v1development/profiles", bodyParser.json({ limit: "50mb", type: () => true }), (req, res) => {
   const isGzip = req.headers["content-encoding"] === "gzip";
-  const decoded = ExportProfilesServiceRequest.decode(req.body);
-  const summary = summarizeProfiles(decoded, Number(req.headers["content-length"]), req.body.length);
+  const summary = summarizeProfiles(req.body, Number(req.headers["content-length"]));
   counters.profiles++;
   appendFileSync(
     REQUESTS_FILE,
     JSON.stringify({ ts: new Date().toISOString(), path: req.path, headers: req.headers, summary }) + "\n"
   );
   console.log(
-    `PROF  samples=${summary.samples}  idle=${summary.idle}  stacks=${summary.stacks}  bytes=${summary.protobufBytes}  json~${summary.jsonBytes}${isGzip ? ` (gzip ${summary.wireBytes})` : ""}  session=${summary.attributes["session.id"]}  top=${summary.topLeaves.join(", ")}`
+    `PROF  samples=${summary.samples}  idle=${summary.idle}  stacks=${summary.stacks}  bytes=${summary.jsonBytes}${isGzip ? ` (gzip ${summary.wireBytes})` : ""}  session=${summary.attributes["session.id"]}  top=${summary.topLeaves.join(", ")}`
   );
-  res.status(200).type("application/x-protobuf").send(Buffer.alloc(0));
+  res.status(200).json({});
 });
 
-function summarizeProfiles(request, wireBytes, protobufBytes) {
+function summarizeProfiles(request, wireBytes) {
   const dict = request.dictionary;
   const str = (i) => dict.stringTable[i];
   const profile = request.resourceProfiles[0].scopeProfiles[0].profiles[0];
@@ -87,11 +78,7 @@ function summarizeProfiles(request, wireBytes, protobufBytes) {
     .map(([name, n]) => `${name}=${n}`);
   return {
     wireBytes,
-    protobufBytes,
-    // Approximates the OTLP/JSON encoding of the same request: int64 as strings, bytes as base64.
-    jsonBytes: JSON.stringify(request, (_, v) =>
-      typeof v === "bigint" ? v.toString() : v instanceof Uint8Array ? Buffer.from(v).toString("base64") : v
-    ).length,
+    jsonBytes: JSON.stringify(request).length,
     samples,
     idle: Number(attributes["dash0.profiling.idle_sample_count"] ?? 0),
     stacks: dict.stackTable.length - 1,

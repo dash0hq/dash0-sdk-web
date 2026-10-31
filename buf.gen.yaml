@@ -6,16 +6,5 @@ plugins:
     out: src/profiling/otlp
     opt:
       - forceLong=bigint
-      - outputJsonMethods=false
-      - outputPartialMethods=false
-      - outputServices=false
-      - outputDecodeIncludeTypes=^$
-      - esModuleInterop=true
-  - local: ./node_modules/.bin/protoc-gen-ts_proto
-    out: src/profiling/otlp-test
-    opt:
-      - forceLong=bigint
-      - outputJsonMethods=false
-      - outputPartialMethods=false
-      - outputServices=false
+      - onlyTypes=true
       - esModuleInterop=true

@@ -21,17 +21,14 @@ export type SendOptions = {
 export async function send(path: string, body: unknown, opts?: SendOptions): Promise<void> {
   debug("Transmitting telemetry to endpoints", body);
 
-  const isProtobuf = body instanceof Uint8Array;
-  const encoded: Uint8Array<ArrayBuffer> | string = isProtobuf
-    ? (body as Uint8Array<ArrayBuffer>)
-    : JSON.stringify(body);
-  let requestBody: BodyInit = encoded;
-  let byteLength = new Blob([encoded]).size;
+  const jsonString = typeof body === "string" ? body : JSON.stringify(body);
+  let requestBody: ArrayBuffer | string = jsonString;
+  let byteLength = new Blob([jsonString]).size;
   let isCompressed = false;
 
   // Try to compress if supported
   if (typeof CompressionStream !== "undefined" && (opts?.compress ?? vars.enableTransportCompression)) {
-    requestBody = await compressWithGzip(encoded);
+    requestBody = await compressWithGzip(jsonString);
     byteLength = requestBody.byteLength;
     isCompressed = true;
   }
@@ -44,7 +41,7 @@ export async function send(path: string, body: unknown, opts?: SendOptions): Pro
         url.pathname = url.pathname + (url.pathname.endsWith("/") ? path.substring(1) : path);
 
         const headers: HeadersInit = {
-          "Content-Type": isProtobuf ? "application/x-protobuf" : "application/json",
+          "Content-Type": "application/json",
           Authorization: `Bearer ${endpoint["authToken"]}`,
         };
 
@@ -89,7 +86,7 @@ export async function send(path: string, body: unknown, opts?: SendOptions): Pro
   );
 }
 
-async function compressWithGzip(data: BlobPart): Promise<ArrayBuffer> {
+async function compressWithGzip(data: string): Promise<ArrayBuffer> {
   const blob = new Blob([data]);
   const stream = blob.stream();
   const compressedStream = stream.pipeThrough(new CompressionStream("gzip"));

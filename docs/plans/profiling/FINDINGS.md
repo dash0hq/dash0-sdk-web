@@ -4,7 +4,7 @@ Findings from building `@dash0/profiling`, which sends JS Self-Profiling samples
 
 ## OTLP Profiles version
 
-The encoder is generated from [opentelemetry-proto v1.11.0](https://github.com/open-telemetry/opentelemetry-proto/tree/v1.11.0/opentelemetry/proto/profiles/v1development)
+The encoder's OTLP types are generated from [opentelemetry-proto v1.11.0](https://github.com/open-telemetry/opentelemetry-proto/tree/v1.11.0/opentelemetry/proto/profiles/v1development)
 (`profiles/v1development`), vendored under `proto/`. Run `pnpm gen:proto` to regenerate it.
 
 How it was chosen:
@@ -55,9 +55,11 @@ Headless Chrome 156 on macOS, example page, 10 ms requested interval (Chrome rep
 | Busy, about half the time in JavaScript | 235 to 242           | 995 to 1022  | 22 to 24 | 3.2 to 3.3 KB | 2.0 KB | 11.9 to 13.3 KB      |
 | Mostly idle, 10 ms of work every 260 ms | 11 to 13             | 1160 to 1175 | 4 to 6   | 0.9 to 1.0 KB | 0.7 KB | not measured         |
 
-The JSON column is the decoded request serialized with int64 as strings and bytes as base64, an approximation of
-OTLP/JSON. Protobuf is about 4 times smaller. Chunks sent while the page hides or unloads are not compressed, and
-stayed under 2 KB in these runs, far below the 60 KB keepalive budget.
+The SDK sends OTLP/JSON, like logs and traces. These runs used the earlier protobuf encoder: the JSON column is that
+request serialized with int64 as strings and bytes as base64, close to the OTLP/JSON the SDK sends now. The JSON
+encoder was not re-measured in a browser. A synthetic busy chunk measured 3.4 KB gzip as protobuf and 3.3 KB as JSON,
+so compressed chunks cost about the same. Chunks sent while the page hides or unloads are not compressed: about 4 times
+larger as JSON, up to about 13 KB in these runs, still below the 60 KB keepalive budget.
 
 ## Bundle size
 
@@ -67,10 +69,11 @@ Built with `pnpm build`, gzip sizes from `build:stats`.
 | -------------------------- | --------------------- | --------------------- |
 | `dash0.js`                 | 89.0 kB, 27.3 kB gzip | 91.5 kB, 28.2 kB gzip |
 | `dash0.iife.js`            | 89.4 kB, 27.5 kB gzip | 91.9 kB, 28.3 kB gzip |
-| `dash0-profiling.js` (new) |                       | 20.2 kB, 5.5 kB gzip  |
+| `dash0-profiling.js` (new) |                       | 4.2 kB, 1.7 kB gzip   |
 
-The main bundle grows by 0.9 kB gzip for the controller, which runs only when profiling is enabled. The encoder and
-`@bufbuild/protobuf` are only in the profiling bundle; `scripts/verify-bundles.mjs` fails the build otherwise.
+The main bundle grows by 0.9 kB gzip for the controller, which runs only when profiling is enabled. The encoder is only
+in the profiling bundle; `scripts/verify-bundles.mjs` fails the build otherwise. With protobuf and
+`@bufbuild/protobuf`, the profiling bundle was 20.5 kB, 5.6 kB gzip.
 
 ## Overhead
 

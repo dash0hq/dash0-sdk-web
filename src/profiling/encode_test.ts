@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { BUILD_ID_ATTRIBUTE, encodeProfile, FRAME_TYPE_ATTRIBUTE, IDLE_SAMPLE_COUNT_ATTRIBUTE } from "./encode";
-import { ExportProfilesServiceRequest } from "./otlp-test/opentelemetry/proto/collector/profiles/v1development/profiles_service";
 import type { ProfileChunk, ProfilerTrace } from "../types/profiling";
 
 const APP_JS = "https://example.com/app.js";
@@ -42,12 +41,12 @@ const chunk: ProfileChunk = {
 
 function decode(input: ProfileChunk = chunk) {
   const encoded = encodeProfile(input);
-  const request = ExportProfilesServiceRequest.decode(encoded.body);
+  const request = JSON.parse(encoded.body);
   const dict = request.dictionary!;
   const profile = request.resourceProfiles[0]!.scopeProfiles[0]!.profiles[0]!;
   const str = (i: number) => dict.stringTable[i];
   const functionNames = (stackIndex: number) =>
-    dict.stackTable[stackIndex]!.locationIndices.map((l) => {
+    dict.stackTable[stackIndex]!.locationIndices.map((l: number) => {
       const line = dict.locationTable[l]!.lines[0]!;
       return str(dict.functionTable[line.functionIndex]!.nameStrindex);
     });
@@ -66,7 +65,7 @@ describe("encodeProfile", () => {
       nameStrindex: 0,
       systemNameStrindex: 0,
       filenameStrindex: 0,
-      startLine: 0n,
+      startLine: "0",
     });
     expect(dict.locationTable[0]!.lines).toEqual([]);
     expect(dict.stackTable[0]!.locationIndices).toEqual([]);
@@ -85,7 +84,7 @@ describe("encodeProfile", () => {
     expect(new Set(dict.stringTable).size).toBe(dict.stringTable.length);
     expect(dict.stringTable).not.toContain("never-sampled");
 
-    expect(profile.samples.map((s) => functionNames(s.stackIndex))).toEqual([
+    expect(profile.samples.map((s: any) => functionNames(s.stackIndex))).toEqual([
       ["work", "main"],
       ["(anonymous)", "work", "main"],
       ["main"],
@@ -96,8 +95,8 @@ describe("encodeProfile", () => {
 
   it("keeps line and column and marks every location as a v8js frame", () => {
     const { dict, attribute } = decode();
-    const work = dict.locationTable.find((l) => l.lines[0]?.line === 10n)!;
-    expect(work.lines[0]!.column).toBe(5n);
+    const work = dict.locationTable.find((l: any) => l.lines[0]?.line === "10")!;
+    expect(work.lines[0]!.column).toBe("5");
     for (const location of dict.locationTable.slice(1)) {
       expect(location.attributeIndices.map(attribute)).toEqual([[FRAME_TYPE_ATTRIBUTE, { stringValue: "v8js" }]]);
     }
@@ -106,20 +105,27 @@ describe("encodeProfile", () => {
   it("converts sample timestamps to absolute unix nanoseconds", () => {
     const { profile } = decode();
     // timeOrigin 1761822000123.25 ms + 100 ms, and + 150.5 ms
-    expect(profile.samples[0]!.timestampsUnixNano[0]).toBe(1761822000223250000n);
-    expect(profile.samples[2]!.timestampsUnixNano[0]).toBe(1761822000273750000n);
-    expect(profile.timeUnixNano).toBe(1761822000218250000n);
-    expect(profile.durationNano).toBe(65_000_000n);
-    expect(profile.period).toBe(10_000_000n);
+    expect(profile.samples[0]!.timestampsUnixNano[0]).toBe("1761822000223250000");
+    expect(profile.samples[2]!.timestampsUnixNano[0]).toBe("1761822000273750000");
+    expect(profile.timeUnixNano).toBe("1761822000218250000");
+    expect(profile.durationNano).toBe("65000000");
+    expect(profile.period).toBe("10000000");
   });
 
   it("counts samples without a stack as idle and does not send them", () => {
     const { encoded, profile, attribute } = decode();
-    const sent = profile.samples.reduce((n, s) => n + s.timestampsUnixNano.length, 0);
+    const sent = profile.samples.reduce((n: number, s: any) => n + s.timestampsUnixNano.length, 0);
     expect(sent).toBe(4);
     expect(encoded.sampleCount).toBe(4);
     expect(encoded.idleSampleCount).toBe(2);
-    expect(profile.attributeIndices.map(attribute)).toContainEqual([IDLE_SAMPLE_COUNT_ATTRIBUTE, { intValue: 2n }]);
+    expect(profile.attributeIndices.map(attribute)).toContainEqual([IDLE_SAMPLE_COUNT_ATTRIBUTE, { intValue: "2" }]);
+  });
+
+  it("writes 64-bit integers as strings and IDs as hex, as OTLP/JSON requires", () => {
+    const { profile, dict } = decode();
+    expect(profile.profileId).toMatch(/^[0-9a-f]{32}$/);
+    expect(dict.linkTable[0]).toEqual({ traceId: "0".repeat(32), spanId: "0".repeat(16) });
+    expect(profile.originalPayload).toBe("");
   });
 
   it("uses the given resource, scope and signal attributes", () => {
@@ -150,7 +156,7 @@ describe("encodeProfile", () => {
     const { dict, str, attribute } = decode({ ...chunk, debugIds: { [APP_JS]: debugId } });
 
     const mappingOf = (functionName: string) =>
-      dict.locationTable.find((location) => {
+      dict.locationTable.find((location: any) => {
         const line = location.lines[0];
         return line != null && str(dict.functionTable[line.functionIndex]!.nameStrindex) === functionName;
       })!.mappingIndex;
