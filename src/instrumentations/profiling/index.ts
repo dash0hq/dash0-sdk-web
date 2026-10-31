@@ -1,6 +1,7 @@
 import { vars } from "../../vars";
 import { sessionId } from "../../api/session";
 import { debug, doc, isSessionSampledIn, nowNanos, perf, warn, win } from "../../utils";
+import { generateUniqueId, TRACE_ID_BYTES } from "../../utils/id";
 import { setTimeout, clearTimeout } from "../../utils/timers";
 import { addEventListener } from "../../utils/listeners";
 import { LAST_CHANCE_PRIORITY_LARGE_PAYLOAD, onLastChance } from "../../utils/on-last-chance";
@@ -18,7 +19,7 @@ import { ProfileEncoder, ProfilerTrace } from "../../types/profiling";
 /** Global set by `dash0-profiling.iife.js`. */
 export const GLOBAL_PROFILE_ENCODER_KEY = "dash0ProfileEncoder";
 
-export type UnavailableReason = "api_missing" | "document_policy" | "start_failed";
+type UnavailableReason = "api_missing" | "document_policy" | "start_failed";
 
 type JsProfiler = {
   readonly sampleInterval: number;
@@ -38,7 +39,6 @@ let encoder: ProfileEncoder | undefined;
 let running: Running | undefined;
 let rotateTimer: ReturnType<typeof setTimeout> | undefined;
 let waitingForIdle: Stopped[] = [];
-let idleScheduled = false;
 let unavailable = false;
 
 /**
@@ -113,7 +113,7 @@ function startChunk(url = win?.location.href): void {
  * gzip stream: those chunks, and any still waiting for idle time, are encoded and sent synchronously.
  */
 function stopChunk(compress: boolean): void {
-  if (!compress) sendWaitingChunks();
+  if (!compress) flushWaiting(false);
   if (rotateTimer != null) {
     clearTimeout(rotateTimer);
     rotateTimer = undefined;
@@ -133,27 +133,21 @@ function stopChunk(compress: boolean): void {
     .catch((e) => debug("Failed to stop profiler", e));
 }
 
+// Only the first waiting chunk schedules a flush; the flush empties the queue, so the next chunk schedules again.
 function sendWhenIdle(stopped: Stopped): void {
-  waitingForIdle.push(stopped);
-  if (idleScheduled) return;
-  idleScheduled = true;
+  if (waitingForIdle.push(stopped) > 1) return;
   const requestIdleCallback = (win as unknown as { requestIdleCallback?: IdleScheduler } | undefined)
     ?.requestIdleCallback;
-  const run = () => {
-    idleScheduled = false;
-    const chunks = waitingForIdle;
-    waitingForIdle = [];
-    chunks.forEach((chunk) => emit(chunk, true));
-  };
+  const run = () => flushWaiting(true);
   if (typeof requestIdleCallback === "function")
     requestIdleCallback.call(win, run, { timeout: IDLE_ENCODE_TIMEOUT_MS });
   else setTimeout(run, 0);
 }
 
-function sendWaitingChunks(): void {
+function flushWaiting(compress: boolean): void {
   const chunks = waitingForIdle;
   waitingForIdle = [];
-  chunks.forEach((chunk) => emit(chunk, false));
+  chunks.forEach((chunk) => emit(chunk, compress));
 }
 
 function emit({ trace, chunk, endTime }: Stopped, compress: boolean): void {
@@ -172,6 +166,7 @@ function emit({ trace, chunk, endTime }: Stopped, compress: boolean): void {
 
   try {
     const encoded = encoder({
+      profileId: generateUniqueId(TRACE_ID_BYTES),
       trace: { ...trace, resources },
       debugIds,
       timeOrigin: perf.timeOrigin,

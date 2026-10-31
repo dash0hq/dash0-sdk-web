@@ -1,5 +1,2 @@
 /index.json
 /pnpm-lock.yaml
-/src/profiling/otlp
-/src/profiling/otlp-test
-/proto

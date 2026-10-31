@@ -26,6 +26,7 @@ const trace: ProfilerTrace = {
 };
 
 const chunk: ProfileChunk = {
+  profileId: "0123456789abcdef0123456789abcdef",
   trace,
   timeOrigin: 1761822000123.25,
   startTime: 95,
@@ -61,14 +62,16 @@ describe("encodeProfile", () => {
   it("keeps the zero value at index 0 of every dictionary table", () => {
     const { dict } = decode();
     expect(dict.stringTable[0]).toBe("");
-    expect(dict.functionTable[0]).toEqual({
-      nameStrindex: 0,
-      systemNameStrindex: 0,
-      filenameStrindex: 0,
-      startLine: "0",
-    });
-    expect(dict.locationTable[0]!.lines).toEqual([]);
-    expect(dict.stackTable[0]!.locationIndices).toEqual([]);
+    for (const table of [
+      dict.mappingTable,
+      dict.locationTable,
+      dict.functionTable,
+      dict.linkTable,
+      dict.attributeTable,
+      dict.stackTable,
+    ]) {
+      expect(table[0]).toEqual({});
+    }
     expect(dict.mappingTable).toHaveLength(1);
     expect(dict.linkTable).toHaveLength(1);
   });
@@ -95,7 +98,7 @@ describe("encodeProfile", () => {
 
   it("keeps line and column and marks every location as a v8js frame", () => {
     const { dict, attribute } = decode();
-    const work = dict.locationTable.find((l: any) => l.lines[0]?.line === "10")!;
+    const work = dict.locationTable.find((l: any) => l.lines?.[0]?.line === "10")!;
     expect(work.lines[0]!.column).toBe("5");
     for (const location of dict.locationTable.slice(1)) {
       expect(location.attributeIndices.map(attribute)).toEqual([[FRAME_TYPE_ATTRIBUTE, { stringValue: "v8js" }]]);
@@ -117,23 +120,13 @@ describe("encodeProfile", () => {
     const sent = profile.samples.reduce((n: number, s: any) => n + s.timestampsUnixNano.length, 0);
     expect(sent).toBe(4);
     expect(encoded.sampleCount).toBe(4);
-    expect(encoded.idleSampleCount).toBe(2);
     expect(profile.attributeIndices.map(attribute)).toContainEqual([IDLE_SAMPLE_COUNT_ATTRIBUTE, { intValue: "2" }]);
-  });
-
-  it("writes 64-bit integers as strings and IDs as hex, as OTLP/JSON requires", () => {
-    const { profile, dict } = decode();
-    expect(profile.profileId).toMatch(/^[0-9a-f]{32}$/);
-    expect(dict.linkTable[0]).toEqual({ traceId: "0".repeat(32), spanId: "0".repeat(16) });
-    expect(profile.originalPayload).toBe("");
   });
 
   it("uses the given resource, scope and signal attributes", () => {
     const { request, profile, attribute, str } = decode();
     const resourceProfiles = request.resourceProfiles[0]!;
-    expect(resourceProfiles.resource!.attributes).toEqual([
-      { key: "service.name", value: { stringValue: "website" }, keyStrindex: 0 },
-    ]);
+    expect(resourceProfiles.resource!.attributes).toEqual([{ key: "service.name", value: { stringValue: "website" } }]);
     expect(resourceProfiles.scopeProfiles[0]!.scope).toMatchObject({ name: "dash0-web-sdk", version: "1.2.3" });
     expect(profile.attributeIndices.map(attribute)).toEqual(
       expect.arrayContaining([
@@ -157,7 +150,7 @@ describe("encodeProfile", () => {
 
     const mappingOf = (functionName: string) =>
       dict.locationTable.find((location: any) => {
-        const line = location.lines[0];
+        const line = location.lines?.[0];
         return line != null && str(dict.functionTable[line.functionIndex]!.nameStrindex) === functionName;
       })!.mappingIndex;
 

@@ -4,8 +4,8 @@ Findings from building `@dash0/profiling`, which sends JS Self-Profiling samples
 
 ## OTLP Profiles version
 
-The encoder's OTLP types are generated from [opentelemetry-proto v1.11.0](https://github.com/open-telemetry/opentelemetry-proto/tree/v1.11.0/opentelemetry/proto/profiles/v1development)
-(`profiles/v1development`), vendored under `proto/`. Run `pnpm gen:proto` to regenerate it.
+The encoder writes OTLP/JSON for [opentelemetry-proto v1.11.0](https://github.com/open-telemetry/opentelemetry-proto/tree/v1.11.0/opentelemetry/proto/profiles/v1development)
+(`profiles/v1development`). Its types are in `src/types/otlp.ts` and cover only the fields the SDK sets.
 
 How it was chosen:
 
@@ -69,7 +69,7 @@ Built with `pnpm build`, gzip sizes from `build:stats`.
 | -------------------------- | --------------------- | --------------------- |
 | `dash0.js`                 | 89.0 kB, 27.3 kB gzip | 91.5 kB, 28.2 kB gzip |
 | `dash0.iife.js`            | 89.4 kB, 27.5 kB gzip | 91.9 kB, 28.3 kB gzip |
-| `dash0-profiling.js` (new) |                       | 4.2 kB, 1.7 kB gzip   |
+| `dash0-profiling.js` (new) |                       | 2.7 kB, 1.2 kB gzip   |
 
 The main bundle grows by 0.9 kB gzip for the controller, which runs only when profiling is enabled. The encoder is only
 in the profiling bundle; `scripts/verify-bundles.mjs` fails the build otherwise. With protobuf and

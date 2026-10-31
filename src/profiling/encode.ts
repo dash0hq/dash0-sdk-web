@@ -1,50 +1,31 @@
-import type { AnyValue as SdkAnyValue, InstrumentationScope as SdkScope, KeyValue as SdkKeyValue } from "../types/otlp";
+import type { AnyValue, ExportProfilesServiceRequest, Profile, ProfilesDictionary, Sample } from "../types/otlp";
 import type { EncodedProfile, ProfileChunk, ProfilerTrace } from "../types/profiling";
-import type { AnyValue, InstrumentationScope, KeyValue } from "./otlp/opentelemetry/proto/common/v1/common";
-import type {
-  FunctionMessage,
-  KeyValueAndUnit,
-  Location,
-  Profile,
-  Sample,
-  Stack,
-} from "./otlp/opentelemetry/proto/profiles/v1development/profiles";
-import type { ExportProfilesServiceRequest } from "./otlp/opentelemetry/proto/collector/profiles/v1development/profiles_service";
 
 export const FRAME_TYPE_ATTRIBUTE = "profile.frame.type";
-export const FRAME_TYPE_V8JS = "v8js";
+const FRAME_TYPE_V8JS = "v8js";
 export const IDLE_SAMPLE_COUNT_ATTRIBUTE = "dash0.profiling.idle_sample_count";
 // One of the build ID keys the Dash0 collector reads from a mapping; v8js frames with a UUID there get source maps.
 export const BUILD_ID_ATTRIBUTE = "process.executable.build_id.htlhash";
 const ANONYMOUS_FUNCTION = "(anonymous)";
 const NANOS_PER_MILLI = 1_000_000;
 
-export function encodeProfile(chunk: ProfileChunk): EncodedProfile {
-  const { request, sampleCount, idleSampleCount } = toExportRequest(chunk);
-  return { body: JSON.stringify(request, toOtlpJsonValue), sampleCount, idleSampleCount };
-}
-
-// OTLP/JSON writes 64-bit integers as strings and IDs as hex
-// (https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding). The only other bytes field,
-// `originalPayload`, is always empty, so hex is correct for every bytes value written here.
-function toOtlpJsonValue(_key: string, value: unknown): unknown {
-  if (typeof value === "bigint") return String(value);
-  if (value instanceof Uint8Array) return Array.from(value, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return value;
-}
-
 // Samples carry timestamps only, which the spec counts as one occurrence each. Samples without a
 // stack were taken while no JavaScript ran: they are counted, not sent.
-export function toExportRequest(chunk: ProfileChunk): {
-  request: ExportProfilesServiceRequest;
-  sampleCount: number;
-  idleSampleCount: number;
-} {
+export function encodeProfile(chunk: ProfileChunk): EncodedProfile {
   const dict = newDictionary();
-  const { trace, timeOrigin } = chunk;
+  const { trace } = chunk;
+  const unixNanos = unixNanosSince(chunk.timeOrigin);
 
-  const frameTypeAttribute = dict.attribute(FRAME_TYPE_ATTRIBUTE, { stringValue: FRAME_TYPE_V8JS });
+  const locationByFrame = new Map<number, number>();
   const locationOfFrame = (frameId: number): number => {
+    let location = locationByFrame.get(frameId);
+    if (location === undefined) {
+      location = newLocation(frameId);
+      locationByFrame.set(frameId, location);
+    }
+    return location;
+  };
+  const newLocation = (frameId: number): number => {
     const frame = trace.frames[frameId];
     if (!frame) return 0;
     const resource = resourceOf(trace, frame.resourceId);
@@ -53,7 +34,6 @@ export function toExportRequest(chunk: ProfileChunk): {
       dict.func(frame.name || ANONYMOUS_FUNCTION, resource),
       frame.line ?? 0,
       frame.column ?? 0,
-      frameTypeAttribute,
       debugId ? dict.mapping(resource, dict.attribute(BUILD_ID_ATTRIBUTE, { stringValue: debugId })) : 0
     );
   };
@@ -76,61 +56,43 @@ export function toExportRequest(chunk: ProfileChunk): {
 
     let grouped = samplesByStack.get(stackIndex);
     if (!grouped) {
-      grouped = { stackIndex, attributeIndices: [], linkIndex: 0, values: [], timestampsUnixNano: [] };
+      grouped = { stackIndex, timestampsUnixNano: [] };
       samplesByStack.set(stackIndex, grouped);
     }
-    grouped.timestampsUnixNano.push(toUnixNanos(timeOrigin, sample.timestamp));
+    grouped.timestampsUnixNano.push(unixNanos(sample.timestamp));
   }
 
-  const attributeIndices = chunk.attributes.map((kv) => dict.attribute(kv.key, toProtoValue(kv.value)));
-  attributeIndices.push(dict.attribute(IDLE_SAMPLE_COUNT_ATTRIBUTE, { intValue: BigInt(idleSampleCount) }));
+  const attributeIndices = chunk.attributes.map((kv) => dict.attribute(kv.key, kv.value));
+  attributeIndices.push(dict.attribute(IDLE_SAMPLE_COUNT_ATTRIBUTE, { intValue: String(idleSampleCount) }));
 
   const profile: Profile = {
     sampleType: { typeStrindex: dict.string("samples"), unitStrindex: dict.string("count") },
     samples: [...samplesByStack.values()],
-    timeUnixNano: toUnixNanos(timeOrigin, chunk.startTime),
-    durationNano: BigInt(Math.max(0, Math.round((chunk.endTime - chunk.startTime) * NANOS_PER_MILLI))),
+    timeUnixNano: unixNanos(chunk.startTime),
+    durationNano: String(Math.max(0, Math.round((chunk.endTime - chunk.startTime) * NANOS_PER_MILLI))),
     periodType: { typeStrindex: dict.string("cpu"), unitStrindex: dict.string("nanoseconds") },
-    period: BigInt(Math.round(chunk.sampleIntervalMs * NANOS_PER_MILLI)),
-    profileId: randomBytes(16),
-    droppedAttributesCount: 0,
-    originalPayloadFormat: "",
-    originalPayload: new Uint8Array(0),
+    period: String(Math.round(chunk.sampleIntervalMs * NANOS_PER_MILLI)),
+    profileId: chunk.profileId,
     attributeIndices,
   };
 
-  return {
-    request: {
-      resourceProfiles: [
-        {
-          resource: {
-            attributes: chunk.resource.attributes.map(toProtoKeyValue),
-            droppedAttributesCount: 0,
-            entityRefs: [],
-          },
-          scopeProfiles: [{ scope: toProtoScope(chunk.scope), profiles: [profile], schemaUrl: "" }],
-          schemaUrl: "",
-        },
-      ],
-      dictionary: dict.tables,
-    },
-    sampleCount: trace.samples.length - idleSampleCount,
-    idleSampleCount,
+  const request: ExportProfilesServiceRequest = {
+    resourceProfiles: [{ resource: chunk.resource, scopeProfiles: [{ scope: chunk.scope, profiles: [profile] }] }],
+    dictionary: dict.tables,
   };
+  return { body: JSON.stringify(request), sampleCount: trace.samples.length - idleSampleCount };
 }
 
 function newDictionary() {
   // Index 0 of every table must be present and hold the zero value; index 0 means "unset".
-  const tables = {
-    mappingTable: [{ memoryStart: 0n, memoryLimit: 0n, fileOffset: 0n, filenameStrindex: 0, attributeIndices: [] }],
-    locationTable: [{ mappingIndex: 0, address: 0n, lines: [], attributeIndices: [] }] as Location[],
-    functionTable: [
-      { nameStrindex: 0, systemNameStrindex: 0, filenameStrindex: 0, startLine: 0n },
-    ] as FunctionMessage[],
-    linkTable: [{ traceId: new Uint8Array(16), spanId: new Uint8Array(8) }],
+  const tables: ProfilesDictionary = {
+    mappingTable: [{}],
+    locationTable: [{}],
+    functionTable: [{}],
+    linkTable: [{}],
     stringTable: [""],
-    attributeTable: [{ keyStrindex: 0, value: undefined, unitStrindex: 0 }] as KeyValueAndUnit[],
-    stackTable: [{ locationIndices: [] }] as Stack[],
+    attributeTable: [{}],
+    stackTable: [{}],
   };
   const indexes = new Map<string, number>();
 
@@ -151,42 +113,29 @@ function newDictionary() {
       const filenameStrindex = dict.string(file);
       return intern(tables.functionTable, `f${nameStrindex}:${filenameStrindex}`, () => ({
         nameStrindex,
-        systemNameStrindex: 0,
         filenameStrindex,
-        startLine: 0n,
       }));
     },
     mapping: (file: string, buildIdAttributeIndex: number): number => {
       const filenameStrindex = dict.string(file);
       return intern(tables.mappingTable, `m${filenameStrindex}:${buildIdAttributeIndex}`, () => ({
-        memoryStart: 0n,
-        memoryLimit: 0n,
-        fileOffset: 0n,
         filenameStrindex,
         attributeIndices: [buildIdAttributeIndex],
       }));
     },
-    location: (
-      functionIndex: number,
-      line: number,
-      column: number,
-      attributeIndex: number,
-      mappingIndex: number
-    ): number =>
+    location: (functionIndex: number, line: number, column: number, mappingIndex: number): number =>
       intern(tables.locationTable, `l${functionIndex}:${line}:${column}:${mappingIndex}`, () => ({
         mappingIndex,
-        address: 0n,
-        lines: [{ functionIndex, line: BigInt(line), column: BigInt(column) }],
-        attributeIndices: [attributeIndex],
+        lines: [{ functionIndex, line: String(line), column: String(column) }],
+        attributeIndices: [dict.attribute(FRAME_TYPE_ATTRIBUTE, { stringValue: FRAME_TYPE_V8JS })],
       })),
     stack: (locationIndices: number[]): number =>
       intern(tables.stackTable, "k" + locationIndices.join(","), () => ({ locationIndices })),
     attribute: (key: string, value: AnyValue): number => {
       const keyStrindex = dict.string(key);
-      return intern(tables.attributeTable, `a${keyStrindex}:${valueKey(value)}`, () => ({
+      return intern(tables.attributeTable, `a${keyStrindex}:${JSON.stringify(value)}`, () => ({
         keyStrindex,
         value,
-        unitStrindex: 0,
       }));
     },
   };
@@ -213,43 +162,10 @@ function resourceOf(trace: ProfilerTrace, resourceId: number | undefined): strin
   return resourceId == null ? "" : (trace.resources[resourceId] ?? "");
 }
 
-function toUnixNanos(timeOrigin: number, relativeMillis: number): bigint {
+function unixNanosSince(timeOrigin: number): (relativeMillis: number) => string {
   // timeOrigin * 1e6 is past 2^53, so the whole milliseconds are scaled as a bigint.
   const wholeMillis = Math.floor(timeOrigin);
-  const fraction = timeOrigin - wholeMillis + relativeMillis;
-  return BigInt(wholeMillis) * BigInt(NANOS_PER_MILLI) + BigInt(Math.round(fraction * NANOS_PER_MILLI));
-}
-
-function valueKey(value: AnyValue): string {
-  return JSON.stringify(value, (_, v) => (typeof v === "bigint" ? v.toString() + "n" : v));
-}
-
-function randomBytes(length: number): Uint8Array {
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  return bytes;
-}
-
-function toProtoScope(scope: SdkScope): InstrumentationScope {
-  return {
-    name: scope.name ?? "",
-    version: scope.version ?? "",
-    attributes: (scope.attributes ?? []).map(toProtoKeyValue),
-    droppedAttributesCount: 0,
-  };
-}
-
-function toProtoKeyValue(kv: SdkKeyValue): KeyValue {
-  return { key: kv.key, value: toProtoValue(kv.value), keyStrindex: 0 };
-}
-
-function toProtoValue(value: SdkAnyValue | undefined): AnyValue {
-  if (!value) return {};
-  if (value.stringValue != null) return { stringValue: value.stringValue };
-  if (value.boolValue != null) return { boolValue: value.boolValue };
-  if (value.intValue != null) return { intValue: BigInt(value.intValue) };
-  if (value.doubleValue != null) return { doubleValue: value.doubleValue };
-  if (value.arrayValue) return { arrayValue: { values: value.arrayValue.values.map(toProtoValue) } };
-  if (value.kvlistValue) return { kvlistValue: { values: value.kvlistValue.values.map(toProtoKeyValue) } };
-  return {};
+  const fraction = timeOrigin - wholeMillis;
+  const base = BigInt(wholeMillis) * BigInt(NANOS_PER_MILLI);
+  return (relativeMillis) => String(base + BigInt(Math.round((fraction + relativeMillis) * NANOS_PER_MILLI)));
 }

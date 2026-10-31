@@ -29,6 +29,8 @@ export type ProfilerSample = {
 };
 
 export type ProfileChunk = {
+  /** 32 hex characters. */
+  profileId: string;
   trace: ProfilerTrace;
   /** `performance.timeOrigin` of the document that recorded the trace. */
   timeOrigin: number;
@@ -48,7 +50,6 @@ export type EncodedProfile = {
   /** OTLP/JSON `ExportProfilesServiceRequest`. */
   body: string;
   sampleCount: number;
-  idleSampleCount: number;
 };
 
 /**

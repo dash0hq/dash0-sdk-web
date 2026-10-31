@@ -8,8 +8,8 @@ import info from "./package.json" with { type: "json" };
 
 const configurePlugins = ({ module, transpile = true }) => {
   return [
-    // The session recording and profiling bundles skip babel. Profiling needs BigInt, which has no ES5 form.
-    // The session recording bundles skip babel: rrweb requires Proxy and MutationObserver, so an IE 11 target
+    // The session recording and profiling bundles skip babel. Profiling needs BigInt, which has no ES5 form, and
+    // rrweb requires Proxy and MutationObserver, so an IE 11 target
     // buys nothing and transpiling to ES5 roughly doubles the bundle. rrweb's own build targets ES2015+,
     // which every browser in the e2e baseline supports.
     ...(transpile

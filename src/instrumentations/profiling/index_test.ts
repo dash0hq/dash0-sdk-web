@@ -38,7 +38,7 @@ function setVisibility(state: DocumentVisibilityState) {
 }
 
 describe("profiling", () => {
-  const encoder = vi.fn<ProfileEncoder>(() => ({ body: "{}", sampleCount: 1, idleSampleCount: 0 }));
+  const encoder = vi.fn<ProfileEncoder>(() => ({ body: "{}", sampleCount: 1 }));
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -108,6 +108,7 @@ describe("profiling", () => {
     expect(transport.sendProfile).toHaveBeenCalledWith("{}", { compress: true });
 
     const chunk = encoder.mock.calls[0]![0];
+    expect(chunk.profileId).toMatch(/^[0-9a-f]{32}$/);
     expect(chunk.sampleIntervalMs).toBe(16);
     expect(chunk.attributes).toEqual(
       expect.arrayContaining([
@@ -140,7 +141,7 @@ describe("profiling", () => {
     const { profiling, transport, vars } = await load();
     // Modules loaded by earlier tests keep their document listeners, so only this test's body counts.
     const body = '{"chunk":42}';
-    const ownEncoder = vi.fn<ProfileEncoder>(() => ({ body, sampleCount: 1, idleSampleCount: 0 }));
+    const ownEncoder = vi.fn<ProfileEncoder>(() => ({ body, sampleCount: 1 }));
     vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder: ownEncoder };
     const sent = () =>
       vi
@@ -200,7 +201,7 @@ describe("profiling", () => {
     it("sends a chunk still waiting for idle time on the last chance, once", async () => {
       const { profiling, transport, vars } = await load();
       const body = '{"chunk":7}';
-      const ownEncoder = vi.fn<ProfileEncoder>(() => ({ body, sampleCount: 1, idleSampleCount: 0 }));
+      const ownEncoder = vi.fn<ProfileEncoder>(() => ({ body, sampleCount: 1 }));
       vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder: ownEncoder };
       const sent = () =>
         vi

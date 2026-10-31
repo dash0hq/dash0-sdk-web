@@ -119,3 +119,83 @@ export type Span = {
   links: SpanLink[];
   status: SpanStatus;
 };
+
+// OTLP profiles v1development, as of opentelemetry-proto v1.11.0. Only the fields the SDK sets.
+// https://github.com/open-telemetry/opentelemetry-proto/blob/v1.11.0/opentelemetry/proto/profiles/v1development/profiles.proto
+export type ExportProfilesServiceRequest = {
+  resourceProfiles: ResourceProfiles[];
+  dictionary: ProfilesDictionary;
+};
+
+export type ResourceProfiles = {
+  resource: Resource;
+  scopeProfiles: ScopeProfiles[];
+};
+
+export type ScopeProfiles = {
+  scope: InstrumentationScope;
+  profiles: Profile[];
+};
+
+/** Index 0 of every table holds the zero value; an index of 0 means "unset". */
+export type ProfilesDictionary = {
+  mappingTable: Mapping[];
+  locationTable: Location[];
+  functionTable: ProfileFunction[];
+  linkTable: object[];
+  stringTable: string[];
+  attributeTable: ProfileAttribute[];
+  stackTable: Stack[];
+};
+
+export type ValueType = {
+  typeStrindex: number;
+  unitStrindex: number;
+};
+
+export type Profile = {
+  sampleType: ValueType;
+  samples: Sample[];
+  timeUnixNano: string;
+  durationNano: string;
+  periodType: ValueType;
+  period: string;
+  profileId: string;
+  attributeIndices: number[];
+};
+
+export type Sample = {
+  stackIndex: number;
+  timestampsUnixNano: string[];
+};
+
+export type Mapping = {
+  filenameStrindex?: number;
+  attributeIndices?: number[];
+};
+
+export type Location = {
+  mappingIndex?: number;
+  lines?: Line[];
+  attributeIndices?: number[];
+};
+
+export type Line = {
+  functionIndex: number;
+  line: string;
+  column: string;
+};
+
+export type ProfileFunction = {
+  nameStrindex?: number;
+  filenameStrindex?: number;
+};
+
+export type ProfileAttribute = {
+  keyStrindex?: number;
+  value?: AnyValue;
+};
+
+export type Stack = {
+  locationIndices?: number[];
+};
