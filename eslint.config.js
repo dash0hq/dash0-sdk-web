@@ -81,4 +81,23 @@ export default [
       "@typescript-eslint/consistent-type-imports": ["error", { prefer: "type-imports" }],
     },
   },
+  {
+    // Same rule as above for the profiling bundle: it carries the encoder only.
+    files: ["src/entrypoint/profiling.ts", "src/entrypoint/profiling-script.ts", "src/profiling/*.ts"],
+    ignores: ["src/profiling/*_test.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^\\.\\./(?!profiling/|types/)",
+              allowTypeImports: true,
+              message: "The profiling bundle must only import src/profiling (plus type-only imports).",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

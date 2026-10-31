@@ -21,7 +21,7 @@ export type SendOptions = {
 export async function send(path: string, body: unknown, opts?: SendOptions): Promise<void> {
   debug("Transmitting telemetry to endpoints", body);
 
-  const jsonString = JSON.stringify(body);
+  const jsonString = typeof body === "string" ? body : JSON.stringify(body);
   let requestBody: ArrayBuffer | string = jsonString;
   let byteLength = new Blob([jsonString]).size;
   let isCompressed = false;

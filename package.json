@@ -12,6 +12,11 @@
       "require": "./dist/dash0.umd.cjs",
       "default": "./dist/dash0.js"
     },
+    "./profiling": {
+      "types": "./dist/types/entrypoint/profiling.d.ts",
+      "require": "./dist/dash0-profiling.umd.cjs",
+      "default": "./dist/dash0-profiling.js"
+    },
     "./session-recording": {
       "types": "./dist/types/entrypoint/session-recording.d.ts",
       "require": "./dist/dash0-session-recording.umd.cjs",
@@ -79,7 +84,6 @@
     "web-vitals": "^5.0.3"
   },
   "devDependencies": {
-    "@rrweb/record": "^2.1.1",
     "@babel/core": "^7.26.10",
     "@babel/preset-env": "^7.26.9",
     "@release-it/conventional-changelog": "^10.0.1",
@@ -87,6 +91,7 @@
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-replace": "^6.0.2",
     "@rollup/plugin-terser": "^0.4.4",
+    "@rrweb/record": "^2.1.1",
     "@types/body-parser": "^1.19.5",
     "@types/express": "^5.0.1",
     "@types/mocha": "^10.0.10",

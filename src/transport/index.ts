@@ -36,6 +36,28 @@ const isSessionRecordingRateLimited = lazyRateLimiter({
   maxCallsPerTenSeconds: 64,
 });
 
+// At the default 15 s chunk length a page sends 40 chunks per 10 min. Shorter chunks are capped here.
+const isProfileRateLimited = lazyRateLimiter({
+  maxCallsPerTenMinutes: 120,
+  maxCallsPerTenSeconds: 4,
+});
+
+/**
+ * Sends an OTLP `ExportProfilesServiceRequest` that the profiling encoder already serialized to OTLP/JSON.
+ */
+export function sendProfile(body: string, opts?: SendOptions): void {
+  if (!vars.isSessionSampled) return;
+
+  if (isProfileRateLimited()) {
+    debug("Profiling rate limit. Will not send profile.");
+    return;
+  }
+
+  send("/v1development/profiles", body, opts).catch((err) => {
+    error("Failed to transmit profile", err);
+  });
+}
+
 export function sendLog(log: LogRecord): void {
   if (!vars.isSessionSampled) return;
 

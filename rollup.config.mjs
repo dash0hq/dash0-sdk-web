@@ -8,7 +8,8 @@ import info from "./package.json" with { type: "json" };
 
 const configurePlugins = ({ module, transpile = true }) => {
   return [
-    // The session recording bundles skip babel: rrweb requires Proxy and MutationObserver, so an IE 11 target
+    // The session recording and profiling bundles skip babel. Profiling needs BigInt, which has no ES5 form, and
+    // rrweb requires Proxy and MutationObserver, so an IE 11 target
     // buys nothing and transpiling to ES5 roughly doubles the bundle. rrweb's own build targets ES2015+,
     // which every browser in the e2e baseline supports.
     ...(transpile
@@ -93,6 +94,32 @@ const configs = [
       format: "iife",
       file: "./dist/dash0-session-recording.iife.js",
       name: "dash0SessionRecording",
+    },
+    plugins: configurePlugins({ module: false, transpile: false }),
+  },
+  {
+    input: "dist/modules/entrypoint/profiling.js",
+    output: {
+      format: "esm",
+      file: "./dist/dash0-profiling.js",
+    },
+    plugins: configurePlugins({ module: true, transpile: false }),
+  },
+  {
+    input: "dist/modules/entrypoint/profiling.js",
+    output: {
+      format: "umd",
+      file: "./dist/dash0-profiling.umd.cjs",
+      name: "dash0Profiling",
+    },
+    plugins: configurePlugins({ module: false, transpile: false }),
+  },
+  {
+    input: "dist/modules/entrypoint/profiling-script.js",
+    output: {
+      format: "iife",
+      file: "./dist/dash0-profiling.iife.js",
+      name: "dash0Profiling",
     },
     plugins: configurePlugins({ module: false, transpile: false }),
   },

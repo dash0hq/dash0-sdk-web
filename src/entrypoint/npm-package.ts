@@ -19,6 +19,7 @@ export type { PageViewMeta, PropagatorConfig, PropagatorType } from "../vars";
 export type { UrlAttributeScrubber, UrlAttributeRecord } from "../attributes/url";
 export type { StartViewOptions } from "../api/start-view";
 export type { SessionRecorder, SessionRecorderOptions, SessionRecordingSettings } from "../types/session-recording";
+export type { ProfileEncoder, ProfilingSettings } from "../types/profiling";
 
 export function init(opts: InitOptions): void {
   debug(`${INIT_MESSAGE} (via package)`);

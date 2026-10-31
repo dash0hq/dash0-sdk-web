@@ -11,10 +11,13 @@
 //   - serves http://localhost:4318/ with a replay page per recording (rrweb-player from a CDN)
 //
 // Gzip request bodies (which the SDK uses for recording chunks) are inflated by body-parser.
+//
+// Profiles (POST /v1development/profiles) are summarized one line per chunk, and http://localhost:4318/examples/profiling/ serves the profiling example page with `Document-Policy: js-profiling`.
 import express from "express";
 import bodyParser from "body-parser";
 import { appendFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
+const ROOT = path.resolve(import.meta.dirname, "..");
 
 const PORT = parseInt(process.env.PORT ?? "4318", 10);
 const OUT_DIR = path.resolve(process.env.OUT_DIR ?? "otlp-sink");
@@ -33,6 +36,75 @@ app.use((req, res, next) => {
   next();
 });
 
+app.post("/v1development/profiles", bodyParser.json({ limit: "50mb", type: () => true }), (req, res) => {
+  const isGzip = req.headers["content-encoding"] === "gzip";
+  const summary = summarizeProfiles(req.body, Number(req.headers["content-length"]));
+  counters.profiles++;
+  appendFileSync(
+    REQUESTS_FILE,
+    JSON.stringify({ ts: new Date().toISOString(), path: req.path, headers: req.headers, summary }) + "\n"
+  );
+  console.log(
+    `PROF  samples=${summary.samples}  idle=${summary.idle}  stacks=${summary.stacks}  bytes=${summary.jsonBytes}${isGzip ? ` (gzip ${summary.wireBytes})` : ""}  session=${summary.attributes["session.id"]}  top=${summary.topLeaves.join(", ")}`
+  );
+  res.status(200).json({});
+});
+
+function summarizeProfiles(request, wireBytes) {
+  const dict = request.dictionary;
+  const str = (i) => dict.stringTable[i];
+  const profile = request.resourceProfiles[0].scopeProfiles[0].profiles[0];
+  const attributes = Object.fromEntries(
+    profile.attributeIndices.map((i) => {
+      const a = dict.attributeTable[i];
+      const v = a.value ?? {};
+      return [str(a.keyStrindex), String(v.stringValue ?? v.intValue ?? v.doubleValue ?? v.boolValue)];
+    })
+  );
+  const leafCounts = new Map();
+  let samples = 0;
+  for (const sample of profile.samples) {
+    const leaf = dict.stackTable[sample.stackIndex].locationIndices[0];
+    const fn = dict.functionTable[dict.locationTable[leaf].lines[0].functionIndex];
+    leafCounts.set(
+      str(fn.nameStrindex),
+      (leafCounts.get(str(fn.nameStrindex)) ?? 0) + sample.timestampsUnixNano.length
+    );
+    samples += sample.timestampsUnixNano.length;
+  }
+  const topLeaves = [...leafCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, n]) => `${name}=${n}`);
+  return {
+    wireBytes,
+    jsonBytes: JSON.stringify(request).length,
+    samples,
+    idle: Number(attributes["dash0.profiling.idle_sample_count"] ?? 0),
+    stacks: dict.stackTable.length - 1,
+    functions: dict.functionTable.length - 1,
+    durationMs: Number(profile.durationNano) / 1e6,
+    periodNs: Number(profile.period),
+    attributes,
+    topLeaves,
+  };
+}
+
+// The example page sends its benchmark results here; see examples/profiling/index.html.
+app.post("/bench", bodyParser.json(), (req, res) => {
+  appendFileSync(path.join(OUT_DIR, "bench.ndjson"), JSON.stringify(req.body) + "\n");
+  console.log(`BENCH ${JSON.stringify(req.body)}`);
+  res.status(204).end();
+});
+
+// Without `?policy=off` the page gets the header JS Self-Profiling needs; with it, the SDK reports the header missing.
+app.use("/examples", (req, res, next) => {
+  if (req.query.policy !== "off") res.set("Document-Policy", "js-profiling");
+  next();
+});
+app.use("/examples", express.static(path.join(ROOT, "examples")));
+app.use("/dist", express.static(path.join(ROOT, "dist")));
+
 app.use(bodyParser.json({ limit: "50mb", type: () => true }));
 
 function attr(record, key) {
@@ -42,7 +114,7 @@ function attr(record, key) {
   return v.stringValue ?? v.intValue ?? v.doubleValue ?? v.boolValue;
 }
 
-const counters = { logs: 0, spans: 0, chunks: 0, chunkBytes: 0 };
+const counters = { logs: 0, spans: 0, chunks: 0, chunkBytes: 0, profiles: 0 };
 
 // The ids come from the request body and end up in file paths and HTML. Accept only what the SDK emits.
 const RECORDING_ID_PATTERN = /^[0-9a-f]{32}$/;
@@ -120,7 +192,7 @@ app.get("/", (_req, res) => {
     .join("");
   res.type("html").send(`<!doctype html><meta charset="utf-8"><title>OTLP sink</title>
 <h1>OTLP sink</h1>
-<p>logs=${counters.logs} spans=${counters.spans} recording chunks=${counters.chunks} (${(counters.chunkBytes / 1024).toFixed(1)} KB raw JSON)</p>
+<p>logs=${counters.logs} spans=${counters.spans} profiles=${counters.profiles} recording chunks=${counters.chunks} (${(counters.chunkBytes / 1024).toFixed(1)} KB raw JSON)</p>
 <p>Raw requests: <code>${REQUESTS_FILE}</code></p>
 <h2>Recordings</h2><ul>${items || "<li>none yet</li>"}</ul>`);
 });
@@ -160,4 +232,5 @@ app.listen(PORT, "127.0.0.1", () => {
   console.log(`  endpoint.url for the SDK : http://localhost:${PORT}`);
   console.log(`  raw requests             : ${REQUESTS_FILE}`);
   console.log(`  recordings + replay      : http://localhost:${PORT}/`);
+  console.log(`  profiling example        : http://localhost:${PORT}/examples/profiling/`);
 });
