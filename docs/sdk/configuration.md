@@ -661,7 +661,8 @@ credentials of a source map integration. Anonymous functions stay `(anonymous)`,
   default: `10`<br>
   The percentage of sessions that are profiled, between 0 and 100. The decision is deterministic per session ID
   and uses the same hash as `sessionSamplingRate`, so profiled sessions are always a subset of the sessions for
-  which telemetry is transmitted.
+  which telemetry is transmitted. `sessionRecording.samplingRate` uses the same hash too, so while this rate is not
+  above it, every profiled session also has a session replay. Set it to `100` to profile every recorded session.
 - **Sample Interval**<br>
   key: `profiling.sampleIntervalMs`<br>
   type: `number`<br>
