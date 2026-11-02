@@ -20,7 +20,7 @@ export const GLOBAL_PROFILE_ENCODER_KEY = "dash0ProfileEncoder";
 
 type UnavailableReason = "api_missing" | "document_policy" | "start_failed";
 
-type JsProfiler = {
+type JsProfiler = EventTarget & {
   readonly sampleInterval: number;
   stop(): Promise<ProfilerTrace>;
 };
@@ -131,10 +131,16 @@ function startChunk(url = win?.location.href): void {
     return;
   }
 
-  rotateTimer = setTimeout(() => {
+  const current = running;
+  const rotate = () => {
+    if (running !== current) return;
     stopChunk(true);
     startChunk();
-  }, chunkDurationMs);
+  };
+  // A full buffer stops the profiler and drops every later sample, so the next profiler takes over early.
+  // https://wicg.github.io/js-self-profiling/#dfn-samplebufferfull
+  addEventListener(current.profiler, "samplebufferfull", rotate);
+  rotateTimer = setTimeout(rotate, chunkDurationMs);
 }
 
 /**

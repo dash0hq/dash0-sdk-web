@@ -11,11 +11,12 @@ const TRACE: ProfilerTrace = {
   samples: [{ timestamp: 1, stackId: 0 }],
 };
 
-class FakeProfiler {
+class FakeProfiler extends EventTarget {
   static instances: FakeProfiler[] = [];
   readonly sampleInterval = 16;
   stopped = false;
   constructor(readonly options: { sampleInterval: number; maxBufferSize: number }) {
+    super();
     FakeProfiler.instances.push(this);
   }
   stop(): Promise<ProfilerTrace> {
@@ -235,6 +236,22 @@ describe("profiling", () => {
     profiling.startProfiling();
 
     expect(FakeProfiler.instances).toHaveLength(0);
+  });
+
+  it("sends the chunk and starts a new profiler when the sample buffer is full", async () => {
+    const { profiling, vars } = await load();
+    vars.profiling = { ...vars.profiling, sampleRate: 100, encoder };
+
+    profiling.startProfiling();
+    FakeProfiler.instances[0]!.dispatchEvent(new Event("samplebufferfull"));
+    await vi.advanceTimersByTimeAsync(5000);
+
+    expect(FakeProfiler.instances[0]!.stopped).toBe(true);
+    expect(FakeProfiler.instances).toHaveLength(2);
+    expect(encodedChunks()).toHaveLength(1);
+
+    FakeProfiler.instances[0]!.dispatchEvent(new Event("samplebufferfull"));
+    expect(FakeProfiler.instances).toHaveLength(2);
   });
 
   it("starts when the encoder is registered after init, and only once", async () => {
