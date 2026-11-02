@@ -162,12 +162,12 @@ init({
 });
 ```
 
-With script tags, load `dash0-profiling.iife.js` before `dash0.iife.js`. Unlike session replay, the order matters:
-`init` looks for the encoder once.
+With script tags, add `"@dash0/profiling"` to `enabledInstrumentations` in the initializer snippet and add a second
+script. The order of the two SDK scripts does not matter.
 
 ```html
-<script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web/dist/dash0-profiling.iife.js"></script>
 <script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web/dist/dash0.iife.js"></script>
+<script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web/dist/dash0-profiling.iife.js"></script>
 ```
 
 The browser only allows profiling when the HTML document is served with this response header:

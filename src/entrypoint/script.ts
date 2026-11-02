@@ -10,6 +10,7 @@ import { sendEvent } from "../api/events";
 import { setActiveLogLevel } from "../api/log-level";
 import { startView } from "../api/start-view";
 import { startSessionRecording, stopSessionRecording } from "../api/session-recording";
+import { registerProfileEncoder } from "../instrumentations/profiling";
 
 /**
  * All the APIs exposed through the script tag via `dash0('{{api name}}')`
@@ -27,6 +28,7 @@ const scriptApis = {
   startView,
   startSessionRecording,
   stopSessionRecording,
+  registerProfileEncoder,
 } as const;
 
 type GlobalObject = {

@@ -71,7 +71,7 @@ export type ProfilingSettings = {
 
   /**
    * The encoder exported by `@dash0/sdk-web/profiling`. Profiling only starts once an encoder is
-   * provided, here or through the `dash0-profiling.iife.js` script loaded before `init()`.
+   * provided, here or through the `dash0-profiling.iife.js` script, which may load before or after `init()`.
    */
   encoder?: ProfileEncoder;
 };

@@ -237,6 +237,39 @@ describe("profiling", () => {
     expect(FakeProfiler.instances).toHaveLength(0);
   });
 
+  it("starts when the encoder is registered after init, and only once", async () => {
+    const { profiling, vars } = await load();
+    vars.profiling = { ...vars.profiling, sampleRate: 100 };
+
+    profiling.startProfiling();
+    expect(FakeProfiler.instances).toHaveLength(0);
+
+    profiling.registerProfileEncoder(encoder);
+    profiling.registerProfileEncoder(encoder);
+    expect(FakeProfiler.instances).toHaveLength(1);
+  });
+
+  it("starts when the encoder is registered before init", async () => {
+    const { profiling, vars } = await load();
+    vars.profiling = { ...vars.profiling, sampleRate: 100 };
+
+    profiling.registerProfileEncoder(encoder);
+    expect(FakeProfiler.instances).toHaveLength(0);
+
+    profiling.startProfiling();
+    expect(FakeProfiler.instances).toHaveLength(1);
+  });
+
+  it("ignores a registration without an encoder", async () => {
+    const { profiling, vars } = await load();
+    vars.profiling = { ...vars.profiling, sampleRate: 100 };
+
+    profiling.startProfiling();
+    profiling.registerProfileEncoder(undefined);
+
+    expect(FakeProfiler.instances).toHaveLength(0);
+  });
+
   describe("with requestIdleCallback", () => {
     let idleCallbacks: { run: () => void; timeout: number }[];
 

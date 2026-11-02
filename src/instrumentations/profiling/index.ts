@@ -40,6 +40,8 @@ const MIN_CHUNK_DURATION_MS = 1000;
 const MIN_SEND_INTERVAL_MS = 5000;
 
 let encoder: ProfileEncoder | undefined;
+let armed = false;
+let started = false;
 let running: Running | undefined;
 let rotateTimer: ReturnType<typeof setTimeout> | undefined;
 let waiting: Stopped[] = [];
@@ -47,19 +49,41 @@ let lastSendTime = -Infinity;
 let unavailable = false;
 
 /**
- * Called from `init()` when `@dash0/profiling` is enabled and the session is sampled. Does nothing
- * until an encoder is available, so pages that never load `@dash0/sdk-web/profiling` pay nothing.
+ * Called from `init()` when `@dash0/profiling` is enabled and the session is sampled. Profiling starts as soon as
+ * an encoder is available too, in either order, so pages that never load `@dash0/sdk-web/profiling` pay nothing.
+ *
+ * Encoder precedence: `profiling.encoder` from the init options, then one registered through
+ * `registerProfileEncoder`, then `window.dash0ProfileEncoder`.
  */
 export function startProfiling(): void {
-  encoder = vars.profiling.encoder ?? ((win as any)?.[GLOBAL_PROFILE_ENCODER_KEY] as ProfileEncoder | undefined);
-  if (typeof encoder !== "function") {
-    debug("No profile encoder provided. Profiling will not start.");
-    return;
-  }
   if (!isSessionSampledIn(sessionId ?? "", vars.profiling.sampleRate ?? 10)) {
     debug("Session is not sampled for profiling.");
     return;
   }
+  armed = true;
+  encoder =
+    vars.profiling.encoder ?? encoder ?? ((win as any)?.[GLOBAL_PROFILE_ENCODER_KEY] as ProfileEncoder | undefined);
+  begin();
+}
+
+/** Called by `dash0-profiling.iife.js` through `dash0("registerProfileEncoder", encoder)`. */
+export function registerProfileEncoder(candidate: unknown): void {
+  // The script entrypoint forwards arguments without type checking; a throw would abort the command-queue drain.
+  if (typeof candidate !== "function") {
+    debug("registerProfileEncoder requires an encoder. Ignoring call.");
+    return;
+  }
+  encoder ??= candidate as ProfileEncoder;
+  begin();
+}
+
+function begin(): void {
+  if (!armed || started) return;
+  if (typeof encoder !== "function") {
+    debug("No profile encoder yet. Profiling starts once one is registered.");
+    return;
+  }
+  started = true;
 
   if (doc) {
     addEventListener(doc, "visibilitychange", () => {

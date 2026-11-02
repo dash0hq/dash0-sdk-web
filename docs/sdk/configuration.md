@@ -682,4 +682,4 @@ credentials of a source map integration. Anonymous functions stay `(anonymous)`,
   optional: `true`<br>
   default: `undefined`<br>
   The encoder to use. Pass `encoder` from `@dash0/sdk-web/profiling`. When omitted, the SDK uses the one the
-  `dash0-profiling.iife.js` script registers, if that script ran before `init`.
+  `dash0-profiling.iife.js` script registers.
