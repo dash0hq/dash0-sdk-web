@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { encodeProfiles, FRAME_TYPE_ATTRIBUTE, IDLE_SAMPLE_COUNT_ATTRIBUTE } from "./encode";
+import {
+  BURST_SAMPLE_COUNT_ATTRIBUTE,
+  encodeProfiles,
+  FRAME_TYPE_ATTRIBUTE,
+  IDLE_SAMPLE_COUNT_ATTRIBUTE,
+} from "./encode";
 import type { ProfileChunk, ProfilerTrace } from "../types/profiling";
 
 const APP_JS = "https://example.com/app.js";
@@ -121,6 +126,29 @@ describe("encodeProfiles", () => {
     expect(sent).toBe(4);
     expect(encoded.sampleCount).toBe(4);
     expect(profile.attributeIndices.map(attribute)).toContainEqual([IDLE_SAMPLE_COUNT_ATTRIBUTE, { intValue: "2" }]);
+  });
+
+  it("keeps one sample per half interval and counts the rest as burst samples", () => {
+    const burst: ProfilerTrace = {
+      ...trace,
+      samples: [
+        { timestamp: 100, stackId: 3 },
+        { timestamp: 100.1, stackId: 1 },
+        { timestamp: 100.1, stackId: 0 },
+        { timestamp: 104, stackId: 1 },
+        { timestamp: 110, stackId: 2 },
+        { timestamp: 110.2 },
+        { timestamp: 120, stackId: 0 },
+      ],
+    };
+    const { encoded, profile, attribute, functionNames } = decode({ ...chunk, trace: burst });
+    expect(encoded.sampleCount).toBe(3);
+    expect(profile.samples.map((s: any) => functionNames(s.stackIndex))).toEqual([
+      ["(anonymous)", "work", "main"],
+      ["work", "main"],
+      ["main"],
+    ]);
+    expect(profile.attributeIndices.map(attribute)).toContainEqual([BURST_SAMPLE_COUNT_ATTRIBUTE, { intValue: "4" }]);
   });
 
   it("uses the given resource, scope and signal attributes", () => {

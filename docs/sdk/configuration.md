@@ -632,6 +632,8 @@ the page is unloaded, so one chunk covers one page. Profiling pauses while the t
 the same attributes as web events, such as `session.id` and `page.url.*` (after `urlAttributeScrubber`), and every
 frame carries `profile.frame.type=v8js`.
 Samples taken while no JavaScript ran are counted in `dash0.profiling.idle_sample_count` and not sent.
+Chrome adds extra samples in bursts, for example during a page load. The SDK keeps at most one sample per half
+sampling interval and counts the rest in `dash0.profiling.burst_sample_count`.
 
 When the browser has no `Profiler` or refuses to start it, the SDK sends one `browser.profiling_unavailable` event
 per page load. Its body holds a `reason`:

@@ -4,6 +4,7 @@ import type { EncodedProfile, ProfileChunk, ProfilerTrace } from "../types/profi
 export const FRAME_TYPE_ATTRIBUTE = "profile.frame.type";
 const FRAME_TYPE_V8JS = "v8js";
 export const IDLE_SAMPLE_COUNT_ATTRIBUTE = "dash0.profiling.idle_sample_count";
+export const BURST_SAMPLE_COUNT_ATTRIBUTE = "dash0.profiling.burst_sample_count";
 const ANONYMOUS_FUNCTION = "(anonymous)";
 const NANOS_PER_MILLI = 1_000_000;
 
@@ -48,8 +49,9 @@ function toProfile(dict: Dictionary, chunk: ProfileChunk): { profile: Profile; s
   const stackOfTraceStack = new Map<number, number>();
   const samplesByStack = new Map<number, Sample>();
   let idleSampleCount = 0;
+  const { samples, burstSampleCount } = withoutBursts(trace.samples, chunk.sampleIntervalMs);
 
-  for (const sample of trace.samples) {
+  for (const sample of samples) {
     if (sample.stackId == null) {
       idleSampleCount++;
       continue;
@@ -71,6 +73,7 @@ function toProfile(dict: Dictionary, chunk: ProfileChunk): { profile: Profile; s
 
   const attributeIndices = chunk.attributes.map((kv) => dict.attribute(kv.key, kv.value));
   attributeIndices.push(dict.attribute(IDLE_SAMPLE_COUNT_ATTRIBUTE, { intValue: String(idleSampleCount) }));
+  attributeIndices.push(dict.attribute(BURST_SAMPLE_COUNT_ATTRIBUTE, { intValue: String(burstSampleCount) }));
 
   const profile: Profile = {
     sampleType: { typeStrindex: dict.string("samples"), unitStrindex: dict.string("count") },
@@ -83,7 +86,25 @@ function toProfile(dict: Dictionary, chunk: ProfileChunk): { profile: Profile; s
     attributeIndices,
   };
 
-  return { profile, sampleCount: trace.samples.length - idleSampleCount };
+  return { profile, sampleCount: samples.length - idleSampleCount };
+}
+
+// V8 adds a stack sample on every deoptimization, outside the sampling timer, so a page load can
+// emit dozens of samples microseconds apart. Keeping them would count each one as a full interval.
+// https://github.com/v8/v8/blob/6e6321b4fa292929948fb35e2488bac50fef1749/src/profiler/cpu-profiler.cc#L165-L178
+function withoutBursts(
+  samples: ProfilerTrace["samples"],
+  sampleIntervalMs: number
+): { samples: ProfilerTrace["samples"]; burstSampleCount: number } {
+  const minGapMs = sampleIntervalMs / 2;
+  const kept: ProfilerTrace["samples"] = [];
+  let lastKept = -Infinity;
+  for (const sample of [...samples].sort((a, b) => a.timestamp - b.timestamp)) {
+    if (sample.timestamp - lastKept < minGapMs) continue;
+    kept.push(sample);
+    lastKept = sample.timestamp;
+  }
+  return { samples: kept, burstSampleCount: samples.length - kept.length };
 }
 
 type Dictionary = ReturnType<typeof newDictionary>;
