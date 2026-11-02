@@ -36,58 +36,18 @@ app.use((req, res, next) => {
 });
 
 app.post("/v1development/profiles", bodyParser.json({ limit: "50mb", type: () => true }), (req, res) => {
-  const isGzip = req.headers["content-encoding"] === "gzip";
-  const summary = summarizeProfiles(req.body, Number(req.headers["content-length"]));
   counters.profiles++;
-  appendFileSync(
-    REQUESTS_FILE,
-    JSON.stringify({ ts: new Date().toISOString(), path: req.path, headers: req.headers, summary }) + "\n"
-  );
-  console.log(
-    `PROF  samples=${summary.samples}  idle=${summary.idle}  stacks=${summary.stacks}  bytes=${summary.jsonBytes}${isGzip ? ` (gzip ${summary.wireBytes})` : ""}  session=${summary.attributes["session.id"]}  top=${summary.topLeaves.join(", ")}`
-  );
+  const { dictionary, resourceProfiles } = req.body;
+  for (const { scopeProfiles } of resourceProfiles) {
+    const profile = scopeProfiles[0].profiles[0];
+    const samples = profile.samples.reduce((n, sample) => n + sample.timestampsUnixNano.length, 0);
+    const session = profile.attributeIndices
+      .map((i) => dictionary.attributeTable[i])
+      .find((a) => dictionary.stringTable[a.keyStrindex] === "session.id")?.value.stringValue;
+    console.log(`PROF  samples=${samples}  session=${session}  bytes=${req.headers["content-length"]}`);
+  }
   res.status(200).json({});
 });
-
-function summarizeProfiles(request, wireBytes) {
-  const dict = request.dictionary;
-  const str = (i) => dict.stringTable[i];
-  const profile = request.resourceProfiles[0].scopeProfiles[0].profiles[0];
-  const attributes = Object.fromEntries(
-    profile.attributeIndices.map((i) => {
-      const a = dict.attributeTable[i];
-      const v = a.value ?? {};
-      return [str(a.keyStrindex), String(v.stringValue ?? v.intValue ?? v.doubleValue ?? v.boolValue)];
-    })
-  );
-  const leafCounts = new Map();
-  let samples = 0;
-  for (const sample of profile.samples) {
-    const leaf = dict.stackTable[sample.stackIndex].locationIndices[0];
-    const fn = dict.functionTable[dict.locationTable[leaf].lines[0].functionIndex];
-    leafCounts.set(
-      str(fn.nameStrindex),
-      (leafCounts.get(str(fn.nameStrindex)) ?? 0) + sample.timestampsUnixNano.length
-    );
-    samples += sample.timestampsUnixNano.length;
-  }
-  const topLeaves = [...leafCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name, n]) => `${name}=${n}`);
-  return {
-    wireBytes,
-    jsonBytes: JSON.stringify(request).length,
-    samples,
-    idle: Number(attributes["dash0.profiling.idle_sample_count"] ?? 0),
-    stacks: dict.stackTable.length - 1,
-    functions: dict.functionTable.length - 1,
-    durationMs: Number(profile.durationNano) / 1e6,
-    periodNs: Number(profile.period),
-    attributes,
-    topLeaves,
-  };
-}
 
 app.use(bodyParser.json({ limit: "50mb", type: () => true }));
 
