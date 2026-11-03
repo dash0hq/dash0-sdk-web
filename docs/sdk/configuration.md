@@ -127,7 +127,8 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
-  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/frustration-signals'`
+  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/frustration-signals' | '@dash0/profiling'`
+  `'@dash0/profiling'` is not part of the default: it only runs when listed here.
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
 - **Ignore URLs**<br>
@@ -617,3 +618,65 @@ are ignored.
   default: `30`<br>
   How far apart, in CSS pixels, two clicks may be and still count as the same spot. Only applies to clicks that did
   not land on the same element; clicks on one element always belong together.
+
+#### Profiling
+
+The `@dash0/profiling` instrumentation samples the JavaScript call stack with the
+[JS Self-Profiling API](https://wicg.github.io/js-self-profiling/) and sends the samples as OTLP profiles to
+`<endpoint>/v1development/profiles`. They appear in Dash0 under Telemetry > Profiling, with the same resource as
+the website's other telemetry. The API exists in Chromium-based browsers only. Other browsers send nothing.
+
+Profiling is off by default. It runs only when all of these hold:
+
+- `@dash0/profiling` is listed in `enabledInstrumentations`.
+- The session is sampled by `sessionSamplingRate`, and then by `profiling.sampleRate`.
+- The page is served with the `Document-Policy: js-profiling` response header.
+
+The profiler runs in chunks. Each chunk is sent when it ends, on every page view, when the tab is hidden, and when
+the page is unloaded, so one chunk covers one page. Profiling pauses while the tab is hidden. Each profile carries
+the same attributes as web events, such as `session.id` and `page.url.*` (after `urlAttributeScrubber`), and every
+frame carries `profile.frame.type=v8js`.
+Samples taken while no JavaScript ran are counted in `dash0.profiling.idle_sample_count` and not sent.
+Chrome adds extra samples in bursts, for example during a page load. The SDK keeps at most one sample per half
+sampling interval and counts the rest in `dash0.profiling.burst_sample_count`.
+
+When the browser refuses to start the profiler, the SDK sends one `browser.profiling_unavailable` event per page
+load. Its body holds a `reason`:
+
+- `document_policy`: the page was served without `Document-Policy: js-profiling`.
+- `start_failed`: the profiler failed to start for another reason.
+
+The auth token needs the `ingest:profiles` permission. Without it, the request succeeds but Dash0 drops the
+profiles.
+
+Scripts from another origin only show up in profiles when they are loaded with CORS: add
+`crossorigin="anonymous"` to the `<script>` tag and serve the script with an `Access-Control-Allow-Origin` header.
+Without CORS the browser leaves their frames out of the samples.
+
+Function names, files, lines and columns are sent as the browser reports them. Dash0 maps minified frames back to
+your source code the same way it does for error stack traces: it downloads each script and the source map named in
+its `//# sourceMappingURL` comment. The source map has to be reachable from Dash0, either public or behind the
+credentials of a source map integration. Anonymous functions stay `(anonymous)`, with their original file and line.
+
+- **Sampling Rate**<br>
+  key: `profiling.sampleRate`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `10`<br>
+  The percentage of sessions that are profiled, between 0 and 100. The decision is deterministic per session ID
+  and uses the same hash as `sessionSamplingRate`, so profiled sessions are always a subset of the sessions for
+  which telemetry is transmitted. `sessionRecording.samplingRate` uses the same hash too, so while this rate is not
+  above it, every profiled session also has a session replay. Set it to `100` to profile every recorded session.
+- **Sample Interval**<br>
+  key: `profiling.sampleIntervalMs`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `10`<br>
+  The requested time between two samples, in milliseconds. Browsers may sample less often; the profile records the
+  interval the browser used.
+- **Chunk Duration**<br>
+  key: `profiling.chunkDurationMs`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `15000`<br>
+  How long one profile covers before it is sent and a new one starts.

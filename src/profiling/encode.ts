@@ -1,0 +1,186 @@
+import type { AnyValue, ExportProfilesServiceRequest, Profile, ProfilesDictionary, Sample } from "../types/otlp";
+import type { EncodedProfile, ProfileChunk, ProfilerTrace } from "../types/profiling";
+
+export const FRAME_TYPE_ATTRIBUTE = "profile.frame.type";
+const FRAME_TYPE_V8JS = "v8js";
+export const IDLE_SAMPLE_COUNT_ATTRIBUTE = "dash0.profiling.idle_sample_count";
+export const BURST_SAMPLE_COUNT_ATTRIBUTE = "dash0.profiling.burst_sample_count";
+const ANONYMOUS_FUNCTION = "(anonymous)";
+const NANOS_PER_MILLI = 1_000_000;
+
+/** One request for all chunks, each its own profile, so they share one dictionary. */
+export function encodeProfiles(chunks: ProfileChunk[]): EncodedProfile {
+  const dict = newDictionary();
+  let sampleCount = 0;
+  const resourceProfiles = chunks.map((chunk) => {
+    const encoded = toProfile(dict, chunk);
+    sampleCount += encoded.sampleCount;
+    return { resource: chunk.resource, scopeProfiles: [{ scope: chunk.scope, profiles: [encoded.profile] }] };
+  });
+  const request: ExportProfilesServiceRequest = { resourceProfiles, dictionary: dict.tables };
+  return { body: JSON.stringify(request), sampleCount };
+}
+
+// Samples carry timestamps only, which the spec counts as one occurrence each. Samples without a
+// stack were taken while no JavaScript ran: they are counted, not sent.
+function toProfile(dict: Dictionary, chunk: ProfileChunk): { profile: Profile; sampleCount: number } {
+  const { trace } = chunk;
+  const unixNanos = unixNanosSince(chunk.timeOrigin);
+
+  const locationByFrame = new Map<number, number>();
+  const locationOfFrame = (frameId: number): number => {
+    let location = locationByFrame.get(frameId);
+    if (location === undefined) {
+      location = newLocation(frameId);
+      locationByFrame.set(frameId, location);
+    }
+    return location;
+  };
+  const newLocation = (frameId: number): number => {
+    const frame = trace.frames[frameId];
+    if (!frame) return 0;
+    return dict.location(
+      dict.func(frame.name || ANONYMOUS_FUNCTION, resourceOf(trace, frame.resourceId)),
+      frame.line ?? 0,
+      frame.column ?? 0
+    );
+  };
+
+  const stackOfTraceStack = new Map<number, number>();
+  const samplesByStack = new Map<number, Sample>();
+  let idleSampleCount = 0;
+  const { samples, burstSampleCount } = withoutBursts(trace.samples, chunk.sampleIntervalMs);
+
+  for (const sample of samples) {
+    if (sample.stackId == null) {
+      idleSampleCount++;
+      continue;
+    }
+
+    let stackIndex = stackOfTraceStack.get(sample.stackId);
+    if (stackIndex === undefined) {
+      stackIndex = dict.stack(leafFirstLocations(trace, sample.stackId, locationOfFrame));
+      stackOfTraceStack.set(sample.stackId, stackIndex);
+    }
+
+    let grouped = samplesByStack.get(stackIndex);
+    if (!grouped) {
+      grouped = { stackIndex, timestampsUnixNano: [] };
+      samplesByStack.set(stackIndex, grouped);
+    }
+    grouped.timestampsUnixNano.push(unixNanos(sample.timestamp));
+  }
+
+  const attributeIndices = chunk.attributes.map((kv) => dict.attribute(kv.key, kv.value));
+  attributeIndices.push(dict.attribute(IDLE_SAMPLE_COUNT_ATTRIBUTE, { intValue: String(idleSampleCount) }));
+  attributeIndices.push(dict.attribute(BURST_SAMPLE_COUNT_ATTRIBUTE, { intValue: String(burstSampleCount) }));
+
+  const profile: Profile = {
+    sampleType: { typeStrindex: dict.string("samples"), unitStrindex: dict.string("count") },
+    samples: [...samplesByStack.values()],
+    timeUnixNano: unixNanos(chunk.startTime),
+    durationNano: String(Math.max(0, Math.round((chunk.endTime - chunk.startTime) * NANOS_PER_MILLI))),
+    periodType: { typeStrindex: dict.string("cpu"), unitStrindex: dict.string("nanoseconds") },
+    period: String(Math.round(chunk.sampleIntervalMs * NANOS_PER_MILLI)),
+    profileId: chunk.profileId,
+    attributeIndices,
+  };
+
+  return { profile, sampleCount: samples.length - idleSampleCount };
+}
+
+// V8 adds a stack sample on every deoptimization, outside the sampling timer, so a page load can
+// emit dozens of samples microseconds apart. Keeping them would count each one as a full interval.
+// https://github.com/v8/v8/blob/6e6321b4fa292929948fb35e2488bac50fef1749/src/profiler/cpu-profiler.cc#L165-L178
+function withoutBursts(
+  samples: ProfilerTrace["samples"],
+  sampleIntervalMs: number
+): { samples: ProfilerTrace["samples"]; burstSampleCount: number } {
+  const minGapMs = sampleIntervalMs / 2;
+  const kept: ProfilerTrace["samples"] = [];
+  let lastKept = -Infinity;
+  for (const sample of [...samples].sort((a, b) => a.timestamp - b.timestamp)) {
+    if (sample.timestamp - lastKept < minGapMs) continue;
+    kept.push(sample);
+    lastKept = sample.timestamp;
+  }
+  return { samples: kept, burstSampleCount: samples.length - kept.length };
+}
+
+type Dictionary = ReturnType<typeof newDictionary>;
+
+function newDictionary() {
+  // Index 0 of every table must be present and hold the zero value; index 0 means "unset".
+  const tables: ProfilesDictionary = {
+    mappingTable: [{}],
+    locationTable: [{}],
+    functionTable: [{}],
+    linkTable: [{}],
+    stringTable: [""],
+    attributeTable: [{}],
+    stackTable: [{}],
+  };
+  const indexes = new Map<string, number>();
+
+  function intern<T>(table: T[], key: string, create: () => T): number {
+    let index = indexes.get(key);
+    if (index === undefined) {
+      index = table.push(create()) - 1;
+      indexes.set(key, index);
+    }
+    return index;
+  }
+
+  const dict = {
+    tables,
+    string: (s: string): number => (s === "" ? 0 : intern(tables.stringTable, "s" + s, () => s)),
+    func: (name: string, file: string): number => {
+      const nameStrindex = dict.string(name);
+      const filenameStrindex = dict.string(file);
+      return intern(tables.functionTable, `f${nameStrindex}:${filenameStrindex}`, () => ({
+        nameStrindex,
+        filenameStrindex,
+      }));
+    },
+    location: (functionIndex: number, line: number, column: number): number =>
+      intern(tables.locationTable, `l${functionIndex}:${line}:${column}`, () => ({
+        lines: [{ functionIndex, line: String(line), column: String(column) }],
+        attributeIndices: [dict.attribute(FRAME_TYPE_ATTRIBUTE, { stringValue: FRAME_TYPE_V8JS })],
+      })),
+    stack: (locationIndices: number[]): number =>
+      intern(tables.stackTable, "k" + locationIndices.join(","), () => ({ locationIndices })),
+    attribute: (key: string, value: AnyValue): number => {
+      const keyStrindex = dict.string(key);
+      return intern(tables.attributeTable, `a${keyStrindex}:${JSON.stringify(value)}`, () => ({
+        keyStrindex,
+        value,
+      }));
+    },
+  };
+  return dict;
+}
+
+function leafFirstLocations(
+  trace: ProfilerTrace,
+  stackId: number,
+  locationOfFrame: (frameId: number) => number
+): number[] {
+  const locations: number[] = [];
+  let id: number | undefined = stackId;
+  while (id != null) {
+    const stack: ProfilerTrace["stacks"][number] | undefined = trace.stacks[id];
+    if (!stack) break;
+    locations.push(locationOfFrame(stack.frameId));
+    id = stack.parentId;
+  }
+  return locations;
+}
+
+function resourceOf(trace: ProfilerTrace, resourceId: number | undefined): string {
+  return resourceId == null ? "" : (trace.resources[resourceId] ?? "");
+}
+
+function unixNanosSince(timeOrigin: number): (relativeMillis: number) => string {
+  // Unix nanoseconds are past 2^53 and lose precision as a number, while whole microseconds stay exact until 2255.
+  return (relativeMillis) => String(Math.round((timeOrigin + relativeMillis) * 1000)) + "000";
+}

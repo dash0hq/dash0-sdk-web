@@ -44,6 +44,18 @@ describe("fetch transport keepalive handling", () => {
     expect(fetchOptions.keepalive).toBe(true);
   });
 
+  it("should send an already serialized body as is", async () => {
+    const body = '{"resourceProfiles":[]}';
+
+    await send("/v1development/profiles", body);
+
+    const [url, fetchOptions] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe("https://api.example.com/v1development/profiles");
+    expect(fetchOptions.headers["Content-Type"]).toBe("application/json");
+    expect(fetchOptions.headers["Authorization"]).toBe("Bearer test-token");
+    expect(fetchOptions.body).toBe(body);
+  });
+
   it("should set keepalive=false when body size exceeds BEACON_BODY_SIZE_LIMIT", async () => {
     // Create a large body that exceeds 60KB
     const largeBody = { data: "x".repeat(65000) };

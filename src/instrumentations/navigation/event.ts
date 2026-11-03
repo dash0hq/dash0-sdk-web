@@ -8,7 +8,7 @@ import {
   PAGE_VIEW_TYPE,
   PAGE_VIEW_TYPE_VALUES,
 } from "../../semantic-conventions";
-import { doc, NO_VALUE_FALLBACK } from "../../utils";
+import { debug, doc, NO_VALUE_FALLBACK } from "../../utils";
 import { addCommonAttributes, scrubUrl } from "../../attributes";
 import { sendLog } from "../../transport";
 import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
@@ -30,6 +30,13 @@ type BuildPageViewLogOptions = {
   pageViewType: (typeof PAGE_VIEW_TYPE_VALUES)[keyof typeof PAGE_VIEW_TYPE_VALUES];
   changeState?: (typeof PAGE_VIEW_CHANGE_STATE_VALUES)[keyof typeof PAGE_VIEW_CHANGE_STATE_VALUES];
 };
+
+type PageViewListener = (url?: URL) => void;
+const pageViewListeners: PageViewListener[] = [];
+
+export function onPageView(listener: PageViewListener): void {
+  pageViewListeners.push(listener);
+}
 
 function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
   const attributes: KeyValue[] = [];
@@ -76,7 +83,19 @@ function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
   sendLog(log);
 }
 
+function notifyPageViewListeners(url?: URL) {
+  for (const listener of pageViewListeners) {
+    try {
+      listener(url);
+    } catch (e) {
+      debug("Page view listener failed", e);
+    }
+  }
+}
+
 export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?: boolean, replaced?: boolean) {
+  // Listeners run for ignored pages too, so they can stop collecting there.
+  notifyPageViewListeners(url);
   if (url && isUrlIgnored(url.href)) return;
 
   const meta = getPageViewMeta(url);
@@ -108,6 +127,7 @@ export type ManualPageViewOptions = {
  * matching the sendEvent semantics.
  */
 export function transmitManualPageViewEvent(opts: ManualPageViewOptions) {
+  notifyPageViewListeners(opts.url);
   buildAndSendPageViewLog({
     timeUnixNano: opts.timeUnixNano,
     url: opts.url,

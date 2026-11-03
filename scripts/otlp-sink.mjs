@@ -11,6 +11,8 @@
 //   - serves http://localhost:4318/ with a replay page per recording (rrweb-player from a CDN)
 //
 // Gzip request bodies (which the SDK uses for recording chunks) are inflated by body-parser.
+//
+// Profiles (POST /v1development/profiles) are summarized one line per chunk.
 import express from "express";
 import bodyParser from "body-parser";
 import { appendFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -33,6 +35,20 @@ app.use((req, res, next) => {
   next();
 });
 
+app.post("/v1development/profiles", bodyParser.json({ limit: "50mb", type: () => true }), (req, res) => {
+  counters.profiles++;
+  const { dictionary, resourceProfiles } = req.body;
+  for (const { scopeProfiles } of resourceProfiles) {
+    const profile = scopeProfiles[0].profiles[0];
+    const samples = profile.samples.reduce((n, sample) => n + sample.timestampsUnixNano.length, 0);
+    const session = profile.attributeIndices
+      .map((i) => dictionary.attributeTable[i])
+      .find((a) => dictionary.stringTable[a.keyStrindex] === "session.id")?.value.stringValue;
+    console.log(`PROF  samples=${samples}  session=${session}  bytes=${req.headers["content-length"]}`);
+  }
+  res.status(200).json({});
+});
+
 app.use(bodyParser.json({ limit: "50mb", type: () => true }));
 
 function attr(record, key) {
@@ -42,7 +58,7 @@ function attr(record, key) {
   return v.stringValue ?? v.intValue ?? v.doubleValue ?? v.boolValue;
 }
 
-const counters = { logs: 0, spans: 0, chunks: 0, chunkBytes: 0 };
+const counters = { logs: 0, spans: 0, chunks: 0, chunkBytes: 0, profiles: 0 };
 
 // The ids come from the request body and end up in file paths and HTML. Accept only what the SDK emits.
 const RECORDING_ID_PATTERN = /^[0-9a-f]{32}$/;
@@ -120,7 +136,7 @@ app.get("/", (_req, res) => {
     .join("");
   res.type("html").send(`<!doctype html><meta charset="utf-8"><title>OTLP sink</title>
 <h1>OTLP sink</h1>
-<p>logs=${counters.logs} spans=${counters.spans} recording chunks=${counters.chunks} (${(counters.chunkBytes / 1024).toFixed(1)} KB raw JSON)</p>
+<p>logs=${counters.logs} spans=${counters.spans} profiles=${counters.profiles} recording chunks=${counters.chunks} (${(counters.chunkBytes / 1024).toFixed(1)} KB raw JSON)</p>
 <p>Raw requests: <code>${REQUESTS_FILE}</code></p>
 <h2>Recordings</h2><ul>${items || "<li>none yet</li>"}</ul>`);
 });

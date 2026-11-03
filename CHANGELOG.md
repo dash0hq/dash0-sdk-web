@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.29.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.3...0.29.0) (2026-11-03)
+
+### Features
+
+- **profiling:** send JS Self-Profiling samples as OTLP profiles ([#137](https://github.com/dash0hq/dash0-sdk-web/issues/137)) ([d8f4d67](https://github.com/dash0hq/dash0-sdk-web/commit/d8f4d6703160add801e9f09747d4ca89a3aa17e4))
+
 ## [0.28.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.2...0.28.3) (2026-10-26)
 
 ### Bug Fixes

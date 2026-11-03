@@ -4,6 +4,7 @@ import { UrlAttributeScrubber } from "./attributes";
 import { identity } from "./utils";
 import { SessionRecordingSettings } from "./types/session-recording";
 import { FrustrationSignalSettings } from "./types/frustration";
+import { ProfilingSettings } from "./types/profiling";
 
 export type PropagatorType = "traceparent" | "xray";
 
@@ -192,6 +193,12 @@ export type Vars = {
   frustrationSignals: FrustrationSignalSettings;
 
   /**
+   * JS Self-Profiling settings. Profiling runs only when `@dash0/profiling` is listed in
+   * `enabledInstrumentations`.
+   */
+  profiling: ProfilingSettings;
+
+  /**
    * Enables telemetry transport compression using gzip.
    * experimental - in rare cases causes Chrome to crash to use at your own risk.
    */
@@ -246,6 +253,11 @@ export const vars: Vars = {
       windowMillis: 1000,
       radiusPixels: 30,
     },
+  },
+  profiling: {
+    sampleRate: 10,
+    sampleIntervalMs: 10,
+    chunkDurationMs: 15000,
   },
   enableTransportCompression: false,
   isSessionSampled: true,

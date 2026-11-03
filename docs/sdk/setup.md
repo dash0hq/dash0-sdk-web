@@ -146,3 +146,50 @@ only session replay is skipped.
 
 Inputs are masked by default. See [Session replay configuration](./configuration.md#session-replay) for
 privacy controls, sampling and chunk sizes.
+
+### Profiling
+
+Profiling works in Chromium-based browsers. Enable the instrumentation:
+
+```js
+import { init } from "@dash0/sdk-web";
+
+init({
+  serviceName: "my-website",
+  endpoint: { url: "REPLACE THIS", authToken: "REPLACE THIS" },
+  enabledInstrumentations: [
+    "@dash0/navigation",
+    "@dash0/web-vitals",
+    "@dash0/error",
+    "@dash0/fetch",
+    "@dash0/xhr",
+    "@dash0/profiling",
+  ],
+  profiling: { sampleRate: 10 },
+});
+```
+
+With script tags, add `"@dash0/profiling"` to `enabledInstrumentations` in the initializer snippet.
+
+The browser only allows profiling when the HTML document is served with this response header:
+
+```
+Document-Policy: js-profiling
+```
+
+In Next.js, add it in `next.config.js`:
+
+```js
+module.exports = {
+  async headers() {
+    return [{ source: "/:path*", headers: [{ key: "Document-Policy", value: "js-profiling" }] }];
+  },
+};
+```
+
+If the app's JavaScript is served from another origin, such as a CDN through `assetPrefix`, also set
+`crossOrigin: "anonymous"` in `next.config.js` and allow the page's origin with `Access-Control-Allow-Origin` on
+the CDN. Otherwise those frames are missing from the profiles.
+
+The auth token needs the `ingest:profiles` permission. See [Profiling configuration](./configuration.md#profiling)
+for sampling, chunk length and what each profile contains.
