@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ProfileChunk, ProfileEncoder, ProfilerTrace } from "../../types/profiling";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import type { ProfileChunk, ProfilerTrace } from "../../types/profiling";
+import type { encodeProfiles } from "../../profiling/encode";
 import { doc, win } from "../../utils";
 
 vi.mock("../../transport", () => ({ sendLog: vi.fn(), sendProfile: vi.fn() }));
@@ -25,8 +26,14 @@ class FakeProfiler extends EventTarget {
   }
 }
 
+let encoder: Mock<typeof encodeProfiles>;
+
 async function load() {
   vi.resetModules();
+  // A fresh encoder per load, because modules from earlier loads keep their document listeners.
+  const freshEncoder = vi.fn<typeof encodeProfiles>(() => ({ body: "{}", sampleCount: 1 }));
+  vi.doMock("../../profiling/encode", () => ({ encodeProfiles: freshEncoder }));
+  encoder = freshEncoder;
   const transport = await import("../../transport");
   const { vars } = await import("../../vars");
   const profiling = await import("./index");
@@ -39,14 +46,12 @@ function setVisibility(state: DocumentVisibilityState) {
 }
 
 describe("profiling", () => {
-  const encoder = vi.fn<ProfileEncoder>(() => ({ body: "{}", sampleCount: 1 }));
   const encodedChunks = () => encoder.mock.calls.flatMap(([chunks]) => chunks);
   const pageUrlOf = (chunk: ProfileChunk) => chunk.attributes.find((a) => a.key === "page.url.full")?.value;
 
   beforeEach(() => {
     vi.useFakeTimers();
     FakeProfiler.instances = [];
-    encoder.mockClear();
     setVisibility("visible");
     (win as any).Profiler = FakeProfiler;
   });
@@ -57,26 +62,17 @@ describe("profiling", () => {
     vi.clearAllMocks();
   });
 
-  it("does nothing without an encoder", async () => {
-    const { profiling, transport } = await load();
-    profiling.startProfiling();
-    expect(FakeProfiler.instances).toHaveLength(0);
-    expect(transport.sendLog).not.toHaveBeenCalled();
-  });
-
-  it("reports once that the Profiler API is missing", async () => {
+  it("does nothing and sends no event when the browser has no Profiler API", async () => {
     delete (win as any).Profiler;
     const { profiling, transport, vars } = await load();
-    vars.profiling = { ...vars.profiling, sampleRate: 100, encoder };
+    vars.profiling = { ...vars.profiling, sampleRate: 100 };
 
     profiling.startProfiling();
     setVisibility("hidden");
     setVisibility("visible");
 
-    expect(transport.sendLog).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(transport.sendLog).mock.calls[0]![0].body).toEqual({
-      kvlistValue: { values: [{ key: "reason", value: { stringValue: "api_missing" } }] },
-    });
+    expect(transport.sendLog).not.toHaveBeenCalled();
+    expect(encoder).not.toHaveBeenCalled();
   });
 
   it("reports a missing Document-Policy header", async () => {
@@ -86,7 +82,7 @@ describe("profiling", () => {
       }
     };
     const { profiling, transport, vars } = await load();
-    vars.profiling = { ...vars.profiling, sampleRate: 100, encoder };
+    vars.profiling = { ...vars.profiling, sampleRate: 100 };
 
     profiling.startProfiling();
 
@@ -99,7 +95,7 @@ describe("profiling", () => {
     const { profiling, transport, vars } = await load();
     const session = await import("../../api/session");
     session.trackSessions();
-    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder };
+    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000 };
     vars.urlAttributeScrubber = (attrs) => ({ ...attrs, "url.query": attrs["url.query"] && "REDACTED" });
 
     profiling.startProfiling();
@@ -126,7 +122,7 @@ describe("profiling", () => {
   it("starts a new chunk on every page view, each with its own page url", async () => {
     const { profiling, vars } = await load();
     const navigation = await import("../navigation/event");
-    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder };
+    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000 };
 
     profiling.startProfiling();
     navigation.transmitPageViewEvent("0", new URL("https://example.com/next"), true);
@@ -144,7 +140,7 @@ describe("profiling", () => {
     const { profiling, vars } = await load();
     const navigation = await import("../navigation/event");
     vars.ignoreUrls = [/\/callback/];
-    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder };
+    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000 };
 
     profiling.startProfiling();
     navigation.transmitPageViewEvent("0", new URL("https://example.com/callback"), true);
@@ -159,7 +155,7 @@ describe("profiling", () => {
   it("starts again on the next page view after a last chance that did not unload the page", async () => {
     const { profiling, vars } = await load();
     const navigation = await import("../navigation/event");
-    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder };
+    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000 };
 
     profiling.startProfiling();
     win!.dispatchEvent(new Event("beforeunload"));
@@ -171,7 +167,7 @@ describe("profiling", () => {
 
   it("clamps a zero interval and chunk length", async () => {
     const { profiling, vars } = await load();
-    vars.profiling = { ...vars.profiling, sampleRate: 100, sampleIntervalMs: 0, chunkDurationMs: 0, encoder };
+    vars.profiling = { ...vars.profiling, sampleRate: 100, sampleIntervalMs: 0, chunkDurationMs: 0 };
 
     profiling.startProfiling();
     await vi.advanceTimersByTimeAsync(999);
@@ -184,8 +180,8 @@ describe("profiling", () => {
     const { profiling, transport, vars } = await load();
     // Modules loaded by earlier tests keep their document listeners, so only this test's body counts.
     const body = '{"chunk":42}';
-    const ownEncoder = vi.fn<ProfileEncoder>(() => ({ body, sampleCount: 1 }));
-    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder: ownEncoder };
+    encoder.mockReturnValue({ body, sampleCount: 1 });
+    vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000 };
     const sent = () =>
       vi
         .mocked(transport.sendProfile)
@@ -210,8 +206,8 @@ describe("profiling", () => {
     const { profiling, transport, vars } = await load();
     const navigation = await import("../navigation/event");
     const body = '{"chunk":"burst"}';
-    const ownEncoder = vi.fn<ProfileEncoder>(() => ({ body, sampleCount: 1 }));
-    vars.profiling = { ...vars.profiling, sampleRate: 100, encoder: ownEncoder };
+    encoder.mockReturnValue({ body, sampleCount: 1 });
+    vars.profiling = { ...vars.profiling, sampleRate: 100 };
     const sendTimes: number[] = [];
     vi.mocked(transport.sendProfile).mockImplementation((b) => {
       if (b === body) sendTimes.push(Date.now());
@@ -224,14 +220,14 @@ describe("profiling", () => {
     }
     await vi.advanceTimersByTimeAsync(10_000);
 
-    expect(ownEncoder.mock.calls.flatMap(([chunks]) => chunks)).toHaveLength(6);
+    expect(encoder.mock.calls.flatMap(([chunks]) => chunks)).toHaveLength(6);
     expect(sendTimes.length).toBeGreaterThan(1);
     sendTimes.slice(1).forEach((time, i) => expect(time - sendTimes[i]!).toBeGreaterThanOrEqual(5000));
   });
 
   it("does not profile sessions outside the profiling sample rate", async () => {
     const { profiling, vars } = await load();
-    vars.profiling = { ...vars.profiling, sampleRate: 0, encoder };
+    vars.profiling = { ...vars.profiling, sampleRate: 0 };
 
     profiling.startProfiling();
 
@@ -240,7 +236,7 @@ describe("profiling", () => {
 
   it("sends the chunk and starts a new profiler when the sample buffer is full", async () => {
     const { profiling, vars } = await load();
-    vars.profiling = { ...vars.profiling, sampleRate: 100, encoder };
+    vars.profiling = { ...vars.profiling, sampleRate: 100 };
 
     profiling.startProfiling();
     FakeProfiler.instances[0]!.dispatchEvent(new Event("samplebufferfull"));
@@ -252,39 +248,6 @@ describe("profiling", () => {
 
     FakeProfiler.instances[0]!.dispatchEvent(new Event("samplebufferfull"));
     expect(FakeProfiler.instances).toHaveLength(2);
-  });
-
-  it("starts when the encoder is registered after init, and only once", async () => {
-    const { profiling, vars } = await load();
-    vars.profiling = { ...vars.profiling, sampleRate: 100 };
-
-    profiling.startProfiling();
-    expect(FakeProfiler.instances).toHaveLength(0);
-
-    profiling.registerProfileEncoder(encoder);
-    profiling.registerProfileEncoder(encoder);
-    expect(FakeProfiler.instances).toHaveLength(1);
-  });
-
-  it("starts when the encoder is registered before init", async () => {
-    const { profiling, vars } = await load();
-    vars.profiling = { ...vars.profiling, sampleRate: 100 };
-
-    profiling.registerProfileEncoder(encoder);
-    expect(FakeProfiler.instances).toHaveLength(0);
-
-    profiling.startProfiling();
-    expect(FakeProfiler.instances).toHaveLength(1);
-  });
-
-  it("ignores a registration without an encoder", async () => {
-    const { profiling, vars } = await load();
-    vars.profiling = { ...vars.profiling, sampleRate: 100 };
-
-    profiling.startProfiling();
-    profiling.registerProfileEncoder(undefined);
-
-    expect(FakeProfiler.instances).toHaveLength(0);
   });
 
   describe("with requestIdleCallback", () => {
@@ -302,7 +265,7 @@ describe("profiling", () => {
 
     it("encodes a rotated chunk in idle time, with a timeout", async () => {
       const { profiling, vars } = await load();
-      vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder };
+      vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000 };
 
       profiling.startProfiling();
       await vi.advanceTimersByTimeAsync(1000);
@@ -316,8 +279,8 @@ describe("profiling", () => {
     it("sends a chunk still waiting for idle time on the last chance, once", async () => {
       const { profiling, transport, vars } = await load();
       const body = '{"chunk":7}';
-      const ownEncoder = vi.fn<ProfileEncoder>(() => ({ body, sampleCount: 1 }));
-      vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000, encoder: ownEncoder };
+      encoder.mockReturnValue({ body, sampleCount: 1 });
+      vars.profiling = { ...vars.profiling, sampleRate: 100, chunkDurationMs: 1000 };
       const sent = () =>
         vi
           .mocked(transport.sendProfile)

@@ -623,7 +623,6 @@ the website's other telemetry. The API exists in Chromium-based browsers only. O
 Profiling is off by default. It runs only when all of these hold:
 
 - `@dash0/profiling` is listed in `enabledInstrumentations`.
-- The encoder from `@dash0/sdk-web/profiling` is provided. See [Setup](./setup.md#profiling).
 - The session is sampled by `sessionSamplingRate`, and then by `profiling.sampleRate`.
 - The page is served with the `Document-Policy: js-profiling` response header.
 
@@ -635,10 +634,9 @@ Samples taken while no JavaScript ran are counted in `dash0.profiling.idle_sampl
 Chrome adds extra samples in bursts, for example during a page load. The SDK keeps at most one sample per half
 sampling interval and counts the rest in `dash0.profiling.burst_sample_count`.
 
-When the browser has no `Profiler` or refuses to start it, the SDK sends one `browser.profiling_unavailable` event
-per page load. Its body holds a `reason`:
+When the browser refuses to start the profiler, the SDK sends one `browser.profiling_unavailable` event per page
+load. Its body holds a `reason`:
 
-- `api_missing`: the browser does not implement the API.
 - `document_policy`: the page was served without `Document-Policy: js-profiling`.
 - `start_failed`: the profiler failed to start for another reason.
 
@@ -676,10 +674,3 @@ credentials of a source map integration. Anonymous functions stay `(anonymous)`,
   optional: `true`<br>
   default: `15000`<br>
   How long one profile covers before it is sent and a new one starts.
-- **Encoder**<br>
-  key: `profiling.encoder`<br>
-  type: `ProfileEncoder`<br>
-  optional: `true`<br>
-  default: `undefined`<br>
-  The encoder to use. Pass `encoder` from `@dash0/sdk-web/profiling`. When omitted, the SDK uses the one the
-  `dash0-profiling.iife.js` script registers.

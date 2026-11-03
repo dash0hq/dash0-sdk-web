@@ -13,12 +13,10 @@ import { sendLog, sendProfile } from "../../transport";
 import { EVENT_NAME, EVENT_NAMES } from "../../semantic-conventions";
 import { onPageView } from "../navigation/event";
 import { KeyValue } from "../../types/otlp";
-import { ProfileChunk, ProfileEncoder, ProfilerTrace } from "../../types/profiling";
+import { ProfileChunk, ProfilerTrace } from "../../types/profiling";
+import { encodeProfiles } from "../../profiling/encode";
 
-/** Global set by `dash0-profiling.iife.js`. */
-export const GLOBAL_PROFILE_ENCODER_KEY = "dash0ProfileEncoder";
-
-type UnavailableReason = "api_missing" | "document_policy" | "start_failed";
+type UnavailableReason = "document_policy" | "start_failed";
 
 type JsProfiler = EventTarget & {
   readonly sampleInterval: number;
@@ -39,51 +37,22 @@ const MIN_CHUNK_DURATION_MS = 1000;
 // page views is batched into one request instead of being dropped.
 const MIN_SEND_INTERVAL_MS = 5000;
 
-let encoder: ProfileEncoder | undefined;
-let armed = false;
-let started = false;
 let running: Running | undefined;
 let rotateTimer: ReturnType<typeof setTimeout> | undefined;
 let waiting: Stopped[] = [];
 let lastSendTime = -Infinity;
 let unavailable = false;
 
-/**
- * Called from `init()` when `@dash0/profiling` is enabled and the session is sampled. Profiling starts as soon as
- * an encoder is available too, in either order, so pages that never load `@dash0/sdk-web/profiling` pay nothing.
- *
- * Encoder precedence: `profiling.encoder` from the init options, then one registered through
- * `registerProfileEncoder`, then `window.dash0ProfileEncoder`.
- */
+/** Called from `init()` when `@dash0/profiling` is enabled. */
 export function startProfiling(): void {
   if (!isSessionSampledIn(sessionId ?? "", vars.profiling.sampleRate ?? 10)) {
     debug("Session is not sampled for profiling.");
     return;
   }
-  armed = true;
-  encoder =
-    vars.profiling.encoder ?? encoder ?? ((win as any)?.[GLOBAL_PROFILE_ENCODER_KEY] as ProfileEncoder | undefined);
-  begin();
-}
-
-/** Called by `dash0-profiling.iife.js` through `dash0("registerProfileEncoder", encoder)`. */
-export function registerProfileEncoder(candidate: unknown): void {
-  // The script entrypoint forwards arguments without type checking; a throw would abort the command-queue drain.
-  if (typeof candidate !== "function") {
-    debug("registerProfileEncoder requires an encoder. Ignoring call.");
+  if (typeof getProfiler() !== "function") {
+    debug("Profiling is unavailable: the browser has no Profiler API.");
     return;
   }
-  encoder ??= candidate as ProfileEncoder;
-  begin();
-}
-
-function begin(): void {
-  if (!armed || started) return;
-  if (typeof encoder !== "function") {
-    debug("No profile encoder yet. Profiling starts once one is registered.");
-    return;
-  }
-  started = true;
 
   if (doc) {
     addEventListener(doc, "visibilitychange", () => {
@@ -104,14 +73,14 @@ function begin(): void {
   startChunk();
 }
 
+function getProfiler(): JsProfilerConstructor | undefined {
+  return (win as unknown as { Profiler?: JsProfilerConstructor } | undefined)?.Profiler;
+}
+
 function startChunk(url = win?.location.href): void {
   if (running || unavailable || doc?.visibilityState === "hidden" || !url || isUrlIgnored(url)) return;
 
-  const Profiler = (win as unknown as { Profiler?: JsProfilerConstructor } | undefined)?.Profiler;
-  if (typeof Profiler !== "function") {
-    reportUnavailable("api_missing");
-    return;
-  }
+  const Profiler = getProfiler()!;
 
   const sampleIntervalMs = Math.max(1, vars.profiling.sampleIntervalMs ?? 10);
   const chunkDurationMs = Math.max(MIN_CHUNK_DURATION_MS, vars.profiling.chunkDurationMs ?? 15000);
@@ -193,11 +162,10 @@ function flushWaiting(compress: boolean): void {
 }
 
 function emit(stoppedChunks: Stopped[], compress: boolean): void {
-  if (!encoder) return;
   lastSendTime = perf.now();
 
   try {
-    const encoded = encoder(stoppedChunks.map(toProfileChunk));
+    const encoded = encodeProfiles(stoppedChunks.map(toProfileChunk));
     if (encoded.sampleCount === 0) return;
     debug("Sending profile", encoded);
     sendProfile(encoded.body, { compress });

@@ -194,7 +194,7 @@ export type Vars = {
 
   /**
    * JS Self-Profiling settings. Profiling runs only when `@dash0/profiling` is listed in
-   * `enabledInstrumentations` and an encoder from `@dash0/sdk-web/profiling` is provided.
+   * `enabledInstrumentations`.
    */
   profiling: ProfilingSettings;
 

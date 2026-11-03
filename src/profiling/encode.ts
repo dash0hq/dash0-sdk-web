@@ -181,9 +181,6 @@ function resourceOf(trace: ProfilerTrace, resourceId: number | undefined): strin
 }
 
 function unixNanosSince(timeOrigin: number): (relativeMillis: number) => string {
-  // timeOrigin * 1e6 is past 2^53, so the whole milliseconds are scaled as a bigint.
-  const wholeMillis = Math.floor(timeOrigin);
-  const fraction = timeOrigin - wholeMillis;
-  const base = BigInt(wholeMillis) * BigInt(NANOS_PER_MILLI);
-  return (relativeMillis) => String(base + BigInt(Math.round((fraction + relativeMillis) * NANOS_PER_MILLI)));
+  // Unix nanoseconds are past 2^53 and lose precision as a number, while whole microseconds stay exact until 2255.
+  return (relativeMillis) => String(Math.round((timeOrigin + relativeMillis) * 1000)) + "000";
 }

@@ -138,14 +138,10 @@ privacy controls, sampling and chunk sizes.
 
 ### Profiling
 
-Profiling is an optional add-on for Chromium-based browsers. The encoder ships as its own bundle, so
-websites that do not profile pay nothing for it.
-
-With modules, import the encoder, hand it to `init` and enable the instrumentation:
+Profiling works in Chromium-based browsers. Enable the instrumentation:
 
 ```js
 import { init } from "@dash0/sdk-web";
-import { encoder } from "@dash0/sdk-web/profiling";
 
 init({
   serviceName: "my-website",
@@ -158,17 +154,11 @@ init({
     "@dash0/xhr",
     "@dash0/profiling",
   ],
-  profiling: { encoder, sampleRate: 10 },
+  profiling: { sampleRate: 10 },
 });
 ```
 
-With script tags, add `"@dash0/profiling"` to `enabledInstrumentations` in the initializer snippet and add a second
-script. The order of the two SDK scripts does not matter.
-
-```html
-<script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web/dist/dash0.iife.js"></script>
-<script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web/dist/dash0-profiling.iife.js"></script>
-```
+With script tags, add `"@dash0/profiling"` to `enabledInstrumentations` in the initializer snippet.
 
 The browser only allows profiling when the HTML document is served with this response header:
 

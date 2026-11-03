@@ -50,12 +50,6 @@ export type EncodedProfile = {
   sampleCount: number;
 };
 
-/**
- * Turns profiler chunks into one OTLP `ExportProfilesServiceRequest`, one profile per chunk. Provided by the
- * `@dash0/sdk-web/profiling` entrypoint, so the main bundle does not carry the encoder.
- */
-export type ProfileEncoder = (chunks: ProfileChunk[]) => EncodedProfile;
-
 export type ProfilingSettings = {
   /**
    * Percentage (0-100) of sessions that are profiled. Default 10. It uses the same session hash as
@@ -68,10 +62,4 @@ export type ProfilingSettings = {
 
   /** How long the profiler runs before its trace is sent and a new one starts. Default 15000. */
   chunkDurationMs?: number;
-
-  /**
-   * The encoder exported by `@dash0/sdk-web/profiling`. Profiling only starts once an encoder is
-   * provided, here or through the `dash0-profiling.iife.js` script, which may load before or after `init()`.
-   */
-  encoder?: ProfileEncoder;
 };
