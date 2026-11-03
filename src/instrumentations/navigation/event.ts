@@ -83,8 +83,7 @@ function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
   sendLog(log);
 }
 
-export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?: boolean, replaced?: boolean) {
-  // Listeners run for ignored pages too, so they can stop collecting there.
+function notifyPageViewListeners(url?: URL) {
   for (const listener of pageViewListeners) {
     try {
       listener(url);
@@ -92,6 +91,11 @@ export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?:
       debug("Page view listener failed", e);
     }
   }
+}
+
+export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?: boolean, replaced?: boolean) {
+  // Listeners run for ignored pages too, so they can stop collecting there.
+  notifyPageViewListeners(url);
   if (url && isUrlIgnored(url.href)) return;
 
   const meta = getPageViewMeta(url);
@@ -123,6 +127,7 @@ export type ManualPageViewOptions = {
  * matching the sendEvent semantics.
  */
 export function transmitManualPageViewEvent(opts: ManualPageViewOptions) {
+  notifyPageViewListeners(opts.url);
   buildAndSendPageViewLog({
     timeUnixNano: opts.timeUnixNano,
     url: opts.url,

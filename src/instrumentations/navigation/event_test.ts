@@ -213,6 +213,19 @@ describe("transmitManualPageViewEvent", () => {
     });
   });
 
+  it("tells page view listeners about the view", () => {
+    const seen: (string | undefined)[] = [];
+    onPageView((url) => seen.push(url?.pathname));
+
+    transmitManualPageViewEvent({
+      timeUnixNano: "1700000000000000000",
+      title: "/settings",
+      url: new URL("https://example.com/settings"),
+    });
+
+    expect(seen).toEqual(["/settings"]);
+  });
+
   it("passes url through to page.url.* attributes when provided", () => {
     transmitManualPageViewEvent({
       timeUnixNano: "1700000000000000000",

@@ -12,11 +12,6 @@
       "require": "./dist/dash0.umd.cjs",
       "default": "./dist/dash0.js"
     },
-    "./profiling": {
-      "types": "./dist/types/entrypoint/profiling.d.ts",
-      "require": "./dist/dash0-profiling.umd.cjs",
-      "default": "./dist/dash0-profiling.js"
-    },
     "./session-recording": {
       "types": "./dist/types/entrypoint/session-recording.d.ts",
       "require": "./dist/dash0-session-recording.umd.cjs",
