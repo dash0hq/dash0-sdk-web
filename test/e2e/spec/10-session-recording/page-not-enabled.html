@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>session recording not enabled test</title>
+
+    <!--
+      Session recording is not enabled in the init options. Loading the recorder bundle alone must not record.
+    -->
+    <script crossorigin="anonymous" src="/dist/dash0-session-recording.iife.js"></script>
+
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: {
+          url: `http://${window.location.hostname}:8011?cors=true`,
+          authToken: "auth_abc123",
+          dataset: "production",
+        },
+        sessionRecording: {
+          chunkMaxMillis: 500,
+        },
+      });
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+  </head>
+  <body>
+    <h1 id="visible-heading">Recorder loaded without opt-in</h1>
+  </body>
+</html>

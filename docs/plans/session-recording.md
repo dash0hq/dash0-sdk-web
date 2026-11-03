@@ -4,6 +4,13 @@
 > outside the `docs/sdk/*.md` coverage glob in
 > `.github/workflows/sync-docs/transformations.yaml`, so this file is not synced to
 > dash0.com/docs.
+>
+> **Superseded handover.** The recorder handover described below (`registerRecorder`,
+> `startSessionRecording(recorder)`, `window.dash0Recorder`, the script calling
+> `dash0("startSessionRecording")`) was replaced: session recording is now enabled only through
+> the init options, `sessionRecording.recorder` or `sessionRecording.enabled`. The script-tag
+> bundle only sets `window.dash0SessionRecording` and dispatches `dash0:session-recorder`, and
+> `@dash0/session-recording` is no longer an instrumentation name.
 
 ## Context
 

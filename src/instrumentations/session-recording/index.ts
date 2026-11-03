@@ -6,7 +6,7 @@ import { setTimeout } from "../../utils/timers";
 import { generateTraceId } from "../../utils/trace-id";
 import { generateSpanId } from "../../utils/span-id";
 import { isUrlIgnored } from "../../utils/ignore-rules";
-import { addEventListener } from "../../utils/listeners";
+import { addEventListener, removeEventListener } from "../../utils/listeners";
 import { LAST_CHANCE_PRIORITY_LARGE_PAYLOAD, onLastChance } from "../../utils/on-last-chance";
 import { sendSessionRecordingChunk } from "../../transport";
 import { SessionRecorder, SessionRecordingEvent } from "../../types/session-recording";
@@ -14,10 +14,16 @@ import { Chunker, newChunker, RRWEB_EVENT_TYPE_META } from "./chunker";
 import { buildSessionRecordingLog, RecordingStream } from "./log";
 
 /**
- * Global set by `dash0-session-recording.iife.js`. Read by `armSessionRecording()` and by
- * `startSessionRecording()` when called without a recorder.
+ * Global set by `dash0-session-recording.iife.js`. Only read when `init()` enabled session recording through
+ * `sessionRecording.enabled`, so loading that script alone never records.
  */
-export const GLOBAL_RECORDER_KEY = "dash0Recorder";
+export const GLOBAL_RECORDER_KEY = "dash0SessionRecording";
+
+/**
+ * Dispatched on `window` by `dash0-session-recording.iife.js` once it set `GLOBAL_RECORDER_KEY`. Lets the SDK pick
+ * up a recorder that loads after `init()` ran.
+ */
+export const RECORDER_READY_EVENT = "dash0:session-recorder";
 
 /**
  * The recording id of the run that was shown last, shared by all tabs of the origin. A tab that is shown again
@@ -40,8 +46,7 @@ type HiddenEvents = {
 
 let recorder: SessionRecorder | undefined;
 let armed = false;
-// The recorder that is running, which is not necessarily `recorder`: a recorder registered while one runs only
-// takes over at the next start.
+// The recorder that is running. Unset whenever no recorder runs, even though `recorder` stays known.
 let runningRecorder: SessionRecorder | undefined;
 let stopRecorder: (() => void) | undefined;
 // Incremented whenever a recorder stops or fails to start, so whatever it still emits afterwards is dropped.
@@ -54,7 +59,7 @@ let hiddenEvents: HiddenEvents | undefined;
 let lastChanceRegistered = false;
 let visibilityRegistered = false;
 // Set by the public `stopSessionRecording()`, so a visibility change does not resurrect a recording the
-// consumer deliberately ended. Cleared by an explicit start: registering a recorder or arming.
+// consumer deliberately ended. Cleared by an explicit start: arming or `restartSessionRecording()`.
 let stoppedByConsumer = false;
 // True while flushing a document that may not live much longer. The chunk emitted then must be sent
 // uncompressed: gzip is asynchronous, and a document that is being unloaded — or that has just been hidden,
@@ -62,40 +67,61 @@ let stoppedByConsumer = false;
 let flushingWhileDocumentMayEnd = false;
 
 /**
- * Makes a recorder available. Called from the public `startSessionRecording` API, which the
- * `dash0-session-recording.iife.js` script and npm consumers use. Recording starts as soon as both a recorder
- * is registered and `init()` has armed session recording, in either order.
+ * Called from `init()` once configuration is in place and the session is sampled. Records only when the consumer
+ * enabled session recording in the init options, which is the one deliberate opt-in:
+ *
+ * - `sessionRecording.recorder`: the recorder to use, typically imported from `@dash0/sdk-web/session-recording`.
+ * - `sessionRecording.enabled`: use the recorder of `dash0-session-recording.iife.js`. It is read from the global
+ *   the script sets when the script already ran, and taken as soon as the script announces itself otherwise, so
+ *   both scripts can be loaded `defer` or `async` in any order.
  */
-export function registerSessionRecorder(r: SessionRecorder): void {
-  recorder = r;
+export function armSessionRecording(): void {
+  const settings = vars.sessionRecording;
+  if (!settings.recorder && !settings.enabled) {
+    return;
+  }
+
+  armed = true;
   stoppedByConsumer = false;
-  if (armed) {
+  recorder = settings.recorder ?? globalRecorder();
+  if (recorder) {
+    start();
+  } else if (win) {
+    addEventListener(win, RECORDER_READY_EVENT, onRecorderReady);
+    debug("Session recording is enabled. Waiting for dash0-session-recording.iife.js to load.");
+  }
+}
+
+function onRecorderReady(): void {
+  if (recorder || !win) {
+    return;
+  }
+  recorder = globalRecorder();
+  if (!recorder) {
+    return;
+  }
+  removeEventListener(win, RECORDER_READY_EVENT, onRecorderReady);
+  if (!stoppedByConsumer) {
     start();
   }
 }
 
+function globalRecorder(): SessionRecorder | undefined {
+  const r = (win as any)?.[GLOBAL_RECORDER_KEY]?.recorder;
+  return typeof r === "function" ? (r as SessionRecorder) : undefined;
+}
+
 /**
- * Called from `init()` once configuration is in place and the session is sampled.
- *
- * Recorder precedence: `sessionRecording.recorder` from the init options, then a recorder registered through
- * `startSessionRecording(recorder)`, then `window.dash0Recorder`. The last one is set by
- * `dash0-session-recording.iife.js`, and is the only handover that works when that script executes before the
- * initializer snippet has defined the `dash0` command queue.
+ * Records again after `stopSessionRecording()`. Does nothing unless `init()` enabled session recording: it never
+ * enables recording on its own.
  */
-export function armSessionRecording(): void {
-  armed = true;
+export function restartSessionRecording(): void {
+  if (!armed) {
+    debug("Session recording is not enabled in the init options. Ignoring start.");
+    return;
+  }
   stoppedByConsumer = false;
-  if (vars.sessionRecording.recorder) {
-    recorder = vars.sessionRecording.recorder;
-  } else if (!recorder) {
-    const globalRecorder = (win as any)?.[GLOBAL_RECORDER_KEY];
-    if (typeof globalRecorder === "function") {
-      recorder = globalRecorder as SessionRecorder;
-    }
-  }
-  if (recorder) {
-    start();
-  }
+  start();
 }
 
 export function stopSessionRecording(): void {

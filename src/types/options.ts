@@ -8,7 +8,6 @@ export type InstrumentationName =
   | "@dash0/error"
   | "@dash0/fetch"
   | "@dash0/xhr"
-  | "@dash0/session-recording"
   | "@dash0/frustration-signals";
 
 /**

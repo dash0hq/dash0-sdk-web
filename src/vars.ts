@@ -179,8 +179,8 @@ export type Vars = {
   pageViewInstrumentation: PageViewInstrumentationSettings;
 
   /**
-   * Session recording (replay) settings. Recording only starts when a recorder is provided, either through
-   * `sessionRecording.recorder`, `startSessionRecording(recorder)`, or the `dash0-session-recording.iife.js` script.
+   * Session recording (replay) settings. Recording only starts when the init options enable it, through
+   * `sessionRecording.recorder` or `sessionRecording.enabled`.
    */
   sessionRecording: SessionRecordingSettings;
 
@@ -229,6 +229,7 @@ export const vars: Vars = {
     includeParts: [],
   },
   sessionRecording: {
+    enabled: false,
     samplingRate: 100,
     maskAllInputs: true,
     maskTextClass: "dash0-mask",

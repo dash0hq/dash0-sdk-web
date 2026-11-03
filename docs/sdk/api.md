@@ -241,39 +241,33 @@ configured during initialization. Manual termination is typically only needed fo
 
 ### Session Replay
 
-#### `startSessionRecording(recorder)`
+#### `startSessionRecording()`
 
-Starts session replay, which records the session with [rrweb](https://github.com/rrweb-io/rrweb). The recording is transmitted as
-`browser.session_recording` log records. All records of one recording share a trace ID that embeds the session ID.
-See [Session replay configuration](./configuration.md#session-replay) for privacy and chunking options.
+Records again after `stopSessionRecording()`. Session replay records the session with
+[rrweb](https://github.com/rrweb-io/rrweb) and transmits it as `browser.session_recording` log records. All records
+of one recording share a trace ID that embeds the session ID.
 
-The recorder lives in the separate `@dash0/sdk-web/session-recording` bundle. Passing it to `init` through
-`sessionRecording.recorder` is equivalent to calling this function. It is safe to call this before `init`; the
-recorder is kept and recording starts once the SDK is initialized with a sampled session.
-
-**Parameters:**
-
-- `recorder` (SessionRecorder, optional): `recorder` from `@dash0/sdk-web/session-recording`. When omitted, the
-  SDK uses `window.dash0Recorder`, which the `dash0-session-recording.iife.js` script sets. Calls without a usable
-  recorder are ignored.
+Session replay is only enabled in the init options, through `sessionRecording.recorder` or
+`sessionRecording.enabled` (see [Session replay setup](./setup.md#session-replay)). Recording then starts on its own,
+and this function is only needed to restart it after `stopSessionRecording()`. It never enables session replay: calls
+are ignored when the init options did not enable it.
 
 **Example:**
 
 ```js
 // Module
-import { init, startSessionRecording } from "@dash0/sdk-web";
-import { recorder } from "@dash0/sdk-web/session-recording";
+import { startSessionRecording } from "@dash0/sdk-web";
 
-init({ serviceName: "my-website", endpoint: { url: "...", authToken: "..." } });
-startSessionRecording(recorder);
+startSessionRecording();
 
-// Script: dash0-session-recording.iife.js calls this for you. Call it yourself only after stopSessionRecording.
+// Script
 dash0("startSessionRecording");
 ```
 
 #### `stopSessionRecording()`
 
-Stops the running recording and transmits buffered events. A no-op when no recording is running.
+Stops the running recording and transmits buffered events. A no-op when no recording is running. Recording does
+not resume on its own afterwards; call `startSessionRecording()` to record again.
 
 **Example:**
 

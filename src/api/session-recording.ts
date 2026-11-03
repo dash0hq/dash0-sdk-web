@@ -1,20 +1,13 @@
-import { debug, win } from "../utils";
-import { SessionRecorder } from "../types/session-recording";
-import {
-  GLOBAL_RECORDER_KEY,
-  registerSessionRecorder,
-  stopSessionRecording as stopRecording,
-} from "../instrumentations/session-recording";
+import { restartSessionRecording, stopSessionRecording as stopRecording } from "../instrumentations/session-recording";
 
 /**
- * Starts session recording with the given recorder. Pass `recorder` from `@dash0/sdk-web/session-recording`.
- * When `recorder` is omitted, the SDK looks for `window.dash0Recorder`, which the
- * `dash0-session-recording.iife.js` script sets. Calling this is not required when that script is used: `init()`
- * picks up `window.dash0Recorder` on its own, regardless of the order in which the scripts execute.
+ * Records again after `stopSessionRecording()`. Session recording is enabled in the init options only, through
+ * `sessionRecording.recorder` or `sessionRecording.enabled`; this function never enables it. Calls made when
+ * `init()` did not enable session recording are ignored. Recording starts on its own after `init()`, so this
+ * only needs to be called after a `stopSessionRecording()`.
  *
- * Recording only starts once `init()` has run with a sampled session. It is safe to call this before `init()`;
- * the recorder is kept and recording starts as soon as the SDK is initialized. The recording is transmitted
- * as `browser.session_recording` log records that share one trace ID, which embeds the session ID.
+ * The recording is transmitted as `browser.session_recording` log records that share one trace ID, which embeds
+ * the session ID.
  *
  * Only the visible document is transmitted. A tab opened in the background starts recording when it is first
  * shown. A tab that is hidden flushes what it buffered and holds back whatever changes while it is hidden. When
@@ -22,19 +15,8 @@ import {
  * and otherwise starts a fresh recording with a new full snapshot. So a session is a sequence of recordings that
  * do not overlap in time, which is what lets the whole session, tab switches included, be replayed as one.
  */
-export function startSessionRecording(recorder?: SessionRecorder): void {
-  // The script entrypoint forwards dash0("startSessionRecording", ...) arguments without type checking,
-  // so malformed calls must degrade to a logged no-op instead of throwing. An uncaught throw here would
-  // abort the command-queue drain and drop all subsequently queued api calls.
-  const r = recorder ?? (win as any)?.[GLOBAL_RECORDER_KEY];
-  if (typeof r !== "function") {
-    debug(
-      "startSessionRecording requires a recorder. Import `recorder` from `@dash0/sdk-web/session-recording` or load dash0-session-recording.iife.js. Ignoring call."
-    );
-    return;
-  }
-
-  registerSessionRecorder(r as SessionRecorder);
+export function startSessionRecording(): void {
+  restartSessionRecording();
 }
 
 /**

@@ -127,7 +127,7 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
-  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals'`
+  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/frustration-signals'`
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
 - **Ignore URLs**<br>
@@ -470,6 +470,10 @@ The recorder ships as a separate bundle, `@dash0/sdk-web/session-recording`, so 
 replay do not pay for it. See [Setup](./setup.md#session-replay) for how to load it. All options below live
 under the `sessionRecording` key of the `init` options.
 
+Session replay is off by default. It is enabled by passing a `recorder`, or by setting `enabled` when the recorder is
+loaded through the `dash0-session-recording.iife.js` script. Without either, nothing is recorded, even when the
+recorder script is on the page.
+
 By default, the value of every visible input, textarea and select is replaced with asterisks before it leaves the
 browser. Page text is captured, and so are element attributes: `<input type="hidden">` values, `<meta content>`,
 `data-*` attributes and `value=` set in markup are not masked. Add the class `dash0-mask` to an element to mask its
@@ -481,9 +485,14 @@ to drop hidden inputs). Set `maskTextSelector` to `"*"` to mask all text on the 
   type: `SessionRecorder`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  The recorder to use. Pass `recorder` from `@dash0/sdk-web/session-recording`. When omitted, recording starts as
-  soon as a recorder is registered through `startSessionRecording(recorder)` or through the
-  `dash0-session-recording.iife.js` script.
+  The recorder to use. Pass `recorder` from `@dash0/sdk-web/session-recording`. Passing it enables session replay.
+- **Enabled**<br>
+  key: `sessionRecording.enabled`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `false`<br>
+  Enables session replay with the recorder of the `dash0-session-recording.iife.js` script. Use it when the SDK is
+  loaded through script tags. Not needed when `recorder` is passed.
 - **Sampling Rate**<br>
   key: `sessionRecording.samplingRate`<br>
   type: `number`<br>
@@ -569,9 +578,6 @@ to drop hidden inputs). Set `maskTextSelector` to `"*"` to mask all text on the 
   How often the recorder takes a new full snapshot of the DOM, in milliseconds. A replay can start from any chunk
   that contains a full snapshot.
 
-Session replay can be disabled without removing the recorder bundle by leaving `@dash0/session-recording` out of
-`enabledInstrumentations`.
-
 #### Frustration signals
 
 The `@dash0/frustration-signals` instrumentation watches user interaction for signs of frustration. It currently
@@ -580,7 +586,7 @@ user expected.
 
 **Clicks are only observed while session replay is recording.** Detection starts and stops with the recording,
 which itself follows document visibility, so a rage click always comes with the replay that shows it. This
-instrumentation therefore does nothing unless `@dash0/session-recording` is enabled and a recorder is registered —
+instrumentation therefore does nothing unless session replay is enabled in the init options —
 see [session replay](./setup.md#session-replay). A burst that is still open when a recording ends is reported at that point.
 
 Each detected burst is emitted as a `browser.rage_click` event once the burst ends, carrying the number of clicks,

@@ -8,6 +8,6 @@ import { record } from "@rrweb/record";
 import type { SessionRecorder } from "../types/session-recording";
 
 /**
- * The rrweb recorder. Pass it to `init({ sessionRecording: { recorder } })` or to `startSessionRecording(recorder)`.
+ * The rrweb recorder. Pass it to `init({ sessionRecording: { recorder } })`.
  */
 export const recorder = record as unknown as SessionRecorder;
