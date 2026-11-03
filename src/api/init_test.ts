@@ -46,6 +46,10 @@ vi.mock("../instrumentations/frustration/rage-click", () => ({
   startRageClickInstrumentation: vi.fn(),
 }));
 
+vi.mock("../instrumentations/profiling", () => ({
+  startProfiling: vi.fn(),
+}));
+
 // Mock the utils module to control loc.hostname
 vi.mock("../utils", async () => {
   const actual = await vi.importActual("../utils");
@@ -62,6 +66,7 @@ import { startNavigationInstrumentation } from "../instrumentations/navigation";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { armSessionRecording } from "../instrumentations/session-recording";
 import { startRageClickInstrumentation } from "../instrumentations/frustration/rage-click";
+import { startProfiling } from "../instrumentations/profiling";
 
 describe("init", () => {
   const baseOptions: InitOptions = {
@@ -127,6 +132,15 @@ describe("init", () => {
       expect(instrumentXhr).toHaveBeenCalled();
     });
 
+    it("should not enable profiling when enabledInstrumentations is undefined", async () => {
+      init({
+        ...baseOptions,
+        enabledInstrumentations: undefined,
+      });
+
+      expect(startProfiling).not.toHaveBeenCalled();
+    });
+
     const instrumentations: InstrumentationName[] = [
       "@dash0/navigation",
       "@dash0/web-vitals",
@@ -135,6 +149,7 @@ describe("init", () => {
       "@dash0/xhr",
       "@dash0/session-recording",
       "@dash0/frustration-signals",
+      "@dash0/profiling",
     ];
     const instrumentationMocks: Record<InstrumentationName, () => void> = {
       "@dash0/navigation": startNavigationInstrumentation,
@@ -144,6 +159,7 @@ describe("init", () => {
       "@dash0/xhr": instrumentXhr,
       "@dash0/session-recording": armSessionRecording,
       "@dash0/frustration-signals": startRageClickInstrumentation,
+      "@dash0/profiling": startProfiling,
     };
 
     instrumentations.forEach((instrumentation) => {

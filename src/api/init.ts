@@ -37,10 +37,14 @@ import { BrowserBuildEnv, pickFirstString } from "./browser-env";
 import { applyVcsResourceAttributes } from "./vcs";
 import { armSessionRecording } from "../instrumentations/session-recording";
 import { startRageClickInstrumentation } from "../instrumentations/frustration/rage-click";
+import { startProfiling } from "../instrumentations/profiling";
 
 declare const process: { env?: BrowserBuildEnv } | undefined;
 
 let hasBeenInitialised: boolean = false;
+
+// Not part of the default set: these run only when listed in `enabledInstrumentations`.
+const OPT_IN_INSTRUMENTATIONS: InstrumentationName[] = ["@dash0/profiling"];
 
 export function init(opts: InitOptions) {
   if (hasBeenInitialised) {
@@ -90,6 +94,7 @@ export function init(opts: InitOptions) {
         "pageViewInstrumentation",
         "sessionRecording",
         "frustrationSignals",
+        "profiling",
         "enableTransportCompression",
       ])
     )
@@ -133,6 +138,9 @@ export function init(opts: InitOptions) {
   }
   if (isInstrumentationEnabled("@dash0/frustration-signals", opts)) {
     startRageClickInstrumentation();
+  }
+  if (isInstrumentationEnabled("@dash0/profiling", opts)) {
+    startProfiling();
   }
 
   hasBeenInitialised = true;
@@ -294,7 +302,7 @@ function initializePropagators(opts: InitOptions) {
 function isInstrumentationEnabled(name: InstrumentationName, opts: InitOptions): boolean {
   const instrumentations = opts.enabledInstrumentations;
 
-  if (!instrumentations) return true;
+  if (!instrumentations) return !OPT_IN_INSTRUMENTATIONS.includes(name);
 
   return instrumentations.includes(name);
 }
