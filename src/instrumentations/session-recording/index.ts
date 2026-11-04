@@ -6,7 +6,7 @@ import { setTimeout } from "../../utils/timers";
 import { generateTraceId } from "../../utils/trace-id";
 import { generateSpanId } from "../../utils/span-id";
 import { isUrlIgnored } from "../../utils/ignore-rules";
-import { addEventListener } from "../../utils/listeners";
+import { addEventListener, removeEventListener } from "../../utils/listeners";
 import { LAST_CHANCE_PRIORITY_LARGE_PAYLOAD, onLastChance } from "../../utils/on-last-chance";
 import { sendSessionRecordingChunk } from "../../transport";
 import { SessionRecorder, SessionRecordingEvent } from "../../types/session-recording";
@@ -53,6 +53,7 @@ let stream: RecordingStream | undefined;
 let hiddenEvents: HiddenEvents | undefined;
 let lastChanceRegistered = false;
 let visibilityRegistered = false;
+let waitingForParsedDocument = false;
 // Set by the public `stopSessionRecording()`, so a visibility change does not resurrect a recording the
 // consumer deliberately ended. Cleared by an explicit start: registering a recorder or arming.
 let stoppedByConsumer = false;
@@ -234,6 +235,27 @@ function registerVisibilityHandling(): void {
       start();
     }
   });
+}
+
+/**
+ * rrweb started while the document is still parsing patches `attachShadow` at once but defers its first full
+ * snapshot to the `load` event. A shadow root that adopts style sheets in between makes rrweb 2.x throw, because
+ * it compares the event's time against a full snapshot that does not exist yet. Once the document is parsed,
+ * rrweb takes that snapshot within the same call that installs the patch, so nothing can run in between.
+ */
+function startOnceDocumentIsParsed(): void {
+  if (waitingForParsedDocument || !doc) {
+    return;
+  }
+  waitingForParsedDocument = true;
+  const onParsed = () => {
+    removeEventListener(doc!, "DOMContentLoaded", onParsed);
+    waitingForParsedDocument = false;
+    if (!stoppedByConsumer) {
+      start();
+    }
+  };
+  addEventListener(doc, "DOMContentLoaded", onParsed);
 }
 
 function pause(): void {
@@ -427,6 +449,12 @@ function start(): void {
   }
   if (isUrlIgnored(win.location.href)) {
     debug("Page URL is ignored. Session recording will not start.");
+    return;
+  }
+
+  if (doc?.readyState === "loading") {
+    debug("Document is still loading. Session recording will start once it is parsed.");
+    startOnceDocumentIsParsed();
     return;
   }
 
