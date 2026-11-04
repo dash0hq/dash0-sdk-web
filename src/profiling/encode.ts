@@ -40,12 +40,10 @@ function toProfile(dict: Dictionary, chunk: ProfileChunk): { profile: Profile; s
   const newLocation = (frameId: number): number => {
     const frame = trace.frames[frameId];
     if (!frame) return 0;
-    const scriptUrl = resourceOf(trace, frame.resourceId);
     return dict.location(
-      dict.func(frame.name || ANONYMOUS_FUNCTION, scriptUrl),
+      dict.func(frame.name || ANONYMOUS_FUNCTION, resourceOf(trace, frame.resourceId)),
       frame.line ?? 0,
-      frame.column ?? 0,
-      scriptUrl
+      frame.column ?? 0
     );
   };
 
@@ -145,10 +143,10 @@ function newDictionary() {
         filenameStrindex,
       }));
     },
-    // The function key already includes the script url, so the location key does not need it.
-    location: (functionIndex: number, line: number, column: number, scriptUrl: string): number =>
+    location: (functionIndex: number, line: number, column: number): number =>
       intern(tables.locationTable, `l${functionIndex}:${line}:${column}`, () => {
         const attributeIndices = [dict.attribute(FRAME_TYPE_ATTRIBUTE, { stringValue: FRAME_TYPE_V8JS })];
+        const scriptUrl = tables.stringTable[tables.functionTable[functionIndex]?.filenameStrindex ?? 0];
         // The backend finds the uploaded source map by this url.
         // https://opentelemetry.io/docs/specs/semconv/registry/attributes/url/
         if (scriptUrl) attributeIndices.push(dict.attribute(URL_FULL, { stringValue: scriptUrl }));

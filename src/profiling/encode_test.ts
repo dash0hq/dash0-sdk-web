@@ -101,25 +101,31 @@ describe("encodeProfiles", () => {
     expect(str(dict.functionTable[1]!.filenameStrindex)).toBe(APP_JS);
   });
 
-  it("keeps line and column and marks every location as a v8js frame", () => {
-    const { dict, attribute } = decode();
+  it("keeps line and column and marks every location as a v8js frame with its script url", () => {
+    const { dict, attribute, str } = decode();
     const work = dict.locationTable.find((l: any) => l.lines?.[0]?.line === "10")!;
     expect(work.lines[0]!.column).toBe("5");
-    for (const location of dict.locationTable.slice(1)) {
-      expect(location.attributeIndices.map(attribute)).toContainEqual([FRAME_TYPE_ATTRIBUTE, { stringValue: "v8js" }]);
-    }
+
+    const attributesByFunction = Object.fromEntries(
+      dict.locationTable
+        .slice(1)
+        .map((location: any) => [
+          str(dict.functionTable[location.lines[0].functionIndex].nameStrindex),
+          location.attributeIndices.map(attribute),
+        ])
+    );
+    const frameType = [FRAME_TYPE_ATTRIBUTE, { stringValue: "v8js" }];
+    expect(attributesByFunction).toEqual({
+      main: [frameType, ["url.full", { stringValue: APP_JS }]],
+      work: [frameType, ["url.full", { stringValue: APP_JS }]],
+      "(anonymous)": [frameType, ["url.full", { stringValue: "https://cdn.example.com/lib.js" }]],
+    });
   });
 
-  it("sets url.full on every location to its script url, one attribute row per script", () => {
-    const { dict, attribute, str } = decode();
-    const urlFullIndex = (location: any) =>
-      location.attributeIndices.find((index: number) => attribute(index)[0] === "url.full");
-    const [main, work, anonymous] = dict.locationTable.slice(1);
-
-    expect(attribute(urlFullIndex(main))).toEqual(["url.full", { stringValue: APP_JS }]);
-    expect(urlFullIndex(work)).toBe(urlFullIndex(main));
-    expect(attribute(urlFullIndex(anonymous))).toEqual(["url.full", { stringValue: "https://cdn.example.com/lib.js" }]);
-    expect(dict.attributeTable.filter((row: any) => str(row.keyStrindex) === "url.full")).toHaveLength(2);
+  it("shares one url.full attribute row between locations of the same script", () => {
+    const { dict, str } = decode();
+    const urlFullRows = dict.attributeTable.filter((row: any) => str(row.keyStrindex) === "url.full");
+    expect(urlFullRows.map((row: any) => row.value.stringValue)).toEqual([APP_JS, "https://cdn.example.com/lib.js"]);
   });
 
   it("sets no url.full on a location without a script", () => {
