@@ -22,6 +22,41 @@ const GENERATED_CLASS = /(^|[_-])[a-z0-9]{5,}$|^css-|^sc-/i;
 
 const TEXTUAL_FALLBACK_ATTRIBUTES = ["aria-label", "title", "alt", "placeholder"];
 
+// Native `option` is left out on purpose: a click on one resolves to its `select`, so the chosen
+// value is never reported.
+const INTERACTIVE_SELECTOR = [
+  "button",
+  "a[href]",
+  "input",
+  "select",
+  "textarea",
+  "label",
+  "summary",
+  '[role~="button"]',
+  '[role~="link"]',
+  '[role~="menuitem"]',
+  '[role~="menuitemcheckbox"]',
+  '[role~="menuitemradio"]',
+  '[role~="tab"]',
+  '[role~="checkbox"]',
+  '[role~="radio"]',
+  '[role~="switch"]',
+  '[role~="option"]',
+].join(", ");
+
+// Regions whose text is what the user typed or chose, native or ARIA. `role` is a whitespace-separated
+// list, so the roles match as a token, not the whole attribute.
+const USER_VALUE_SELECTOR = [
+  '[contenteditable]:not([contenteditable="false"])',
+  '[role~="textbox"]',
+  '[role~="searchbox"]',
+  '[role~="combobox"]',
+  '[role~="spinbutton"]',
+].join(", ");
+
+// Inputs are not listed, their value is never part of the text content.
+const SENSITIVE_DESCENDANT_SELECTOR = `textarea, select, ${USER_VALUE_SELECTOR}`;
+
 /**
  * Builds a CSS selector for the clicked element. The selector is a best effort at something a
  * human recognises and a backend can group by — it is not guaranteed to resolve to exactly one
@@ -120,6 +155,18 @@ function nthOfType(el: Element): number {
 }
 
 /**
+ * The element a human would name as the thing they clicked: the nearest interactive ancestor of
+ * the target (or the target itself), else the raw target.
+ */
+export function reportedElement(target: Element): Element {
+  return interactiveAncestor(target) ?? target;
+}
+
+function interactiveAncestor(target: Element): Element | undefined {
+  return target.closest?.(INTERACTIVE_SELECTOR) ?? undefined;
+}
+
+/**
  * The visible label of the clicked element, for a human reading the event without opening the
  * replay ("Submit order", not just `button.primary`).
  *
@@ -127,29 +174,59 @@ function nthOfType(el: Element): number {
  * per the session recording configuration, or it is a field the user types into. Text is what
  * makes a rage click event readable, and also the only part of it that can leak — when in doubt
  * this drops it.
+ *
+ * The text is read from the nearest interactive element, and a container's concatenated text is
+ * never reported. A descendant that is masked, blocked or editable drops the text.
  */
 export function extractText(target: Element): string | undefined {
-  if (isMaskedOrBlocked(target)) {
+  if (isMaskedOrBlocked(target) || someComposedAncestor(target, (el) => matchesSelector(el, USER_VALUE_SELECTOR))) {
     return undefined;
   }
 
-  const tag = tagName(target);
+  const el = interactiveAncestor(target);
+  if (!el) {
+    // A container's text is its descendants' text, so only a leaf is read.
+    return target.firstElementChild ? fallbackText(target, TEXTUAL_FALLBACK_ATTRIBUTES) : labelText(target);
+  }
+
+  const tag = tagName(el);
 
   if (tag === "input") {
-    const type = (attr(target, "type") ?? "text").toLowerCase();
+    const type = (attr(el, "type") ?? "text").toLowerCase();
     // Only the label of a button-like input is a label. Every other input holds what the user typed.
     if (type !== "button" && type !== "submit" && type !== "reset") {
-      return fallbackText(target, ["aria-label", "title", "placeholder"]);
+      return fallbackText(el, ["aria-label", "title", "placeholder"]);
     }
-    return truncate(normalizeWhitespace(attr(target, "value") ?? ""), MAX_TEXT_LENGTH) || undefined;
+    return truncate(normalizeWhitespace(attr(el, "value") ?? ""), MAX_TEXT_LENGTH) || undefined;
   }
 
   if (tag === "textarea" || tag === "select") {
-    return fallbackText(target, ["aria-label", "title"]);
+    return fallbackText(el, ["aria-label", "title"]);
   }
 
-  const text = truncate(normalizeWhitespace(target.textContent ?? ""), MAX_TEXT_LENGTH);
-  return text || fallbackText(target, TEXTUAL_FALLBACK_ATTRIBUTES);
+  return hasSensitiveDescendant(el) ? undefined : labelText(el);
+}
+
+function labelText(el: Element): string | undefined {
+  const text = truncate(normalizeWhitespace(visibleText(el)), MAX_TEXT_LENGTH);
+  return text || fallbackText(el, TEXTUAL_FALLBACK_ATTRIBUTES);
+}
+
+// `innerText` is missing on SVG elements and in jsdom.
+function visibleText(el: Element): string {
+  const inner = (el as HTMLElement).innerText;
+  return typeof inner === "string" ? inner : (el.textContent ?? "");
+}
+
+function hasSensitiveDescendant(el: Element): boolean {
+  const descendants = el.getElementsByTagName("*");
+  for (let i = 0; i < descendants.length; i++) {
+    const current = descendants[i]!;
+    if (isExcludedFromRecording(current) || matchesSelector(current, SENSITIVE_DESCENDANT_SELECTOR)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function fallbackText(el: Element, attributes: string[]): string | undefined {
@@ -167,25 +244,37 @@ function fallbackText(el: Element, attributes: string[]): string | undefined {
  * session recording is actually running.
  */
 export function isMaskedOrBlocked(el: Element): boolean {
+  // Text is read from an ancestor of the target, so every ancestor's mask has to count.
+  return someComposedAncestor(el, isExcludedFromRecording);
+}
+
+function isExcludedFromRecording(el: Element): boolean {
   const { maskTextClass, maskTextSelector, blockClass, blockSelector } = vars.sessionRecording;
+  return (
+    matchesClass(el, maskTextClass) ||
+    matchesClass(el, blockClass) ||
+    matchesSelector(el, maskTextSelector) ||
+    matchesSelector(el, blockSelector)
+  );
+}
 
-  if (matchesSelector(el, maskTextSelector) || matchesSelector(el, blockSelector)) {
-    return true;
+// The element or any ancestor, unbounded, continuing into the host at the top of each shadow tree.
+function someComposedAncestor(el: Element, predicate: (el: Element) => boolean): boolean {
+  for (let current: Element | null = el; current; current = composedParent(current)) {
+    if (predicate(current)) return true;
   }
-
-  for (let current: Element | null = el, depth = 0; current && depth < 32; current = current.parentElement, depth++) {
-    if (matchesClass(current, maskTextClass) || matchesClass(current, blockClass)) {
-      return true;
-    }
-  }
-
   return false;
 }
 
+// `parentElement` is null at the top of a shadow tree, where the walk continues at the host.
+function composedParent(el: Element): Element | null {
+  return el.parentElement ?? (el.parentNode as ShadowRoot | null)?.host ?? null;
+}
+
 function matchesSelector(el: Element, selector: string | undefined): boolean {
-  if (!selector || !el.closest) return false;
+  if (!selector || !el.matches) return false;
   try {
-    return el.closest(selector) != null;
+    return el.matches(selector);
   } catch (_ignored) {
     // An invalid selector must not take the click handler down with it.
     return false;
@@ -195,13 +284,11 @@ function matchesSelector(el: Element, selector: string | undefined): boolean {
 function matchesClass(el: Element, matcher: string | RegExp | undefined): boolean {
   if (!matcher) return false;
 
-  const className = el.className;
-  if (typeof className !== "string") return false; // SVG elements carry an SVGAnimatedString
-
   if (typeof matcher === "string") {
     return el.classList?.contains(matcher) ?? false;
   }
-  return className.split(/\s+/).some((name) => matcher.test(name));
+  // Read the attribute, not `className`: SVG elements carry an SVGAnimatedString there.
+  return (attr(el, "class") ?? "").split(/\s+/).some((name) => matcher.test(name));
 }
 
 function attr(el: Element, name: string): string | undefined {
