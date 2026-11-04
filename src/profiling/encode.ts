@@ -1,3 +1,4 @@
+import { URL_FULL } from "../semantic-conventions";
 import type { AnyValue, ExportProfilesServiceRequest, Profile, ProfilesDictionary, Sample } from "../types/otlp";
 import type { EncodedProfile, ProfileChunk, ProfilerTrace } from "../types/profiling";
 
@@ -39,10 +40,12 @@ function toProfile(dict: Dictionary, chunk: ProfileChunk): { profile: Profile; s
   const newLocation = (frameId: number): number => {
     const frame = trace.frames[frameId];
     if (!frame) return 0;
+    const scriptUrl = resourceOf(trace, frame.resourceId);
     return dict.location(
-      dict.func(frame.name || ANONYMOUS_FUNCTION, resourceOf(trace, frame.resourceId)),
+      dict.func(frame.name || ANONYMOUS_FUNCTION, scriptUrl),
       frame.line ?? 0,
-      frame.column ?? 0
+      frame.column ?? 0,
+      scriptUrl
     );
   };
 
@@ -142,11 +145,15 @@ function newDictionary() {
         filenameStrindex,
       }));
     },
-    location: (functionIndex: number, line: number, column: number): number =>
-      intern(tables.locationTable, `l${functionIndex}:${line}:${column}`, () => ({
-        lines: [{ functionIndex, line: String(line), column: String(column) }],
-        attributeIndices: [dict.attribute(FRAME_TYPE_ATTRIBUTE, { stringValue: FRAME_TYPE_V8JS })],
-      })),
+    // The function key already includes the script url, so the location key does not need it.
+    location: (functionIndex: number, line: number, column: number, scriptUrl: string): number =>
+      intern(tables.locationTable, `l${functionIndex}:${line}:${column}`, () => {
+        const attributeIndices = [dict.attribute(FRAME_TYPE_ATTRIBUTE, { stringValue: FRAME_TYPE_V8JS })];
+        // The backend finds the uploaded source map by this url.
+        // https://opentelemetry.io/docs/specs/semconv/registry/attributes/url/
+        if (scriptUrl) attributeIndices.push(dict.attribute(URL_FULL, { stringValue: scriptUrl }));
+        return { lines: [{ functionIndex, line: String(line), column: String(column) }], attributeIndices };
+      }),
     stack: (locationIndices: number[]): number =>
       intern(tables.stackTable, "k" + locationIndices.join(","), () => ({ locationIndices })),
     attribute: (key: string, value: AnyValue): number => {

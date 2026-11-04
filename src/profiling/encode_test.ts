@@ -106,8 +106,35 @@ describe("encodeProfiles", () => {
     const work = dict.locationTable.find((l: any) => l.lines?.[0]?.line === "10")!;
     expect(work.lines[0]!.column).toBe("5");
     for (const location of dict.locationTable.slice(1)) {
-      expect(location.attributeIndices.map(attribute)).toEqual([[FRAME_TYPE_ATTRIBUTE, { stringValue: "v8js" }]]);
+      expect(location.attributeIndices.map(attribute)).toContainEqual([FRAME_TYPE_ATTRIBUTE, { stringValue: "v8js" }]);
     }
+  });
+
+  it("sets url.full on every location to its script url, one attribute row per script", () => {
+    const { dict, attribute, str } = decode();
+    const urlFullIndex = (location: any) =>
+      location.attributeIndices.find((index: number) => attribute(index)[0] === "url.full");
+    const [main, work, anonymous] = dict.locationTable.slice(1);
+
+    expect(attribute(urlFullIndex(main))).toEqual(["url.full", { stringValue: APP_JS }]);
+    expect(urlFullIndex(work)).toBe(urlFullIndex(main));
+    expect(attribute(urlFullIndex(anonymous))).toEqual(["url.full", { stringValue: "https://cdn.example.com/lib.js" }]);
+    expect(dict.attributeTable.filter((row: any) => str(row.keyStrindex) === "url.full")).toHaveLength(2);
+  });
+
+  it("sets no url.full on a location without a script", () => {
+    const { dict, attribute } = decode({
+      ...chunk,
+      trace: {
+        resources: [],
+        frames: [{ name: "native" }],
+        stacks: [{ frameId: 0 }],
+        samples: [{ timestamp: 100, stackId: 0 }],
+      },
+    });
+    expect(dict.locationTable[1]!.attributeIndices.map(attribute)).toEqual([
+      [FRAME_TYPE_ATTRIBUTE, { stringValue: "v8js" }],
+    ]);
   });
 
   it("converts sample timestamps to absolute unix nanoseconds", () => {

@@ -629,7 +629,8 @@ Profiling is off by default. It runs only when all of these hold:
 The profiler runs in chunks. Each chunk is sent when it ends, on every page view, when the tab is hidden, and when
 the page is unloaded, so one chunk covers one page. Profiling pauses while the tab is hidden. Each profile carries
 the same attributes as web events, such as `session.id` and `page.url.*` (after `urlAttributeScrubber`), and every
-frame carries `profile.frame.type=v8js`.
+frame carries `profile.frame.type=v8js`. Every frame from a script also carries the script url as `url.full`, after
+`urlAttributeScrubber`, so Dash0 can find the source map uploaded for that script.
 Samples taken while no JavaScript ran are counted in `dash0.profiling.idle_sample_count` and not sent.
 Chrome adds extra samples in bursts, for example during a page load. The SDK keeps at most one sample per half
 sampling interval and counts the rest in `dash0.profiling.burst_sample_count`.
