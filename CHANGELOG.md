@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.30.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.29.0...0.30.0) (2026-11-04)
+
+### Features
+
+- **profiling:** profile frames carry their script url, so the backend can find their source map ([#140](https://github.com/dash0hq/dash0-sdk-web/issues/140)) ([327172e](https://github.com/dash0hq/dash0-sdk-web/commit/327172e225446f0aae2f48c31617a3a2c85a5aeb))
+
 ## [0.29.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.3...0.29.0) (2026-11-03)
 
 ### Features
