@@ -147,7 +147,6 @@ describe("init", () => {
       "@dash0/error",
       "@dash0/fetch",
       "@dash0/xhr",
-      "@dash0/session-recording",
       "@dash0/frustration-signals",
       "@dash0/profiling",
     ];
@@ -157,7 +156,6 @@ describe("init", () => {
       "@dash0/error": startErrorInstrumentation,
       "@dash0/fetch": instrumentFetch,
       "@dash0/xhr": instrumentXhr,
-      "@dash0/session-recording": armSessionRecording,
       "@dash0/frustration-signals": startRageClickInstrumentation,
       "@dash0/profiling": startProfiling,
     };
@@ -194,6 +192,30 @@ describe("init", () => {
           expect(instrumentationMocks[name]).toHaveBeenCalled();
         });
       });
+    });
+  });
+
+  describe("session recording", () => {
+    it("arms session recording, which only records when the init options enable it", () => {
+      init(baseOptions);
+      expect(armSessionRecording).toHaveBeenCalledTimes(1);
+    });
+
+    it("arms session recording regardless of enabledInstrumentations", () => {
+      init({ ...baseOptions, enabledInstrumentations: ["@dash0/fetch"] });
+      expect(armSessionRecording).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps a recorder passed in the init options", () => {
+      const recorder = vi.fn() as any;
+      init({ ...baseOptions, sessionRecording: { recorder } });
+      expect(vars.sessionRecording.recorder).toBe(recorder);
+      expect(vars.sessionRecording.enabled).toBe(false);
+    });
+
+    it("does not arm when the session is not sampled", () => {
+      init({ ...baseOptions, sessionSamplingRate: 0, sessionRecording: { enabled: true } });
+      expect(armSessionRecording).not.toHaveBeenCalled();
     });
   });
 

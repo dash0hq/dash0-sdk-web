@@ -98,8 +98,9 @@ Additionally you might need to allow the Dash0 Web SDK to connect to your config
 
 ### Session replay
 
-Session replay is an optional add-on. The recorder ships as its own bundle so websites that do not use session replay pay
-nothing for it. Load it in addition to the SDK.
+Session replay is an optional add-on and off by default. The recorder ships as its own bundle so websites that do not use
+session replay pay nothing for it. Load it in addition to the SDK, and enable session replay in the init options.
+Loading the recorder alone does not record anything.
 
 With modules, import the recorder and hand it to `init`:
 
@@ -114,8 +115,18 @@ init({
 });
 ```
 
-With script tags, add a second script after the initializer snippet. The order of the two SDK scripts does not
-matter.
+With script tags, set `sessionRecording.enabled` in the init call of the initializer snippet:
+
+```js
+dash0("init", {
+  serviceName: "my-website",
+  endpoint: { url: "REPLACE THIS", authToken: "REPLACE THIS" },
+  sessionRecording: { enabled: true },
+});
+```
+
+Then add the recorder script next to the SDK script. Both can load with `defer` or `async`, in any order; recording
+starts once both have run.
 
 ```html
 <script defer crossorigin="anonymous" src="https://unpkg.com/@dash0/sdk-web/dist/dash0.iife.js"></script>

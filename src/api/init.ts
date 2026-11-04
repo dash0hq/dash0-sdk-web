@@ -133,9 +133,12 @@ export function init(opts: InitOptions) {
   if (isInstrumentationEnabled("@dash0/xhr", opts)) {
     instrumentXhr();
   }
-  if (isInstrumentationEnabled("@dash0/session-recording", opts)) {
-    armSessionRecording();
+  if ((opts.enabledInstrumentations as string[] | undefined)?.includes("@dash0/session-recording")) {
+    debug(
+      "@dash0/session-recording is no longer an instrumentation and is ignored in enabledInstrumentations. Session recording is enabled through the sessionRecording init options."
+    );
   }
+  armSessionRecording();
   if (isInstrumentationEnabled("@dash0/frustration-signals", opts)) {
     startRageClickInstrumentation();
   }

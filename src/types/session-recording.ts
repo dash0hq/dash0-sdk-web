@@ -142,9 +142,17 @@ export type SessionRecordingSettings = {
   checkoutEveryNms?: number;
 
   /**
-   * The recorder to use. Pass `recorder` from `@dash0/sdk-web/session-recording`. When omitted, the SDK waits for
-   * a recorder to be registered through `startSessionRecording(recorder)` or through the
-   * `dash0-session-recording.iife.js` script.
+   * The recorder to use. Pass `recorder` from `@dash0/sdk-web/session-recording`. Passing it enables session
+   * recording; `enabled` does not need to be set as well.
    */
   recorder?: SessionRecorder;
+
+  /**
+   * Enables session recording with the recorder of the `dash0-session-recording.iife.js` script, for websites that
+   * load the SDK through script tags. The scripts can load in any order: recording starts once both have run.
+   * Without this flag or a `recorder`, nothing is recorded, even when that script is on the page.
+   *
+   * @default false
+   */
+  enabled?: boolean;
 };

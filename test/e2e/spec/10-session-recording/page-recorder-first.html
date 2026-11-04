@@ -5,9 +5,9 @@
     <title>session recording recorder-first test</title>
 
     <!--
-      The recorder bundle executes synchronously before the initializer snippet has defined the `dash0` command
-      queue, so it cannot push `startSessionRecording`. The only handover left is `window.dash0Recorder`, which
-      `init()` picks up. This is the ordering that tag managers or misordered script tags produce.
+      The recorder bundle executes synchronously before the initializer snippet and the SDK, so its announcement
+      reaches nobody. `init()` must pick the recorder up from `window.dash0SessionRecording`. This is the ordering
+      that tag managers or misordered script tags produce.
     -->
     <script crossorigin="anonymous" src="/dist/dash0-session-recording.iife.js"></script>
 
@@ -33,6 +33,7 @@
           dataset: "production",
         },
         sessionRecording: {
+          enabled: true,
           chunkMaxMillis: 500,
         },
       });

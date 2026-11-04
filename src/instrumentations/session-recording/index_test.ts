@@ -51,77 +51,105 @@ describe("session recording lifecycle", () => {
     vi.useRealTimers();
   });
 
-  it("does not start before init arms recording", () => {
-    mod.registerSessionRecorder(recorder);
-    expect(recorder).not.toHaveBeenCalled();
-    expect(mod.isSessionRecording()).toBe(false);
+  function arm(r: SessionRecorder): void {
+    vars.sessionRecording.recorder = r;
+    mod.armSessionRecording();
+  }
+
+  function loadRecorderScript(r: unknown): void {
+    (win as any)[mod.GLOBAL_RECORDER_KEY] = { recorder: r };
+    win!.dispatchEvent(new Event(mod.RECORDER_READY_EVENT));
+  }
+
+  afterEach(() => {
+    delete (win as any)[mod.GLOBAL_RECORDER_KEY];
   });
 
-  it("starts when armed after the recorder was registered", () => {
-    mod.registerSessionRecorder(recorder);
-    mod.armSessionRecording();
+  it("starts with the recorder passed in the init options", () => {
+    arm(recorder);
     expect(recorder).toHaveBeenCalledTimes(1);
     expect(mod.isSessionRecording()).toBe(true);
   });
 
-  it("starts when the recorder is registered after arming", () => {
+  it("does not record when the init options neither pass a recorder nor enable recording", () => {
+    loadRecorderScript(recorder);
     mod.armSessionRecording();
     expect(recorder).not.toHaveBeenCalled();
-    mod.registerSessionRecorder(recorder);
-    expect(recorder).toHaveBeenCalledTimes(1);
+    expect(mod.isSessionRecording()).toBe(false);
   });
 
-  it("picks up window.dash0Recorder when arming, so the recorder script may run before the initializer", () => {
-    (win as any).dash0Recorder = recorder;
-    try {
+  it("does not record when the recorder script loads after an init that did not enable recording", () => {
+    mod.armSessionRecording();
+    loadRecorderScript(recorder);
+    expect(recorder).not.toHaveBeenCalled();
+  });
+
+  it("does not record when the recorder script loads without init", () => {
+    loadRecorderScript(recorder);
+    expect(recorder).not.toHaveBeenCalled();
+  });
+
+  describe("enabled through the flag", () => {
+    beforeEach(() => {
+      vars.sessionRecording.enabled = true;
+    });
+
+    it("uses the recorder of a script that ran before init", () => {
+      loadRecorderScript(recorder);
       mod.armSessionRecording();
       expect(recorder).toHaveBeenCalledTimes(1);
       expect(mod.isSessionRecording()).toBe(true);
-    } finally {
-      delete (win as any).dash0Recorder;
-    }
-  });
+    });
 
-  it("prefers an explicitly registered recorder over window.dash0Recorder", () => {
-    const globalRecorder = vi.fn(() => vi.fn());
-    (win as any).dash0Recorder = globalRecorder;
-    try {
-      mod.registerSessionRecorder(recorder);
+    it("starts once a script that loads after init announces its recorder", () => {
       mod.armSessionRecording();
-      expect(recorder).toHaveBeenCalledTimes(1);
-      expect(globalRecorder).not.toHaveBeenCalled();
-    } finally {
-      delete (win as any).dash0Recorder;
-    }
-  });
+      expect(recorder).not.toHaveBeenCalled();
 
-  it("ignores a window.dash0Recorder that is not a function", () => {
-    (win as any).dash0Recorder = "nope";
-    try {
+      loadRecorderScript(recorder);
+      expect(recorder).toHaveBeenCalledTimes(1);
+      expect(mod.isSessionRecording()).toBe(true);
+
+      // A second announcement, e.g. the script included twice, must not start another recorder.
+      loadRecorderScript(vi.fn(() => vi.fn()));
+      expect(recorder).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not start a recorder announced after the consumer stopped recording", () => {
+      mod.armSessionRecording();
+      mod.stopSessionRecording();
+      loadRecorderScript(recorder);
+      expect(recorder).not.toHaveBeenCalled();
+    });
+
+    it("ignores a recorder global that is not a function", () => {
+      loadRecorderScript("nope");
       mod.armSessionRecording();
       expect(mod.isSessionRecording()).toBe(false);
-    } finally {
-      delete (win as any).dash0Recorder;
-    }
-  });
+    });
 
-  it("uses the recorder from vars.sessionRecording.recorder", () => {
-    vars.sessionRecording.recorder = recorder;
-    mod.armSessionRecording();
-    expect(recorder).toHaveBeenCalledTimes(1);
+    it("prefers the recorder passed in the init options over the one of the script", () => {
+      const scriptRecorder = vi.fn(() => vi.fn());
+      loadRecorderScript(scriptRecorder);
+      arm(recorder);
+      expect(recorder).toHaveBeenCalledTimes(1);
+      expect(scriptRecorder).not.toHaveBeenCalled();
+    });
   });
 
   it("does not start twice", () => {
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(recorder);
-    mod.registerSessionRecorder(recorder);
+    arm(recorder);
+    mod.restartSessionRecording();
     mod.armSessionRecording();
     expect(recorder).toHaveBeenCalledTimes(1);
   });
 
+  it("ignores a restart when init did not enable recording", () => {
+    mod.restartSessionRecording();
+    expect(mod.isSessionRecording()).toBe(false);
+  });
+
   it("forwards privacy settings to the recorder with masking on by default", () => {
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(recorder);
+    arm(recorder);
 
     expect(capturedOptions).toMatchObject({
       maskAllInputs: true,
@@ -136,22 +164,19 @@ describe("session recording lifecycle", () => {
 
   it("does not start when the session is not sampled", () => {
     vars.isSessionSampled = false;
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(recorder);
+    arm(recorder);
     expect(recorder).not.toHaveBeenCalled();
   });
 
   it("does not start when the recording sampling rate excludes the session", () => {
     vars.sessionRecording.samplingRate = 0;
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(recorder);
+    arm(recorder);
     expect(recorder).not.toHaveBeenCalled();
   });
 
   it("does not start when the page url is ignored", () => {
     vars.ignoreUrls = [/localhost/];
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(recorder);
+    arm(recorder);
     expect(recorder).not.toHaveBeenCalled();
   });
 
@@ -159,8 +184,7 @@ describe("session recording lifecycle", () => {
     const throwing = vi.fn(() => {
       throw new Error("boom");
     }) as any;
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(throwing);
+    arm(throwing);
     expect(mod.isSessionRecording()).toBe(false);
   });
 
@@ -171,8 +195,7 @@ describe("session recording lifecycle", () => {
       opts.emit({ type: 2, timestamp: 1001, data: {} });
       return undefined;
     }) as any;
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(refusing);
+    arm(refusing);
 
     expect(mod.isSessionRecording()).toBe(false);
     vi.advanceTimersByTime(10_000);
@@ -187,8 +210,7 @@ describe("session recording lifecycle", () => {
     stopFn.mockImplementation(() => {
       throw new Error("stop failed");
     });
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(recorder);
+    arm(recorder);
     capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
 
     expect(() => mod.stopSessionRecording()).not.toThrow();
@@ -198,8 +220,7 @@ describe("session recording lifecycle", () => {
   });
 
   it("ignores events the recorder emits after stop", () => {
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(recorder);
+    arm(recorder);
     mod.stopSessionRecording();
     sendSessionRecordingChunk.mockClear();
 
@@ -211,8 +232,7 @@ describe("session recording lifecycle", () => {
 
   it("flushes on the last chance after the batchers, so their small requests keep the keepalive budget", async () => {
     const { onLastChance, LAST_CHANCE_PRIORITY_BATCH_FLUSH } = await import("../../utils/on-last-chance");
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(recorder);
+    arm(recorder);
     const batchFlush = vi.fn();
     onLastChance(batchFlush, LAST_CHANCE_PRIORITY_BATCH_FLUSH);
 
@@ -226,8 +246,7 @@ describe("session recording lifecycle", () => {
   });
 
   it("compresses periodic chunks but sends the last-chance flush uncompressed", () => {
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(recorder);
+    arm(recorder);
 
     capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
     vi.advanceTimersByTime(5000);
@@ -247,8 +266,7 @@ describe("session recording lifecycle", () => {
   });
 
   it("transmits chunks that share one trace id embedding the session id", () => {
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(recorder);
+    arm(recorder);
 
     capturedOptions!.emit({ type: 4, timestamp: 1000, data: {} });
     capturedOptions!.emit({ type: 2, timestamp: 1001, data: {} });
@@ -278,8 +296,7 @@ describe("session recording lifecycle", () => {
   });
 
   it("stops the recorder and flushes buffered events on stop", () => {
-    mod.armSessionRecording();
-    mod.registerSessionRecorder(recorder);
+    arm(recorder);
     capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
     expect(sendSessionRecordingChunk).not.toHaveBeenCalled();
 
@@ -311,8 +328,7 @@ describe("session recording lifecycle", () => {
     it("defers the start of a tab that is hidden when recording is armed", () => {
       setVisibilityState("hidden");
 
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
 
       expect(recorder).not.toHaveBeenCalled();
       expect(mod.isSessionRecording()).toBe(false);
@@ -345,8 +361,7 @@ describe("session recording lifecycle", () => {
     }
 
     it("keeps the recorder running while hidden and transmits nothing it records then", () => {
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
 
       setVisibility("hidden");
@@ -368,8 +383,7 @@ describe("session recording lifecycle", () => {
 
     it("continues the same run without a new snapshot when no other run was shown while hidden", () => {
       const takeFullSnapshot = withSnapshotOnDemand();
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
       setVisibility("hidden");
       capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
@@ -395,8 +409,7 @@ describe("session recording lifecycle", () => {
 
     it("starts a new run with a snapshot from the running recorder when another run was shown while hidden", () => {
       const takeFullSnapshot = withSnapshotOnDemand();
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       capturedOptions!.emit({ type: 3, timestamp: 1, data: {} });
       setVisibility("hidden");
       capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
@@ -424,8 +437,7 @@ describe("session recording lifecycle", () => {
 
     it("treats a missing record of the shown run as another run having been shown", () => {
       const takeFullSnapshot = withSnapshotOnDemand();
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       setVisibility("hidden");
       storage.removeItem(mod.SHOWN_RECORDING_STORAGE_KEY);
 
@@ -435,8 +447,7 @@ describe("session recording lifecycle", () => {
     });
 
     it("restarts the recorder when it cannot take a snapshot on demand", () => {
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       setVisibility("hidden");
       storage.setItem(mod.SHOWN_RECORDING_STORAGE_KEY, "another-run");
 
@@ -451,8 +462,7 @@ describe("session recording lifecycle", () => {
       (recorder as any).takeFullSnapshot = vi.fn(() => {
         throw new Error("boom");
       });
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       setVisibility("hidden");
       storage.setItem(mod.SHOWN_RECORDING_STORAGE_KEY, "another-run");
 
@@ -465,8 +475,7 @@ describe("session recording lifecycle", () => {
 
     it("stops the recorder once too much changed while hidden, and restarts it when shown again", () => {
       withSnapshotOnDemand();
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       setVisibility("hidden");
       sendSessionRecordingChunk.mockClear();
 
@@ -485,8 +494,7 @@ describe("session recording lifecycle", () => {
 
     it("takes a snapshot when shown again before a recorder that overflowed while hidden was stopped", () => {
       const takeFullSnapshot = withSnapshotOnDemand();
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       setVisibility("hidden");
 
       capturedOptions!.emit({ type: 3, timestamp: 2, data: "x".repeat(mod.HIDDEN_EVENTS_MAX_BYTES) });
@@ -499,8 +507,7 @@ describe("session recording lifecycle", () => {
     });
 
     it("drops what it held before a checkout taken while hidden", () => {
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       setVisibility("hidden");
       sendSessionRecordingChunk.mockClear();
       capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
@@ -515,8 +522,7 @@ describe("session recording lifecycle", () => {
     });
 
     it("stops the recorder and drops what it held when the consumer stops while hidden", () => {
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       setVisibility("hidden");
       sendSessionRecordingChunk.mockClear();
       capturedOptions!.emit({ type: 3, timestamp: 2, data: {} });
@@ -528,8 +534,7 @@ describe("session recording lifecycle", () => {
     });
 
     it("does not resurrect a recording the consumer stopped", () => {
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       mod.stopSessionRecording();
 
       setVisibility("hidden");
@@ -540,11 +545,10 @@ describe("session recording lifecycle", () => {
     });
 
     it("records again after an explicit restart that follows a consumer stop", () => {
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       mod.stopSessionRecording();
 
-      mod.registerSessionRecorder(recorder);
+      mod.restartSessionRecording();
 
       expect(recorder).toHaveBeenCalledTimes(2);
       expect(mod.isSessionRecording()).toBe(true);
@@ -566,8 +570,7 @@ describe("session recording lifecycle", () => {
       mod.onRecordingStateChange(listener);
       expect(listener).not.toHaveBeenCalled();
 
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
 
       expect(listener).toHaveBeenCalledTimes(1);
       const recordingId = listener.mock.calls[0]![0];
@@ -579,8 +582,7 @@ describe("session recording lifecycle", () => {
     });
 
     it("calls a listener that subscribes while a recording is already running", () => {
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
 
       const listener = vi.fn();
       mod.onRecordingStateChange(listener);
@@ -592,8 +594,7 @@ describe("session recording lifecycle", () => {
     it("reports a pause while hidden and the same recording when the run continues", () => {
       const listener = vi.fn();
       mod.onRecordingStateChange(listener);
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       const recordingId = listener.mock.calls[0]![0];
       listener.mockClear();
 
@@ -608,8 +609,7 @@ describe("session recording lifecycle", () => {
     it("reports a new recording when another run was shown while hidden", () => {
       const listener = vi.fn();
       mod.onRecordingStateChange(listener);
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       const recordingId = listener.mock.calls[0]![0];
       listener.mockClear();
 
@@ -626,8 +626,7 @@ describe("session recording lifecycle", () => {
     it("does not report a stop again when the consumer stops while hidden", () => {
       const listener = vi.fn();
       mod.onRecordingStateChange(listener);
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
       setVisibility("hidden");
       listener.mockClear();
 
@@ -650,8 +649,7 @@ describe("session recording lifecycle", () => {
         throw new Error("boom");
       });
 
-      mod.armSessionRecording();
-      mod.registerSessionRecorder(recorder);
+      arm(recorder);
 
       expect(mod.isSessionRecording()).toBe(true);
     });

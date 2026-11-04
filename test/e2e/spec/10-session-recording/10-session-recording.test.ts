@@ -106,8 +106,8 @@ describe("Session Recording", () => {
     await loadPage(`/e2e/spec/10-session-recording/page-recorder-first.html?testId=${testId}`);
     await expect(await browser.getTitle()).toMatch(/recorder-first test/);
 
-    // The recorder script found no `dash0` global, so the SDK must have picked the recorder up from
-    // `window.dash0Recorder` during init. Without that pickup no chunk is ever sent.
+    // The recorder script announced itself before the SDK listened, so the SDK must have picked the recorder up
+    // from `window.dash0SessionRecording` during init. Without that pickup no chunk is ever sent.
     await retry(async () => {
       const logs = await getRecordingLogs(testId);
       expect(logs.length).toBeGreaterThanOrEqual(1);
@@ -117,6 +117,30 @@ describe("Session Recording", () => {
     expect(attr(first!, "dash0.session_recording.seq").intValue).toBe("0");
     expect(attr(first!, "dash0.session_recording.has_snapshot").boolValue).toBe(true);
     expect(first!.body!.stringValue).toContain("Recorder loaded before initializer");
+
+    expectNoBrowserErrors();
+  });
+
+  it("does not record when the init options do not enable recording, even with the recorder script loaded", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`/e2e/spec/10-session-recording/page-not-enabled.html?testId=${testId}`);
+    await expect(await browser.getTitle()).toMatch(/not enabled test/);
+
+    // The page view proves the SDK initialized and transmits.
+    await retry(async () => {
+      await expectLogMatching(
+        expect.objectContaining({
+          attributes: expect.arrayContaining([
+            { key: "event.name", value: { stringValue: "browser.page_view" } },
+            { key: "page.url.query", value: { stringValue: `testId=${testId}` } },
+          ]),
+        })
+      );
+    });
+    await $("#visible-heading").click();
+    await browser.pause(1500);
+
+    expect(await getRecordingLogs(testId)).toHaveLength(0);
 
     expectNoBrowserErrors();
   });
