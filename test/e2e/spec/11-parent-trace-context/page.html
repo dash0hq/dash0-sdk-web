@@ -32,6 +32,10 @@
           },
         ],
       });
+      if (window.location.search.includes("queue-non-strings")) {
+        dash0("setParentTraceContext", 123);
+        dash0("setParentTraceContext", null);
+      }
       dash0("setParentTraceContext", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
     </script>
     <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>

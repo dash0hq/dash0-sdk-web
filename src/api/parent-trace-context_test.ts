@@ -48,6 +48,25 @@ describe("setParentTraceContext", () => {
     expect(getParentTraceContext()).toBeUndefined();
   });
 
+  it("clears the parent when given null", () => {
+    setParentTraceContext(STEP_TRACEPARENT);
+    setParentTraceContext(null);
+
+    expect(getParentTraceContext()).toBeUndefined();
+    expect(startSpan("HTTP GET").parentSpanId).toBeUndefined();
+  });
+
+  it.each([
+    ["a number", 123],
+    ["an object", { traceparent: STEP_TRACEPARENT }],
+    ["a boolean", true],
+  ])("ignores %s as a traceparent and keeps the current parent", (_, traceparent) => {
+    setParentTraceContext(STEP_TRACEPARENT);
+
+    expect(() => setParentTraceContext(traceparent as unknown as string)).not.toThrow();
+    expect(startSpan("HTTP GET")).toMatchObject({ traceId: STEP_TRACE_ID, parentSpanId: STEP_SPAN_ID });
+  });
+
   it.each([
     ["a malformed value", "not-a-traceparent"],
     ["an unsupported version", `01-${STEP_TRACE_ID}-${STEP_SPAN_ID}-01`],
