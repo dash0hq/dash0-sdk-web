@@ -66,6 +66,22 @@ describe("Parent Trace Context", () => {
     expectNoBrowserErrors();
   });
 
+  it("must process later queued calls after queued non-string traceparents", async () => {
+    await loadPage("/e2e/spec/11-parent-trace-context/page.html?queue-non-strings");
+    await expect(browser).toHaveTitle("parent trace context test");
+
+    expect(await browser.execute(() => (window as any).dash0._q)).toBeUndefined();
+
+    await click("Cross Origin Fetch");
+
+    await retry(async () => {
+      const span = (await exportedHttpSpans()).find((s) => s.method === "GET");
+      expect(span).toEqual(expect.objectContaining({ traceId: PARENT_TRACE_ID, parentSpanId: PARENT_SPAN_ID }));
+    });
+
+    expectNoBrowserErrors();
+  });
+
   it("must start a new trace again once the parent is cleared", async () => {
     await loadPage("/e2e/spec/11-parent-trace-context/page.html");
     await expect(browser).toHaveTitle("parent trace context test");
