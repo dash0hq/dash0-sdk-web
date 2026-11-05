@@ -70,7 +70,7 @@ describe("Parent Trace Context", () => {
     await loadPage("/e2e/spec/11-parent-trace-context/page.html?queue-non-strings");
     await expect(browser).toHaveTitle("parent trace context test");
 
-    expect(await browser.execute(() => (window as any).dash0._q)).toBeUndefined();
+    expect(await browser.execute(() => (window as any).dash0._q === undefined)).toBe(true);
 
     await click("Cross Origin Fetch");
 
