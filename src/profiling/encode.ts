@@ -1,3 +1,4 @@
+import { URL_FULL } from "../semantic-conventions";
 import type { AnyValue, ExportProfilesServiceRequest, Profile, ProfilesDictionary, Sample } from "../types/otlp";
 import type { EncodedProfile, ProfileChunk, ProfilerTrace } from "../types/profiling";
 
@@ -143,10 +144,14 @@ function newDictionary() {
       }));
     },
     location: (functionIndex: number, line: number, column: number): number =>
-      intern(tables.locationTable, `l${functionIndex}:${line}:${column}`, () => ({
-        lines: [{ functionIndex, line: String(line), column: String(column) }],
-        attributeIndices: [dict.attribute(FRAME_TYPE_ATTRIBUTE, { stringValue: FRAME_TYPE_V8JS })],
-      })),
+      intern(tables.locationTable, `l${functionIndex}:${line}:${column}`, () => {
+        const attributeIndices = [dict.attribute(FRAME_TYPE_ATTRIBUTE, { stringValue: FRAME_TYPE_V8JS })];
+        const scriptUrl = tables.stringTable[tables.functionTable[functionIndex]?.filenameStrindex ?? 0];
+        // The backend finds the uploaded source map by this url.
+        // https://opentelemetry.io/docs/specs/semconv/registry/attributes/url/
+        if (scriptUrl) attributeIndices.push(dict.attribute(URL_FULL, { stringValue: scriptUrl }));
+        return { lines: [{ functionIndex, line: String(line), column: String(column) }], attributeIndices };
+      }),
     stack: (locationIndices: number[]): number =>
       intern(tables.stackTable, "k" + locationIndices.join(","), () => ({ locationIndices })),
     attribute: (key: string, value: AnyValue): number => {
