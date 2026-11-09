@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.30.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.30.0...0.30.1) (2026-11-09)
+
+### Bug Fixes
+
+- **session-recording:** start the recorder once the document is parsed ([#139](https://github.com/dash0hq/dash0-sdk-web/issues/139)) ([8d1829a](https://github.com/dash0hq/dash0-sdk-web/commit/8d1829a0e0f00b34394d54b76fadb5c1eea64526))
+
 ## [0.30.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.29.0...0.30.0) (2026-11-04)
 
 ### Features
