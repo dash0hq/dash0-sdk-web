@@ -290,6 +290,74 @@ describe("session recording lifecycle", () => {
     expect(mod.isSessionRecording()).toBe(false);
   });
 
+  describe("document parsing", () => {
+    function setReadyState(state: DocumentReadyState): void {
+      Object.defineProperty(doc!, "readyState", { value: state, configurable: true });
+    }
+
+    function finishParsing(): void {
+      setReadyState("interactive");
+      doc!.dispatchEvent(new Event("DOMContentLoaded"));
+    }
+
+    afterEach(() => {
+      delete (doc as any).readyState;
+    });
+
+    it("defers the start while the document is loading and starts once it is parsed", () => {
+      setReadyState("loading");
+
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+
+      expect(recorder).not.toHaveBeenCalled();
+      expect(mod.isSessionRecording()).toBe(false);
+
+      finishParsing();
+
+      expect(recorder).toHaveBeenCalledTimes(1);
+      expect(mod.isSessionRecording()).toBe(true);
+    });
+
+    it("starts only once however often start is requested while the document is loading", () => {
+      setReadyState("loading");
+
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      mod.registerSessionRecorder(recorder);
+      mod.armSessionRecording();
+      finishParsing();
+      doc!.dispatchEvent(new Event("DOMContentLoaded"));
+
+      expect(recorder).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not start once parsed when the consumer stopped recording while the document was loading", () => {
+      setReadyState("loading");
+
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      mod.stopSessionRecording();
+      finishParsing();
+
+      expect(recorder).not.toHaveBeenCalled();
+      expect(mod.isSessionRecording()).toBe(false);
+    });
+
+    it("starts once parsed when the consumer restarted recording while the document was loading", () => {
+      setReadyState("loading");
+
+      mod.armSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      mod.stopSessionRecording();
+      mod.registerSessionRecorder(recorder);
+      finishParsing();
+
+      expect(recorder).toHaveBeenCalledTimes(1);
+      expect(mod.isSessionRecording()).toBe(true);
+    });
+  });
+
   describe("visibility", () => {
     /**
      * jsdom's `visibilityState` is a getter on the Document prototype, so it can only be changed by
