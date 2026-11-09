@@ -53,7 +53,6 @@ let stream: RecordingStream | undefined;
 let hiddenEvents: HiddenEvents | undefined;
 let lastChanceRegistered = false;
 let visibilityRegistered = false;
-let waitingForParsedDocument = false;
 // Set by the public `stopSessionRecording()`, so a visibility change does not resurrect a recording the
 // consumer deliberately ended. Cleared by an explicit start: registering a recorder or arming.
 let stoppedByConsumer = false;
@@ -244,13 +243,11 @@ function registerVisibilityHandling(): void {
  * rrweb takes that snapshot within the same call that installs the patch, so nothing can run in between.
  */
 function startOnceDocumentIsParsed(): void {
-  if (waitingForParsedDocument || !doc) {
+  if (!doc) {
     return;
   }
-  waitingForParsedDocument = true;
   const onParsed = () => {
     removeEventListener(doc!, "DOMContentLoaded", onParsed);
-    waitingForParsedDocument = false;
     if (!stoppedByConsumer) {
       start();
     }
