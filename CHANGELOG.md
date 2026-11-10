@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.31.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.31.0...0.31.1) (2026-11-10)
+
+### Bug Fixes
+
+- **http:** preserve completed XHR responses when aborted ([#143](https://github.com/dash0hq/dash0-sdk-web/issues/143)) ([f59ccf6](https://github.com/dash0hq/dash0-sdk-web/commit/f59ccf6d08ab426ce6035c163bf92b934ad10b23))
+
 ## [0.31.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.30.1...0.31.0) (2026-11-10)
 
 ### Features
