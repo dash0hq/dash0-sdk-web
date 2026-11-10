@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.31.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.30.1...0.31.0) (2026-11-10)
+
+### Features
+
+- **tracing:** fetch and XHR spans can join a test runner's trace, instead of starting their own ([#133](https://github.com/dash0hq/dash0-sdk-web/issues/133)) ([67f7b90](https://github.com/dash0hq/dash0-sdk-web/commit/67f7b90e6361c4a92a68a89ac1946e84774aa83b))
+
 ## [0.30.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.30.0...0.30.1) (2026-11-09)
 
 ### Bug Fixes
