@@ -104,6 +104,7 @@ export function init(opts: InitOptions) {
 
   initializeResourceAttributes(opts);
   initializeSignalAttributes(opts);
+  vars.storageNamespace = opts.storageNamespace?.trim() ?? "";
   initializeTabId();
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
 

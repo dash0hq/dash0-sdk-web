@@ -209,6 +209,11 @@ export type Vars = {
    * Determined at init time based on sessionSamplingRate and the session ID.
    */
   isSessionSampled: boolean;
+
+  /**
+   * Prefix for the keys the SDK writes to localStorage and sessionStorage. Empty means no prefix.
+   */
+  storageNamespace: string;
 };
 
 export const vars: Vars = {
@@ -260,4 +265,5 @@ export const vars: Vars = {
   },
   enableTransportCompression: false,
   isSessionSampled: true,
+  storageNamespace: "",
 };
