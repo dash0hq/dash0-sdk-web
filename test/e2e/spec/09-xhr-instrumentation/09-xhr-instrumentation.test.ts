@@ -243,6 +243,29 @@ describe("XHR Instrumentation", () => {
     expectNoBrowserErrors();
   });
 
+  it("must report a completed XHR request as successful when the page aborts it after load", async () => {
+    await loadPage("/e2e/spec/09-xhr-instrumentation/page.html");
+    await expect(browser).toHaveTitle("xhr instrumentation test");
+
+    const btn = await $("button=XHR Aborted After Load");
+    await btn.click();
+
+    await retry(async () => {
+      await expectSpanMatching(
+        expect.objectContaining({
+          name: "HTTP GET",
+          attributes: expect.arrayContaining([
+            { key: "url.query", value: { stringValue: "xhr=abort-after-load" } },
+            { key: "http.response.status_code", value: { stringValue: "200" } },
+          ]),
+          status: expect.objectContaining({ code: 0 }),
+          events: expect.not.arrayContaining([expect.objectContaining({ name: "exception" })]),
+        })
+      );
+    });
+    expectNoBrowserErrors();
+  });
+
   it("must pass the request body through unchanged", async () => {
     await loadPage("/e2e/spec/09-xhr-instrumentation/page.html");
     await expect(browser).toHaveTitle("xhr instrumentation test");

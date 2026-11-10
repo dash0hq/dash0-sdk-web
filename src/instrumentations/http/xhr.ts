@@ -43,6 +43,13 @@ import { addCommonAttributes, addUrlAttributes, scrubUrl } from "../../attribute
 
 type XhrFailureKind = "error" | "timeout" | "abort";
 
+const XHR_READY_STATE_DONE = 4;
+
+type XhrResponseSnapshot = {
+  status: number;
+  rawResponseHeaders?: string;
+};
+
 type XhrState = {
   method: string;
   originalMethod: string;
@@ -57,6 +64,9 @@ type XhrState = {
   capturedRequestHeaders?: Record<string, string>;
   completed: boolean;
   failureKind?: XhrFailureKind;
+  // Taken when page code calls abort() on a request that already reached DONE. That abort fires
+  // no events but resets status to 0 and clears the response headers before loadend runs.
+  responseBeforeAbort?: XhrResponseSnapshot;
   performanceObserver?: ReturnType<typeof observeResourcePerformance>;
   listeners?: Array<[string, () => unknown]>;
 };
@@ -80,6 +90,7 @@ export function instrumentXhr() {
   wrap(proto, "open", wrapOpen);
   wrap(proto, "setRequestHeader", wrapSetRequestHeader);
   wrap(proto, "send", wrapSend);
+  wrap(proto, "abort", wrapAbort);
 }
 
 function wrapOpen(original: XMLHttpRequest["open"]): XMLHttpRequest["open"] {
@@ -253,6 +264,27 @@ function endSpanOnSyncSendError(xhr: InstrumentedXhr, state: XhrState, error: un
   }
 }
 
+function wrapAbort(original: XMLHttpRequest["abort"]): XMLHttpRequest["abort"] {
+  return function (this: InstrumentedXhr) {
+    try {
+      onAbort(this);
+    } catch (e) {
+      debug("failed to instrument XMLHttpRequest.abort", e);
+    }
+    return original.call(this);
+  };
+}
+
+function onAbort(xhr: InstrumentedXhr) {
+  const state = xhr[XHR_STATE];
+  if (!state?.span || state.completed || xhr.readyState !== XHR_READY_STATE_DONE) return;
+
+  state.responseBeforeAbort = {
+    status: xhr.status,
+    rawResponseHeaders: vars.headersToCapture.length ? xhr.getAllResponseHeaders() : undefined,
+  };
+}
+
 function onSend(xhr: InstrumentedXhr, state: XhrState) {
   const span = startSpan(`HTTP ${state.method}`);
   addCommonAttributes(span.attributes);
@@ -382,13 +414,8 @@ function onLoadEnd(xhr: InstrumentedXhr, state: XhrState) {
     return;
   }
 
-  let status = 0;
-  try {
-    status = xhr.status;
-  } catch (_e) {
-    // Reading .status can throw in some environments if accessed at the wrong readyState.
-    status = 0;
-  }
+  const responseBeforeAbort = state.responseBeforeAbort;
+  const status = responseBeforeAbort?.status ?? readStatus(xhr);
 
   if (state.failureKind === "error" || state.failureKind === "timeout" || status === 0) {
     performanceObserver?.cancel();
@@ -401,16 +428,25 @@ function onLoadEnd(xhr: InstrumentedXhr, state: XhrState) {
 
   setSpanStatus(span, status >= 200 && status < 400 ? SPAN_STATUS_UNSET : SPAN_STATUS_ERROR);
   addAttribute(span.attributes, HTTP_RESPONSE_STATUS_CODE, String(status));
-  tryCaptureResponseHeaders(xhr, span);
+  tryCaptureResponseHeaders(span, () => responseBeforeAbort?.rawResponseHeaders ?? xhr.getAllResponseHeaders());
 
   performanceObserver?.end();
 }
 
-function tryCaptureResponseHeaders(xhr: XMLHttpRequest, span: InProgressSpan) {
+function readStatus(xhr: XMLHttpRequest): number {
+  try {
+    return xhr.status;
+  } catch (_e) {
+    // Reading .status can throw in some environments if accessed at the wrong readyState.
+    return 0;
+  }
+}
+
+function tryCaptureResponseHeaders(span: InProgressSpan, getRawResponseHeaders: () => string) {
   try {
     if (!vars.headersToCapture.length) return;
 
-    const raw = xhr.getAllResponseHeaders();
+    const raw = getRawResponseHeaders();
     if (!raw) return;
 
     raw

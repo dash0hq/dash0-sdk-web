@@ -136,6 +136,17 @@
     <button
       onclick="(function(){
         const xhr = new XMLHttpRequest();
+        xhr.open('GET', '/ajax?xhr=abort-after-load');
+        xhr.addEventListener('load', () => xhr.abort());
+        xhr.send();
+      })()"
+    >
+      XHR Aborted After Load
+    </button>
+
+    <button
+      onclick="(function(){
+        const xhr = new XMLHttpRequest();
         xhr.open('POST', '/ajax?assert-body=this_is_an_xhr_message');
         xhr.send('this_is_an_xhr_message');
       })()"

@@ -63,6 +63,22 @@ class FakeXMLHttpRequest extends EventTarget {
     }
   }
 
+  /**
+   * Models the spec's abort(): an in-flight request ends with abort and loadend events, while a
+   * request that already reached DONE goes back to UNSENT silently, losing its status and headers.
+   */
+  abort() {
+    if (this.readyState === FakeXMLHttpRequest.DONE) {
+      this.readyState = FakeXMLHttpRequest.UNSENT;
+      this.status = 0;
+      this.statusText = "";
+      this.responseHeaders = {};
+      return;
+    }
+    if (this.readyState === FakeXMLHttpRequest.UNSENT) return;
+    this.triggerAbort();
+  }
+
   getAllResponseHeaders(): string {
     return Object.entries(this.responseHeaders)
       .map(([k, v]) => `${k}: ${v}\r\n`)
@@ -76,6 +92,7 @@ class FakeXMLHttpRequest extends EventTarget {
     this.statusText = String(status);
     this.responseHeaders = headers;
     this.readyState = FakeXMLHttpRequest.DONE;
+    this.dispatchEvent(new Event("load"));
     this.dispatchEvent(new Event("loadend"));
   }
 
@@ -708,6 +725,115 @@ describe("xhr test", () => {
       value: { boolValue: true },
     });
     expect(span.events.find((e) => e.name === "exception")).toBeUndefined();
+  });
+
+  describe("abort() after the request reached DONE", () => {
+    function lastSpan(): Span {
+      const sendSpanMock = sendSpan as unknown as ReturnType<typeof vi.fn>;
+      return sendSpanMock.mock.calls.at(-1)![0] as Span;
+    }
+
+    it("reports a successful request as successful when a load listener aborts it", async () => {
+      vars.headersToCapture = [/x-response-header/];
+      instrumentXhr();
+
+      const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+      xhr.open("GET", "/some-page");
+      xhr.addEventListener("load", () => xhr.abort());
+      xhr.send();
+      xhr.respond(200, { "x-response-header": "yes" });
+
+      expect(xhr.status).toBe(0);
+      await vi.waitFor(() => expect(sendSpan).toHaveBeenCalledTimes(1));
+      const span = lastSpan();
+      expect(span.status?.code).toBe(0);
+      expect(span.events.find((e) => e.name === "exception")).toBeUndefined();
+      expect(span.attributes).toContainEqual({ key: "http.response.status_code", value: { stringValue: "200" } });
+      expect(span.attributes).toContainEqual({
+        key: "http.response.header.x-response-header",
+        value: { stringValue: "yes" },
+      });
+      expect(span.attributes.find((a) => a.key === "dash0.web.request.cancelled")).toBeUndefined();
+    });
+
+    it("reports a successful request as successful when an earlier loadend listener aborts it", async () => {
+      instrumentXhr();
+
+      const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+      xhr.open("GET", "/some-page");
+      xhr.addEventListener("loadend", () => xhr.abort());
+      xhr.send();
+      xhr.respond(200);
+
+      await vi.waitFor(() => expect(sendSpan).toHaveBeenCalledTimes(1));
+      const span = lastSpan();
+      expect(span.status?.code).toBe(0);
+      expect(span.attributes).toContainEqual({ key: "http.response.status_code", value: { stringValue: "200" } });
+    });
+
+    it("keeps reporting an HTTP error status when a load listener aborts the request", async () => {
+      instrumentXhr();
+
+      const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+      xhr.open("GET", "/some-page");
+      xhr.addEventListener("load", () => xhr.abort());
+      xhr.send();
+      xhr.respond(500);
+
+      await vi.waitFor(() => expect(sendSpan).toHaveBeenCalledTimes(1));
+      const span = lastSpan();
+      expect(span.status?.code).toBe(2);
+      expect(span.attributes).toContainEqual({ key: "http.response.status_code", value: { stringValue: "500" } });
+    });
+
+    it("keeps reporting a network error when an error listener aborts the request", () => {
+      instrumentXhr();
+
+      const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+      xhr.open("GET", "/some-page");
+      xhr.addEventListener("error", () => xhr.abort());
+      xhr.send();
+      xhr.triggerError();
+
+      expect(sendSpan).toHaveBeenCalledTimes(1);
+      const span = lastSpan();
+      expect(span.status?.code).toBe(2);
+      expect(span.attributes).toContainEqual({ key: "error.type", value: { stringValue: "error" } });
+    });
+
+    it("still reports a request aborted while in flight as cancelled", () => {
+      instrumentXhr();
+
+      const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+      xhr.open("GET", "/some-page");
+      xhr.send();
+      xhr.abort();
+
+      expect(sendSpan).toHaveBeenCalledTimes(1);
+      const span = lastSpan();
+      expect(span.status?.code).toBe(0);
+      expect(span.attributes).toContainEqual({ key: "dash0.web.request.cancelled", value: { boolValue: true } });
+    });
+
+    it("does not carry the pre-abort status over to the next request on a reused instance", async () => {
+      instrumentXhr();
+
+      const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+      xhr.open("GET", "/first");
+      xhr.addEventListener("load", () => xhr.abort(), { once: true });
+      xhr.send();
+      xhr.respond(200);
+      await vi.waitFor(() => expect(sendSpan).toHaveBeenCalledTimes(1));
+
+      xhr.open("GET", "/second");
+      xhr.send();
+      xhr.triggerError();
+
+      expect(sendSpan).toHaveBeenCalledTimes(2);
+      const span = lastSpan();
+      expect(span.status?.code).toBe(2);
+      expect(span.attributes.find((a) => a.key === "http.response.status_code")).toBeUndefined();
+    });
   });
 
   it("only completes a span once even if multiple terminal events fire", async () => {
