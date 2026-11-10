@@ -34,6 +34,44 @@ describe("XHR Instrumentation", () => {
     expectNoBrowserErrors();
   });
 
+  it("must preserve a completed response when a page load handler calls abort", async () => {
+    await loadPage("/e2e/spec/09-xhr-instrumentation/page.html");
+
+    const result = await browser.execute(
+      () =>
+        new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          let abortEvents = 0;
+          xhr.open("GET", "/ajax?xhr=abort-after-load");
+          xhr.addEventListener("abort", () => abortEvents++);
+          xhr.addEventListener("error", () => reject(new Error("XHR failed")));
+          xhr.addEventListener("load", () => {
+            const statusBeforeAbort = xhr.status;
+            xhr.abort();
+            resolve({ statusBeforeAbort, statusAfterAbort: xhr.status, readyState: xhr.readyState, abortEvents });
+          });
+          xhr.send();
+        })
+    );
+    expect(result).toEqual({ statusBeforeAbort: 200, statusAfterAbort: 0, readyState: 0, abortEvents: 0 });
+
+    await retry(async () => {
+      await expectSpanMatching(
+        expect.objectContaining({
+          name: "HTTP GET",
+          kind: SPAN_KIND_CLIENT,
+          attributes: expect.arrayContaining([
+            { key: "url.query", value: { stringValue: "xhr=abort-after-load" } },
+            { key: "http.response.status_code", value: { stringValue: "200" } },
+          ]),
+          status: { code: 0 },
+          events: expect.not.arrayContaining([expect.objectContaining({ name: "exception" })]),
+        })
+      );
+    });
+    expectNoBrowserErrors();
+  });
+
   it("must inject traceparent for matching cross-origin XHR requests", async () => {
     await loadPage("/e2e/spec/09-xhr-instrumentation/page.html");
     await expect(browser).toHaveTitle("xhr instrumentation test");
