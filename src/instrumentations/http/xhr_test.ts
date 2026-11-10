@@ -30,6 +30,7 @@ class FakeXMLHttpRequest extends EventTarget {
   url?: string;
   async?: boolean;
   sentBody?: unknown;
+  sent = false;
   onreadystatechange: (() => void) | null = null;
 
   open(method: string, url: string, async?: boolean) {
@@ -39,6 +40,7 @@ class FakeXMLHttpRequest extends EventTarget {
     this.readyState = FakeXMLHttpRequest.OPENED;
     this.requestHeaders = {};
     this.status = 0;
+    this.sent = false;
   }
 
   setRequestHeader(name: string, value: string) {
@@ -57,6 +59,7 @@ class FakeXMLHttpRequest extends EventTarget {
 
   send(body?: unknown) {
     this.sentBody = body;
+    this.sent = true;
     if (this.syncSendError) {
       this.readyState = FakeXMLHttpRequest.DONE;
       throw this.syncSendError;
@@ -69,6 +72,15 @@ class FakeXMLHttpRequest extends EventTarget {
       .join("");
   }
 
+  abort() {
+    const wasDone = this.readyState === FakeXMLHttpRequest.DONE;
+    this.status = 0;
+    this.responseHeaders = {};
+    if (!wasDone && this.sent) this.triggerAbort();
+    this.sent = false;
+    this.readyState = FakeXMLHttpRequest.UNSENT;
+  }
+
   // --- Test-only helpers to drive the fake through a request lifecycle ---
 
   respond(status: number, headers: Record<string, string> = {}) {
@@ -76,6 +88,7 @@ class FakeXMLHttpRequest extends EventTarget {
     this.statusText = String(status);
     this.responseHeaders = headers;
     this.readyState = FakeXMLHttpRequest.DONE;
+    this.dispatchEvent(new Event("load"));
     this.dispatchEvent(new Event("loadend"));
   }
 
@@ -471,6 +484,70 @@ describe("xhr test", () => {
     expect(span.attributes).not.toContainEqual(expect.objectContaining({ key: "http.response.header.content-type" }));
   });
 
+  it.each([200, 204, 500])("preserves status %i and matching headers when a load handler aborts", async (status) => {
+    vars.headersToCapture = [/^x-response-header$/];
+    instrumentXhr();
+
+    const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+    xhr.open("GET", "/api/test");
+    xhr.addEventListener(
+      "load",
+      () => {
+        xhr.abort();
+        xhr.abort();
+      },
+      { once: true }
+    );
+    xhr.send();
+    xhr.respond(status, { "x-response-header": "yes", "x-private": "secret" });
+
+    expect(xhr.status).toBe(0);
+    expect(xhr.readyState).toBe(FakeXMLHttpRequest.UNSENT);
+    expect(xhr.getAllResponseHeaders()).toBe("");
+    const sendSpanMock = vi.mocked(sendSpan);
+    await vi.waitFor(() => expect(sendSpanMock).toHaveBeenCalledTimes(1));
+    const span = sendSpanMock.mock.calls[0]![0]!;
+    expect(span.status?.code).toBe(status < 400 ? 0 : 2);
+    expect(span.attributes).toContainEqual({
+      key: "http.response.status_code",
+      value: { stringValue: String(status) },
+    });
+    expect(span.attributes).toContainEqual({
+      key: "http.response.header.x-response-header",
+      value: { stringValue: "yes" },
+    });
+    expect(span.attributes).not.toContainEqual(expect.objectContaining({ key: "http.response.header.x-private" }));
+    expect(span.attributes).not.toContainEqual(expect.objectContaining({ key: "dash0.web.request.cancelled" }));
+    expect(span.events.some((event) => event.name === "exception")).toBe(false);
+
+    // Reopening must discard the saved response from the first request.
+    xhr.open("GET", "/api/second");
+    xhr.send();
+    xhr.respond(201);
+    await vi.waitFor(() => expect(sendSpanMock).toHaveBeenCalledTimes(2));
+    const secondSpan = sendSpanMock.mock.calls[1]![0]!;
+    expect(secondSpan.attributes).toContainEqual({ key: "http.response.status_code", value: { stringValue: "201" } });
+    expect(secondSpan.attributes).not.toContainEqual(
+      expect.objectContaining({ key: "http.response.header.x-response-header" })
+    );
+  });
+
+  it("preserves status when header capture is disabled and aborts after completion", async () => {
+    instrumentXhr();
+    const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+    xhr.open("GET", "/api/test");
+    xhr.addEventListener("load", () => xhr.abort());
+    xhr.send();
+    xhr.respond(202, { "x-private": "secret" });
+    await vi.waitFor(() => expect(sendSpan).toHaveBeenCalledTimes(1));
+    const span = vi.mocked(sendSpan).mock.calls[0]![0]!;
+    expect(span.status?.code).toBe(0);
+    expect(span.attributes).toContainEqual({ key: "http.response.status_code", value: { stringValue: "202" } });
+    expect(span.attributes.some((attr) => attr.key.startsWith("http.response.header."))).toBe(false);
+    xhr.abort();
+    expect(sendSpan).toHaveBeenCalledTimes(1);
+  });
+
   it("marks the span as errored (status code ERROR) for a 4xx/5xx response", async () => {
     instrumentXhr();
 
@@ -691,13 +768,15 @@ describe("xhr test", () => {
     });
   });
 
-  it("marks the span as cancelled (not failed) on abort", () => {
+  it.each([1, 2, 3])("marks the span as cancelled (not failed) on abort at readyState %i", (readyState) => {
     instrumentXhr();
 
     const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
     xhr.open("GET", "/api/test");
     xhr.send();
-    xhr.triggerAbort();
+    xhr.readyState = readyState;
+    xhr.status = readyState >= 2 ? 200 : 0;
+    xhr.abort();
 
     const sendSpanMock = sendSpan as unknown as ReturnType<typeof vi.fn>;
     expect(sendSpanMock).toHaveBeenCalledTimes(1);
@@ -939,8 +1018,9 @@ describe("xhr test", () => {
       open() {}
       setRequestHeader() {}
       send() {}
+      abort() {}
     }
-    for (const method of ["open", "setRequestHeader", "send"] as const) {
+    for (const method of ["open", "setRequestHeader", "send", "abort"] as const) {
       Object.defineProperty(LockedXhr.prototype, method, {
         value: LockedXhr.prototype[method],
         writable: false,
