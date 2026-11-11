@@ -70,6 +70,16 @@ export function sendLog(log: LogRecord): void {
 }
 
 /**
+ * Queues a captured console message. Console messages bypass the budget shared by spans and logs, so a chatty page
+ * cannot starve errors and requests of it. The console instrumentation enforces its own budget before formatting.
+ */
+export function sendConsoleLog(log: LogRecord): void {
+  if (!vars.isSessionSampled) return;
+
+  logBatcher.send(log);
+}
+
+/**
  * Transmits a session recording chunk as a single log record. Chunks bypass the log batcher: batching 15 chunks
  * of up to `chunkMaxBytes` each would produce requests far beyond the keepalive body limit.
  *

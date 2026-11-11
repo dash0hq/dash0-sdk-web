@@ -10,7 +10,8 @@ export type InstrumentationName =
   | "@dash0/xhr"
   | "@dash0/session-recording"
   | "@dash0/frustration-signals"
-  | "@dash0/profiling";
+  | "@dash0/profiling"
+  | "@dash0/console";
 
 /**
  * VCS (version control) context describing the build the SDK is running
@@ -147,6 +148,7 @@ export type InitOptions = {
     | "sessionRecording"
     | "frustrationSignals"
     | "profiling"
+    | "consoleLogs"
     | "enableTransportCompression"
   >
 >;

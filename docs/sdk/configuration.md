@@ -127,7 +127,7 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
-  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals' | '@dash0/profiling'`
+  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals' | '@dash0/profiling' | '@dash0/console'`
   `'@dash0/profiling'` is not part of the default: it only runs when listed here.
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
@@ -336,6 +336,50 @@ The SDK auto-detects VCS (version control) context from the build environment an
   Whether we should automatically wrap timers added via setTimeout / setInterval for improved uncaught error tracking.
   This results in improved uncaught error tracking for cross-origin errors,
   but may have adverse effects on website performance and stability.
+
+#### Console logs
+
+The `@dash0/console` instrumentation sends messages logged through the browser console as `browser.console` events.
+By default only `console.warn` and `console.error` are captured; list more methods in `consoleLogs.levels` to capture
+all console output. The original console method is always called, so the browser's developer tools show every message
+as before.
+
+Each event carries the formatted message as its body, a severity derived from the method (`debug` and `trace` are
+`DEBUG`, `log` and `info` are `INFO`, `warn` is `WARN`, `error` is `ERROR`), the method in `browser.console.method`,
+and the same session, tab and page attributes as other events. When an argument is an `Error`, its type, message and
+stack trace are added as `exception.*` attributes. `console.trace` adds the caller's stack trace as `code.stacktrace`.
+Capturing a console error does not report a `browser.error`.
+
+Messages are formatted the way browsers print them: `%s`, `%d`, `%i`, `%f`, `%o`, `%O` and `%c` are applied, and
+objects are serialized as JSON, up to three levels deep and 50 entries per object or array. URLs are scrubbed like in
+error messages (see `urlAttributeScrubber` and `ignoreUrls`), and nothing is sent while the page URL matches
+`ignoreUrls`. Console messages have their own rate limit of 50 messages per 10 seconds and 1000 per 10 minutes, so a
+page that logs heavily cannot crowd out errors and requests. Messages the Dash0 SDK logs itself are never captured.
+
+Console messages may contain personal data or secrets that the application logs. Use `consoleLogs.ignoreMessages` to
+drop such messages, or keep the captured levels to the ones your application uses for actionable problems.
+
+Only messages logged after `init` are captured. Because the console methods are wrapped, browser developer tools
+show the Dash0 SDK as the source location of console messages.
+
+- **Captured Levels**<br>
+  key: `consoleLogs.levels`<br>
+  type: `Array<'debug' | 'log' | 'info' | 'warn' | 'error' | 'trace'>`<br>
+  optional: `true`<br>
+  default: `['warn', 'error']`<br>
+  The console methods whose messages are sent. Replaces the default rather than adding to it.
+- **Ignore Messages**<br>
+  key: `consoleLogs.ignoreMessages`<br>
+  type: `Array<RegExp>`<br>
+  optional: `true`<br>
+  default: `[]`<br>
+  Messages matching any of these regular expressions are not sent. Matched against the formatted message.
+- **Maximum Message Length**<br>
+  key: `consoleLogs.maxMessageLength`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `4096`<br>
+  The maximum length of a sent message, in characters. Longer messages are truncated.
 
 #### HTTP request instrumentation
 

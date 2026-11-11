@@ -38,6 +38,7 @@ import { applyVcsResourceAttributes } from "./vcs";
 import { armSessionRecording } from "../instrumentations/session-recording";
 import { startRageClickInstrumentation } from "../instrumentations/frustration/rage-click";
 import { startProfiling } from "../instrumentations/profiling";
+import { startConsoleInstrumentation } from "../instrumentations/console";
 
 declare const process: { env?: BrowserBuildEnv } | undefined;
 
@@ -95,6 +96,7 @@ export function init(opts: InitOptions) {
         "sessionRecording",
         "frustrationSignals",
         "profiling",
+        "consoleLogs",
         "enableTransportCompression",
       ])
     )
@@ -141,6 +143,9 @@ export function init(opts: InitOptions) {
   }
   if (isInstrumentationEnabled("@dash0/profiling", opts)) {
     startProfiling();
+  }
+  if (isInstrumentationEnabled("@dash0/console", opts)) {
+    startConsoleInstrumentation();
   }
 
   hasBeenInitialised = true;
