@@ -333,8 +333,9 @@ The SDK auto-detects VCS (version control) context from the build environment an
   optional: `true`<br>
   default: `true`<br>
   Whether to drop errors thrown in a browser extension, judged by the topmost stack frame with a URL:
-  `chrome-extension://`, `moz-extension://`, `safari-extension://`, `safari-web-extension://` or Safari's
-  `webkit-masked-url://`. Errors thrown in the page still arrive when an extension frame sits further down the stack.
+  `chrome-extension://`, `moz-extension://`, `ms-browser-extension://`, `safari-extension://`,
+  `safari-web-extension://` or Safari's `webkit-masked-url://`. Errors thrown in the page still arrive when an
+  extension frame sits further down the stack.
 - **Wrap Event Handlers**<br>
   key: `wrapEventHandlers`<br>
   type: `boolean`<br>

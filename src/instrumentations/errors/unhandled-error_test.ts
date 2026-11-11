@@ -99,6 +99,7 @@ describe("reportUnhandledError", () => {
         { message: "firefox", stack: "fn@moz-extension://abc123/content.js:10:5\n@https://app.example.com/a.js:1:1" },
         { message: "safari", stack: "f@webkit-masked-url://hidden/:2:135479\nforEach@[native code]" },
         { message: "safari web extension", stack: "safari-web-extension://abc/content.js:1:1" },
+        { message: "legacy edge, upper case", stack: "at MS-Browser-Extension://abc/content.js:1:1" },
         { message: "no error object", stack: "at chrome-extension://abc/inject.js 1:3159" },
       ])
     ).toEqual([]);

@@ -114,8 +114,8 @@ export type Vars = {
 
   /**
    * Whether to drop errors thrown in a browser extension, judged by the stack
-   * frame that threw (chrome-extension://, moz-extension://, safari-extension://,
-   * safari-web-extension:// or Safari's webkit-masked-url://).
+   * frame that threw (chrome-extension://, moz-extension://, ms-browser-extension://,
+   * safari-extension://, safari-web-extension:// or Safari's webkit-masked-url://).
    *
    * @default true
    */

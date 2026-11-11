@@ -58,7 +58,7 @@ function isTransportRequest(url: string) {
 const CROSS_ORIGIN_SCRIPT_ERROR = /^(Script error\.?|Javascript error: Script error\.? on line 0)$/;
 
 const BROWSER_EXTENSION_URL =
-  /^(chrome-extension|moz-extension|safari-extension|safari-web-extension|webkit-masked-url):\/\//;
+  /^(chrome-extension|moz-extension|ms-browser-extension|safari-extension|safari-web-extension|webkit-masked-url):\/\//i;
 
 const URL_IN_FRAME = /[a-z][a-z0-9+.-]*:\/\/[^\s()]+/i;
 
