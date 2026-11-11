@@ -104,6 +104,24 @@ export type Vars = {
   ignoreErrorMessages: RegExp[];
 
   /**
+   * Whether to drop the "Script error." that browsers report in place of an error
+   * thrown by a script they treat as cross-origin. It carries no message, stack or
+   * location, so nothing in it can be acted on.
+   *
+   * @default true
+   */
+  ignoreCrossOriginScriptErrors: boolean;
+
+  /**
+   * Whether to drop errors thrown in a browser extension, judged by the stack
+   * frame that threw (chrome-extension://, moz-extension://, safari-extension://,
+   * safari-web-extension:// or Safari's webkit-masked-url://).
+   *
+   * @default true
+   */
+  ignoreBrowserExtensionErrors: boolean;
+
+  /**
    * Whether we should automatically wrap DOM event handlers
    * added via addEventlistener for improved uncaught error tracking.
    * This results in improved uncaught error tracking for cross-origin
@@ -224,6 +242,8 @@ export const vars: Vars = {
   signalAttributes: [],
   ignoreUrls: [],
   ignoreErrorMessages: [],
+  ignoreCrossOriginScriptErrors: true,
+  ignoreBrowserExtensionErrors: true,
   wrapEventHandlers: true,
   wrapTimers: true,
   propagateTraceHeadersCorsURLs: [],

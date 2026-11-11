@@ -54,6 +54,44 @@ function isTransportRequest(url: string) {
   return false;
 }
 
-export function isErrorMessageIgnored(message?: string) {
-  return !message || matchesAny(vars.ignoreErrorMessages, message);
+// The second form is what old Edge and IE report.
+const CROSS_ORIGIN_SCRIPT_ERROR = /^(Script error\.?|Javascript error: Script error\.? on line 0)$/;
+
+const BROWSER_EXTENSION_URL =
+  /^(chrome-extension|moz-extension|safari-extension|safari-web-extension|webkit-masked-url):\/\//;
+
+const URL_IN_FRAME = /[a-z][a-z0-9+.-]*:\/\/[^\s()]+/i;
+
+export function isErrorIgnored(message: string, stack?: string): boolean {
+  if (matchesAny(vars.ignoreErrorMessages, message)) {
+    return true;
+  }
+  if (vars.ignoreCrossOriginScriptErrors && CROSS_ORIGIN_SCRIPT_ERROR.test(message)) {
+    return true;
+  }
+  return vars.ignoreBrowserExtensionErrors && isThrownInBrowserExtension(stack);
+}
+
+function isThrownInBrowserExtension(stack?: string): boolean {
+  const url = urlOfThrowingFrame(stack);
+  return url != null && BROWSER_EXTENSION_URL.test(url);
+}
+
+/**
+ * The URL of the topmost stack frame that has one, skipping frames such as `<anonymous>` and `[native code]`.
+ */
+function urlOfThrowingFrame(stack?: string): string | undefined {
+  if (!stack) {
+    return undefined;
+  }
+  const lines = stack.split("\n");
+  // V8 stacks start with the error's message, which may hold any URL; their frames start with "at".
+  const v8Frames = lines.filter((line) => line.trim().startsWith("at "));
+  for (const frame of v8Frames.length > 0 ? v8Frames : lines) {
+    const url = URL_IN_FRAME.exec(frame);
+    if (url) {
+      return url[0];
+    }
+  }
+  return undefined;
 }

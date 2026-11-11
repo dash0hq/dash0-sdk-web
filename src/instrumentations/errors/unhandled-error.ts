@@ -1,5 +1,5 @@
 import { hasOwnProperty, nowNanos, win } from "../../utils";
-import { isErrorMessageIgnored, isUrlIgnored } from "../../utils/ignore-rules";
+import { isErrorIgnored, isUrlIgnored } from "../../utils/ignore-rules";
 import { sendLog } from "../../transport";
 import { onLastChance } from "../../utils/on-last-chance";
 import {
@@ -104,7 +104,7 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
     return;
   }
 
-  if (isErrorMessageIgnored(message) || (win && isUrlIgnored(win.location.href))) {
+  if (isErrorIgnored(message, stack) || (win && isUrlIgnored(win.location.href))) {
     return;
   }
 
