@@ -69,29 +69,42 @@ export function isErrorIgnored(message: string, stack?: string): boolean {
   if (vars.ignoreCrossOriginScriptErrors && CROSS_ORIGIN_SCRIPT_ERROR.test(message)) {
     return true;
   }
-  return vars.ignoreBrowserExtensionErrors && isThrownInBrowserExtension(stack);
-}
-
-function isThrownInBrowserExtension(stack?: string): boolean {
-  const url = urlOfThrowingFrame(stack);
-  return url != null && BROWSER_EXTENSION_URL.test(url);
+  return vars.ignoreBrowserExtensionErrors && hasOnlyBrowserExtensionFrames(message, stack);
 }
 
 /**
- * The URL of the topmost stack frame that has one, skipping frames such as `<anonymous>` and `[native code]`.
+ * True when the stack has frames with a URL and every one of them belongs to a browser extension. A single page
+ * frame keeps the error, so a page error that passes through an extension's wrapper of fetch, XHR,
+ * addEventListener or setTimeout is still reported.
  */
-function urlOfThrowingFrame(stack?: string): string | undefined {
+function hasOnlyBrowserExtensionFrames(message: string, stack?: string): boolean {
   if (!stack) {
-    return undefined;
+    return false;
   }
   const lines = stack.split("\n");
-  // V8 stacks start with the error's message, which may hold any URL; their frames start with "at".
-  const v8Frames = lines.filter((line) => line.trim().startsWith("at "));
-  for (const frame of v8Frames.length > 0 ? v8Frames : lines) {
-    const url = URL_IN_FRAME.exec(frame);
-    if (url) {
-      return url[0];
+  // V8 starts the stack with "<name>: <message>". The message can span lines and hold URLs, even another error's stack.
+  const firstFrame = isMessageHeader(lines[0]!, message) ? message.split("\n").length : 0;
+  let hasExtensionFrame = false;
+  for (let i = firstFrame; i < lines.length; i++) {
+    const url = URL_IN_FRAME.exec(lines[i]!);
+    if (!url) {
+      continue;
     }
+    if (!BROWSER_EXTENSION_URL.test(url[0])) {
+      return false;
+    }
+    hasExtensionFrame = true;
   }
-  return undefined;
+  return hasExtensionFrame;
+}
+
+/**
+ * Whether the stack's first line is the error message, as in V8's "TypeError: x". The reported message may carry a
+ * prefix such as "Uncaught " or "Unhandled promise rejection: ", so the line's text must end the message's first line.
+ */
+function isMessageHeader(firstLine: string, message: string): boolean {
+  const separator = firstLine.indexOf(": ");
+  const text = separator < 0 ? firstLine : firstLine.slice(separator + 2);
+  const messageEnd = message.indexOf("\n");
+  return text !== "" && (messageEnd < 0 ? message : message.slice(0, messageEnd)).endsWith(text);
 }

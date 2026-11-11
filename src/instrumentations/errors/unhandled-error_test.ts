@@ -85,40 +85,57 @@ describe("reportUnhandledError", () => {
     expect(reportedMessages([{ message: "Script error.", stack: "at  0:0" }])).toEqual(["Script error."]);
   });
 
-  it("does not report errors thrown in a browser extension", () => {
+  it("does not report errors whose frames all come from browser extensions", () => {
     expect(
       reportedMessages([
         {
-          message: "chrome",
+          message: "Cannot redefine property: create",
           stack:
-            "TypeError: Failed to fetch https://app.example.com/api\n" +
+            "TypeError: Cannot redefine property: create\n" +
             "    at Object.defineProperty (<anonymous>)\n" +
-            "    at o (chrome-extension://hoklmmgfnpapgjgcpechhaamimifchmp/frame_ant.js:2:14445)\n" +
-            "    at https://app.example.com/chunk.js:1:52365",
+            "    at _0x518498 (chrome-extension://dbpnkcjkchadgbgihmmolkjcgjkodoaf/webauthnInterceptor.js:1:82615)",
         },
-        { message: "firefox", stack: "fn@moz-extension://abc123/content.js:10:5\n@https://app.example.com/a.js:1:1" },
+        {
+          message: "firefox",
+          stack: "fn@moz-extension://abc123/content.js:10:5\n@moz-extension://abc123/content.js:1:1",
+        },
         { message: "safari", stack: "f@webkit-masked-url://hidden/:2:135479\nforEach@[native code]" },
         { message: "safari web extension", stack: "safari-web-extension://abc/content.js:1:1" },
         { message: "legacy edge, upper case", stack: "at MS-Browser-Extension://abc/content.js:1:1" },
-        { message: "no error object", stack: "at chrome-extension://abc/inject.js 1:3159" },
+        { message: "Uncaught TypeError: x", stack: "at chrome-extension://abc/inject.js 1:3159" },
       ])
     ).toEqual([]);
   });
 
-  it("reports errors thrown in the page, even when an extension frame sits further down the stack", () => {
+  it("reports errors with any frame from the page, even when an extension wraps the browser API that threw", () => {
     expect(
       reportedMessages([
         {
-          message: "app over extension",
+          message: "Unhandled promise rejection: Failed to fetch",
           stack:
-            "TypeError: Failed to load chrome-extension://abc/logo.png\n" +
-            "    at load (https://app.example.com/chunk.js:1:100)\n" +
-            "    at chrome-extension://abc/script.js:1:1",
+            "TypeError: Failed to fetch\n" +
+            "    at o (chrome-extension://hoklmmgfnpapgjgcpechhaamimifchmp/frame_ant.js:2:17856)\n" +
+            "    at window.fetch (chrome-extension://hoklmmgfnpapgjgcpechhaamimifchmp/frame_ant.js:2:17921)\n" +
+            "    at load (https://app.example.com/chunk.js:1:52365)",
         },
-        { message: "app in safari", stack: "load@https://app.example.com/a.js:1:1\nf@webkit-masked-url://hidden/:2:1" },
+        { message: "app in safari", stack: "f@webkit-masked-url://hidden/:2:1\nload@https://app.example.com/a.js:1:1" },
         { message: "no stack" },
       ])
-    ).toEqual(["app over extension", "app in safari", "no stack"]);
+    ).toEqual(["Unhandled promise rejection: Failed to fetch", "app in safari", "no stack"]);
+  });
+
+  it("does not take URLs in the error message for stack frames", () => {
+    const wrapped = "Wrapped: TypeError: x\n    at f (chrome-extension://abc/content.js:1:1)";
+    expect(
+      reportedMessages([
+        // Error.stackTraceLimit = 0 leaves only the message in a V8 stack.
+        {
+          message: "Unhandled promise rejection: Failed to load chrome-extension://abc/logo.png",
+          stack: "Error: Failed to load chrome-extension://abc/logo.png",
+        },
+        { message: wrapped, stack: `Error: ${wrapped}\n    at Array.forEach (<anonymous>)` },
+      ])
+    ).toEqual(["Unhandled promise rejection: Failed to load chrome-extension://abc/logo.png", wrapped]);
   });
 
   it("reports errors thrown in a browser extension when ignoreBrowserExtensionErrors is off", () => {

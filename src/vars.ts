@@ -113,9 +113,10 @@ export type Vars = {
   ignoreCrossOriginScriptErrors: boolean;
 
   /**
-   * Whether to drop errors thrown in a browser extension, judged by the stack
-   * frame that threw (chrome-extension://, moz-extension://, ms-browser-extension://,
+   * Whether to drop errors whose stack frames with a URL all belong to a browser
+   * extension (chrome-extension://, moz-extension://, ms-browser-extension://,
    * safari-extension://, safari-web-extension:// or Safari's webkit-masked-url://).
+   * An error with any frame from the page is still reported.
    *
    * @default true
    */
