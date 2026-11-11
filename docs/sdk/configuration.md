@@ -319,6 +319,24 @@ The SDK auto-detects VCS (version control) context from the build environment an
   optional: `true`<br>
   default: `undefined`<br>
   An array of error message regular expressions for which no data should be collected.
+- **Ignore Cross-Origin Script Errors**<br>
+  key: `ignoreCrossOriginScriptErrors`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `true`<br>
+  Whether to drop the "Script error." that browsers report in place of an error thrown by a script they treat as
+  cross-origin. It carries no message, stack or location. To see these errors in full instead, load the script with
+  the `crossorigin` attribute and serve it with an `Access-Control-Allow-Origin` header.
+- **Ignore Browser Extension Errors**<br>
+  key: `ignoreBrowserExtensionErrors`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `true`<br>
+  Whether to drop errors whose stack frames with a URL all belong to a browser extension: `chrome-extension://`,
+  `moz-extension://`, `ms-browser-extension://`, `safari-extension://`, `safari-web-extension://` or Safari's
+  `webkit-masked-url://`. An error with any frame from the page is still reported, including a page error that
+  passes through an extension's wrapper of `fetch` or `setTimeout`. Errors without a stack are always reported.
+  Dropped errors are logged at the `debug` log level.
 - **Wrap Event Handlers**<br>
   key: `wrapEventHandlers`<br>
   type: `boolean`<br>

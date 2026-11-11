@@ -84,6 +84,8 @@ export function init(opts: InitOptions) {
       pick(opts, [
         "ignoreUrls",
         "ignoreErrorMessages",
+        "ignoreCrossOriginScriptErrors",
+        "ignoreBrowserExtensionErrors",
         "wrapEventHandlers",
         "wrapTimers",
         "propagateTraceHeadersCorsURLs",
