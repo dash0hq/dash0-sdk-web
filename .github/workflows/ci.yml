@@ -220,8 +220,16 @@ jobs:
         run: exit 1
 
   release:
-    needs: [build]
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    needs: [build, check-e2e-tests]
+    # Explicit status checks allow docs-only E2E skips without allowing release after a failed check.
+    if: >-
+      ${{
+        !cancelled() &&
+        github.event_name == 'push' &&
+        github.ref_name == 'main' &&
+        needs.build.result == 'success' &&
+        needs.check-e2e-tests.result == 'success'
+      }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
