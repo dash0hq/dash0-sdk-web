@@ -21,6 +21,7 @@ export type { UrlAttributeScrubber, UrlAttributeRecord } from "../attributes/url
 export type { StartViewOptions } from "../api/start-view";
 export type { SessionRecorder, SessionRecorderOptions, SessionRecordingSettings } from "../types/session-recording";
 export type { ProfilingSettings } from "../types/profiling";
+export type { ConsoleLogSettings, ConsoleMethod } from "../types/console";
 
 export function init(opts: InitOptions): void {
   debug(`${INIT_MESSAGE} (via package)`);

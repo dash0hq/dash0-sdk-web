@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { send } from "./fetch";
+import { isTransmitting, send } from "./fetch";
 import { vars } from "../vars";
 import * as utils from "../utils";
 
@@ -32,6 +32,35 @@ describe("fetch transport keepalive handling", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("reports a transmission from the fetch call until shortly after the page's own handlers for its outcome have run", async () => {
+    const seen: Record<string, boolean> = {};
+    // A page that wrapped `fetch` before the SDK loaded, and looks at every request and its failure.
+    fetchMock.mockImplementation(async () => {
+      seen["call"] = isTransmitting();
+      try {
+        return await Promise.reject(new TypeError("Failed to fetch"));
+      } catch (e) {
+        seen["failure"] = isTransmitting();
+        throw e;
+      }
+    });
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.advanceTimersByTime(2000);
+      expect(isTransmitting()).toBe(false);
+      await send("/v1/logs", { data: "test" });
+
+      expect(seen).toEqual({ call: true, failure: true });
+      vi.advanceTimersByTime(1999);
+      expect(isTransmitting()).toBe(true);
+      vi.advanceTimersByTime(1);
+      expect(isTransmitting()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("should set keepalive=true for small single request", async () => {
