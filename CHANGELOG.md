@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.33.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.32.0...0.33.0) (2026-11-12)
+
+### Features
+
+- **session:** apps on one origin keep separate sessions with storageNamespace ([#141](https://github.com/dash0hq/dash0-sdk-web/issues/141)) ([811ffea](https://github.com/dash0hq/dash0-sdk-web/commit/811ffeab42bb6a2385591d944b8535a5bfb926c1))
+
 ## [0.32.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.31.1...0.32.0) (2026-11-11)
 
 ### Features
