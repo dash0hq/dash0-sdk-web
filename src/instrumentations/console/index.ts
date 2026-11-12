@@ -9,7 +9,7 @@ import {
   LOG_SEVERITIES,
   LOG_SEVERITY_TEXT,
 } from "../../semantic-conventions";
-import { addCommonAttributes, scrubPageUrls } from "../../attributes";
+import { addCommonAttributes, longestPageUrlLength, scrubPageUrls } from "../../attributes";
 import { sendConsoleLog } from "../../transport";
 import { addAttribute } from "../../utils/otel";
 import { createRateLimiter, debug, isLoggingInternally, nowNanos, win, wrap } from "../../utils";
@@ -32,11 +32,14 @@ const SEVERITIES: Record<ConsoleMethod, LOG_SEVERITY_TEXT> = {
   error: "ERROR",
 };
 
+const TRUNCATION_MARKER = "…";
+
 let started = false;
-let isExcessiveUsage: () => boolean;
+let isOverFormattingCap: () => boolean;
+let isOverSendingBudget: () => boolean;
 
 /**
- * Re-entry guard. Formatting reads getters and calls `toString()` on the logged values, which may log themselves.
+ * Re-entry guard. Formatting runs proxy traps and calls `toString()` on the logged values, which may log themselves.
  */
 let capturing = false;
 
@@ -48,9 +51,12 @@ export function startConsoleInstrumentation(): void {
   if (started || typeof console === "undefined") return;
   started = true;
 
-  // A page logging in a render or animation loop would otherwise fill the session. Messages beyond the budget are
-  // dropped before they are formatted, so an over-budget page pays only for the check.
-  isExcessiveUsage = createRateLimiter({ maxCallsPerTenMinutes: 1000, maxCallsPerTenSeconds: 50 });
+  // Formatting runs inside the page's console call. Beyond this cap messages are dropped before they are formatted,
+  // so a page logging in a render or animation loop pays only for the check.
+  isOverFormattingCap = createRateLimiter({ maxCallsPerTenMinutes: 5000, maxCallsPerTenSeconds: 200 });
+  // The budget for sent messages. It is checked after the ignore rules, so that messages the page asked to ignore,
+  // typically the noisiest ones, cannot use it up and crowd out the messages that matter.
+  isOverSendingBudget = createRateLimiter({ maxCallsPerTenMinutes: 1000, maxCallsPerTenSeconds: 50 });
 
   const levels = vars.consoleLogs.levels ?? DEFAULT_CONSOLE_LEVELS;
   for (let i = 0; i < levels.length; i++) {
@@ -85,13 +91,15 @@ export function startConsoleInstrumentation(): void {
 }
 
 function onConsoleCall(method: ConsoleMethod, args: IArguments, stack: string | undefined): void {
-  if (!vars.isSessionSampled || args.length === 0) return;
+  // `console.trace()` without arguments is still worth its stack. Browsers label it "console.trace".
+  if (!vars.isSessionSampled || (args.length === 0 && method !== "trace")) return;
   if (win && isUrlIgnored(win.location.href)) return;
-  if (isExcessiveUsage()) return;
+  if (isOverFormattingCap()) return;
 
   const maxLength = vars.consoleLogs.maxMessageLength ?? DEFAULT_MAX_CONSOLE_MESSAGE_LENGTH;
-  const message = scrubPageUrls(formatConsoleArgs(args, maxLength));
+  const message = args.length === 0 ? "console.trace" : formatMessage(args, maxLength);
   if (!message || matchesAny(vars.consoleLogs.ignoreMessages ?? [], message)) return;
+  if (isOverSendingBudget()) return;
 
   const attributes: KeyValue[] = [];
   addCommonAttributes(attributes);
@@ -122,6 +130,21 @@ function onConsoleCall(method: ConsoleMethod, args: IArguments, stack: string | 
     severityText: severity,
     body: { stringValue: message },
   });
+}
+
+/**
+ * Formats, scrubs and only then cuts the message. Cutting first could shorten a page url so that it no longer matches,
+ * and it would be sent unscrubbed. Formatting goes past `maxLength` by the longest page url, so every page url that
+ * starts before the cut is complete when it is scrubbed.
+ */
+function formatMessage(args: IArguments, maxLength: number): string {
+  const formatted = formatConsoleArgs(args, maxLength + longestPageUrlLength());
+  const scrubbed = scrubPageUrls(formatted.text);
+  // Scrubbing can shorten a message that was cut while formatting. It still lacks its end.
+  if (formatted.truncated || scrubbed.length > maxLength) {
+    return scrubbed.substring(0, maxLength) + TRUNCATION_MARKER;
+  }
+  return scrubbed;
 }
 
 function findError(args: IArguments): Error | undefined {

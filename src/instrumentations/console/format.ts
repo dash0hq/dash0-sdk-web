@@ -1,15 +1,24 @@
 const MAX_DEPTH = 3;
 const MAX_ENTRIES = 50;
-const TRUNCATION_MARKER = "…";
+
+export type FormattedConsoleArgs = {
+  /** The formatted message, at most `maxLength` characters long. */
+  text: string;
+  /** Whether the message was longer than `maxLength` and cut. */
+  truncated: boolean;
+};
 
 /**
  * Formats console arguments into one string, the way browsers print them: a leading string may contain `%s`, `%d`,
  * `%i`, `%f`, `%o`, `%O`, `%j` and `%c` substitutions, and the remaining arguments are appended, separated by spaces.
  *
- * The work is bounded by `maxLength`: objects are serialized only until the output reaches it, so logging a large
- * object costs no more than logging a short one.
+ * The work is bounded by `maxLength`: strings are cut and objects serialized only until the output reaches it, and
+ * arrays and typed arrays are read only up to their first entries. Plain objects with very many keys are the
+ * exception, because enumerating their keys is proportional to their size.
+ *
+ * The result is cut, but carries no truncation marker: the caller scrubs it before cutting it to its final length.
  */
-export function formatConsoleArgs(args: ArrayLike<unknown>, maxLength: number): string {
+export function formatConsoleArgs(args: ArrayLike<unknown>, maxLength: number): FormattedConsoleArgs {
   const out: Output = { parts: [], length: 0, maxLength };
   let next = 0;
 
@@ -85,7 +94,9 @@ function writeNested(out: Output, value: unknown, depth: number, ancestors: obje
 
   switch (typeof value) {
     case "string":
-      write(out, JSON.stringify(value));
+      // Cut before quoting, so that a large nested string is not copied in full. The quotes still push the output
+      // past `maxLength`, so the message is marked as truncated.
+      write(out, JSON.stringify(value.length > remaining(out) ? value.substring(0, remaining(out)) : value));
       return;
     case "number":
     case "boolean":
@@ -135,26 +146,33 @@ function writeNested(out: Output, value: unknown, depth: number, ancestors: obje
     return;
   }
 
-  const isArray = Array.isArray(obj);
+  // Typed arrays are indexed like arrays. Enumerating their keys instead would allocate one per element.
+  const isIndexed = Array.isArray(obj) || isTypedArray(obj);
   if (depth >= MAX_DEPTH) {
-    write(out, isArray ? "[Array]" : "[Object]");
+    write(out, isIndexed ? "[Array]" : "[Object]");
     return;
   }
 
   ancestors.push(obj);
   try {
-    if (isArray) {
-      writeEntries(out, "[", "]", obj.length, (i) => writeNested(out, obj[i], depth + 1, ancestors));
+    if (isIndexed) {
+      const length = (obj as ArrayLike<unknown>).length;
+      writeEntries(out, "[", "]", length, (i) => writeOwnProperty(out, obj, String(i), depth + 1, ancestors));
     } else {
       const keys = Object.keys(obj);
       writeEntries(out, "{", "}", keys.length, (i) => {
         write(out, JSON.stringify(keys[i]) + ":");
-        writeNested(out, readProperty(obj, keys[i]!), depth + 1, ancestors);
+        writeOwnProperty(out, obj, keys[i]!, depth + 1, ancestors);
       });
     }
   } finally {
     ancestors.pop();
   }
+}
+
+function isTypedArray(obj: object): obj is ArrayLike<number | bigint> {
+  // DataView is a view too, but has no indexed entries.
+  return typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView(obj) && !(obj instanceof DataView);
 }
 
 function writeEntries(out: Output, open: string, close: string, count: number, writeEntry: (i: number) => void) {
@@ -170,13 +188,28 @@ function writeEntries(out: Output, open: string, close: string, count: number, w
   write(out, close);
 }
 
-function readProperty(obj: object, key: string): unknown {
+/**
+ * Writes an own property without running its getter. Devtools do not run getters either, and they may have side
+ * effects: lazy loading, reactivity tracking, or logging. Reading the descriptor also bypasses the `get` trap that
+ * reactive frameworks use on proxies to track reads.
+ */
+function writeOwnProperty(out: Output, obj: object, key: string, depth: number, ancestors: object[]): void {
+  let descriptor: PropertyDescriptor | undefined;
   try {
-    return (obj as Record<string, unknown>)[key];
+    descriptor = Object.getOwnPropertyDescriptor(obj, key);
   } catch (_ignored) {
-    // Getters may throw.
-    return "[Unreadable]";
+    // Proxy traps may throw.
+    write(out, "[Unreadable]");
+    return;
   }
+
+  if (descriptor && (descriptor.get || descriptor.set)) {
+    write(out, descriptor.get ? (descriptor.set ? "[Getter/Setter]" : "[Getter]") : "[Setter]");
+    return;
+  }
+
+  // Array holes have no descriptor and print as `undefined`.
+  writeNested(out, descriptor?.value, depth, ancestors);
 }
 
 export function isError(value: unknown): value is Error {
@@ -208,17 +241,29 @@ type Output = {
   maxLength: number;
 };
 
+/**
+ * Appends to the output. Everything beyond one character past `maxLength` is dropped right away, so a large string
+ * is never copied in full. That one character tells `finish` that the output was cut.
+ */
 function write(out: Output, s: string): void {
   if (isFull(out)) return;
-  out.parts.push(s);
-  out.length += s.length;
+  const kept = s.length > remaining(out) ? s.substring(0, remaining(out)) : s;
+  out.parts.push(kept);
+  out.length += kept.length;
+}
+
+/** The number of characters `write` still keeps. */
+function remaining(out: Output): number {
+  return out.maxLength + 1 - out.length;
 }
 
 function isFull(out: Output): boolean {
   return out.length > out.maxLength;
 }
 
-function finish(out: Output): string {
+function finish(out: Output): FormattedConsoleArgs {
   const s = out.parts.join("");
-  return s.length > out.maxLength ? s.substring(0, out.maxLength) + TRUNCATION_MARKER : s;
+  return s.length > out.maxLength
+    ? { text: s.substring(0, out.maxLength), truncated: true }
+    : { text: s, truncated: false };
 }

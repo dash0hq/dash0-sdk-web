@@ -351,10 +351,12 @@ stack trace are added as `exception.*` attributes. `console.trace` adds the call
 Capturing a console error does not report a `browser.error`.
 
 Messages are formatted the way browsers print them: `%s`, `%d`, `%i`, `%f`, `%o`, `%O` and `%c` are applied, and
-objects are serialized as JSON, up to three levels deep and 50 entries per object or array. URLs are scrubbed like in
-error messages (see `urlAttributeScrubber` and `ignoreUrls`), and nothing is sent while the page URL matches
-`ignoreUrls`. Console messages have their own rate limit of 50 messages per 10 seconds and 1000 per 10 minutes, so a
-page that logs heavily cannot crowd out errors and requests. Messages the Dash0 SDK logs itself are never captured.
+objects are serialized as JSON, up to three levels deep and 50 entries per object or array. Like in developer tools,
+getters are not run: they are written as `[Getter]`. URLs are scrubbed like in error messages (see
+`urlAttributeScrubber` and `ignoreUrls`), and nothing is sent while the page URL matches `ignoreUrls`. Console messages
+have their own rate limit of 50 messages per 10 seconds and 1000 per 10 minutes, so a page that logs heavily cannot
+crowd out errors and requests. Messages dropped by `consoleLogs.ignoreMessages` do not count against it. Messages the
+Dash0 SDK logs itself are never captured.
 
 Console messages may contain personal data or secrets that the application logs. Use `consoleLogs.ignoreMessages` to
 drop such messages, or keep the captured levels to the ones your application uses for actionable problems.

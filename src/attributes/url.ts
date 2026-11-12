@@ -127,6 +127,19 @@ export function scrubPageUrls(text: string, requestUrl?: string): string {
   return result + text.slice(from);
 }
 
+/**
+ * The length of the longest url that `scrubPageUrls` replaces. Text that must be cut has to be scrubbed first: a page
+ * url that the cut shortens no longer matches and would be sent as it is. Formatting at least this many characters
+ * beyond the cut means that every page url starting before the cut is complete when it is scrubbed.
+ */
+export function longestPageUrlLength(): number {
+  let longest = 0;
+  for (const url of knownUrls()) {
+    longest = Math.max(longest, url.length);
+  }
+  return longest;
+}
+
 /** Page urls and the request url without fragments: stack frames can omit them, and apps remove them from the page. */
 function knownUrls(requestUrl?: string): string[] {
   return [

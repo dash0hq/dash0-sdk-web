@@ -109,17 +109,20 @@ describe("console instrumentation", () => {
 
   it("does not capture messages logged while formatting a captured message", () => {
     startConsoleInstrumentation();
-    const noisy = {
-      get value() {
-        console.error("logged by a getter");
-        return 1;
-      },
-    };
+    const noisy = new Proxy(
+      { value: 1 },
+      {
+        ownKeys(target) {
+          console.error("logged by a proxy trap");
+          return Reflect.ownKeys(target);
+        },
+      }
+    );
 
     console.warn(noisy);
 
     expect(sentLogs().map((l) => l.body)).toEqual([{ stringValue: '{"value":1}' }]);
-    expect(originals.error).toHaveBeenCalledWith("logged by a getter");
+    expect(originals.error).toHaveBeenCalledWith("logged by a proxy trap");
   });
 
   it("adds exception attributes for an error argument", () => {
@@ -145,6 +148,19 @@ describe("console instrumentation", () => {
 
     const stack = attr(sentLogs()[0]!, "code.stacktrace") as string;
     expect(stack.split("\n")[0]).toContain("callerOfTrace");
+  });
+
+  it("captures console.trace without arguments", () => {
+    vars.consoleLogs.levels = ["trace"];
+    startConsoleInstrumentation();
+
+    (function callerOfTrace() {
+      console.trace();
+    })();
+
+    const log = sentLogs()[0]!;
+    expect(log.body).toEqual({ stringValue: "console.trace" });
+    expect((attr(log, "code.stacktrace") as string).split("\n")[0]).toContain("callerOfTrace");
   });
 
   it("drops ignored messages", () => {
@@ -177,6 +193,48 @@ describe("console instrumentation", () => {
     expect(sentLogs()[0]!.body).toEqual({ stringValue: `could not load ${href.split("?")[0]}` });
   });
 
+  describe("scrubs page urls before cutting the message", () => {
+    let href: string;
+    let scrubbedHref: string;
+
+    beforeEach(() => {
+      vars.urlAttributeScrubber = (attrs) => ({ ...attrs, "url.full": attrs["url.full"].split("?")[0]! });
+      history.replaceState(null, "", "/callback?code=secret");
+      href = location.href;
+      scrubbedHref = href.split("?")[0]!;
+      startConsoleInstrumentation();
+    });
+
+    it("when the cut falls inside the url", () => {
+      const prefix = "x".repeat(10) + " ";
+      vars.consoleLogs.maxMessageLength = prefix.length + href.length - 3;
+
+      console.error(prefix + href + " " + "y".repeat(100));
+
+      const expected = (prefix + scrubbedHref + " " + "y".repeat(100)).substring(0, prefix.length + href.length - 3);
+      expect(sentLogs()[0]!.body).toEqual({ stringValue: expected + "…" });
+      expect(JSON.stringify(sentLogs()[0]!.body)).not.toContain("code=");
+    });
+
+    it("when the cut falls right after the url", () => {
+      vars.consoleLogs.maxMessageLength = href.length;
+
+      console.error(href + " and more");
+
+      // Scrubbing makes the message fit.
+      expect(sentLogs()[0]!.body).toEqual({ stringValue: scrubbedHref + " and more" });
+    });
+
+    it("when the message is cut while it is formatted", () => {
+      vars.consoleLogs.maxMessageLength = href.length;
+
+      console.error(href + " " + "y".repeat(10000));
+
+      const body = (sentLogs()[0]!.body as { stringValue: string }).stringValue;
+      expect(body).toBe((scrubbedHref + " " + "y".repeat(10000)).substring(0, href.length) + "…");
+    });
+  });
+
   it("sends nothing from an ignored page or an unsampled session", () => {
     startConsoleInstrumentation();
 
@@ -201,6 +259,40 @@ describe("console instrumentation", () => {
 
     expect(sendConsoleLog).toHaveBeenCalledTimes(50);
     expect(originals.error).toHaveBeenCalledTimes(60);
+  });
+
+  it("does not count ignored messages against the rate limit", () => {
+    vars.consoleLogs.ignoreMessages = [/ResizeObserver loop/];
+    startConsoleInstrumentation();
+
+    for (let i = 0; i < 100; i++) {
+      console.error("ResizeObserver loop completed with undelivered notifications.");
+    }
+    console.error("kept");
+
+    expect(sentLogs().map((l) => l.body)).toEqual([{ stringValue: "kept" }]);
+  });
+
+  it("stops formatting once the formatting cap is reached", () => {
+    vars.consoleLogs.ignoreMessages = [/ignored/];
+    startConsoleInstrumentation();
+    let formatted = 0;
+    const counting = new Proxy(
+      {},
+      {
+        ownKeys(target) {
+          formatted++;
+          return Reflect.ownKeys(target);
+        },
+      }
+    );
+
+    for (let i = 0; i < 250; i++) {
+      console.error("ignored", counting);
+    }
+
+    expect(formatted).toBe(200);
+    expect(sendConsoleLog).not.toHaveBeenCalled();
   });
 
   it("ignores calls without arguments", () => {

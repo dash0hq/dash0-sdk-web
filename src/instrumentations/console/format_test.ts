@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatConsoleArgs } from "./format";
 import { doc } from "../../utils";
 
-const format = (...args: unknown[]) => formatConsoleArgs(args, 4096);
+const format = (...args: unknown[]) => formatConsoleArgs(args, 4096).text;
 
 describe("formatConsoleArgs", () => {
   it("joins arguments with spaces and writes strings as they are", () => {
@@ -59,36 +59,97 @@ describe("formatConsoleArgs", () => {
     expect(format(el)).toBe('<button id="buy" class="primary large">');
   });
 
-  it("tolerates getters that throw", () => {
+  it("does not run getters or setters", () => {
+    let reads = 0;
     const obj = {
-      get broken() {
+      plain: 1,
+      get lazy() {
+        reads++;
+        return 2;
+      },
+      get broken(): number {
         throw new Error("nope");
       },
+      get both() {
+        reads++;
+        return 3;
+      },
+      set both(_v: number) {},
+      set writeOnly(_v: number) {},
     };
-    expect(format(obj)).toBe('{"broken":"[Unreadable]"}');
+
+    expect(format(obj)).toBe(
+      '{"plain":1,"lazy":[Getter],"broken":[Getter],"both":[Getter/Setter],"writeOnly":[Setter]}'
+    );
+    expect(reads).toBe(0);
   });
 
-  it("truncates to the maximum length", () => {
-    expect(formatConsoleArgs(["a".repeat(20)], 10)).toBe("a".repeat(10) + "…");
-    expect(formatConsoleArgs(["short"], 10)).toBe("short");
+  it("reads property values of proxies without their get trap", () => {
+    const read: PropertyKey[] = [];
+    const reactive = new Proxy(
+      { items: [1, 2] },
+      {
+        get(target, key, receiver) {
+          read.push(key);
+          return Reflect.get(target, key, receiver);
+        },
+      }
+    );
+
+    expect(format(reactive)).toBe('{"items":[1,2]}');
+    // The type checks still read a few well-known keys, such as `nodeType`, but no property is read for its value.
+    expect(read).not.toContain("items");
+  });
+
+  it("marks properties whose descriptor cannot be read", () => {
+    const hostile = new Proxy([1, 2], {
+      getOwnPropertyDescriptor(target, key) {
+        if (key === "1") throw new Error("nope");
+        return Reflect.getOwnPropertyDescriptor(target, key);
+      },
+    });
+
+    expect(format(hostile)).toBe("[1,[Unreadable]]");
+  });
+
+  it("writes typed arrays like arrays and reads only their first entries", () => {
+    expect(format(new Float64Array([1.5, 2]))).toBe("[1.5,2]");
+    expect(format(new BigInt64Array([BigInt(7)]))).toBe("[7n]");
+    expect(format(new Uint8Array(1000000))).toMatch(/^\[0(,0){49},…999950 more\]$/);
+  });
+
+  it("truncates to the maximum length and reports it", () => {
+    expect(formatConsoleArgs(["a".repeat(20)], 10)).toEqual({ text: "a".repeat(10), truncated: true });
+    expect(formatConsoleArgs(["a".repeat(10)], 10)).toEqual({ text: "a".repeat(10), truncated: false });
+    expect(formatConsoleArgs(["short"], 10)).toEqual({ text: "short", truncated: false });
+  });
+
+  it("cuts large strings, top-level and nested", () => {
+    const huge = "a".repeat(1000000);
+    expect(formatConsoleArgs([huge], 10)).toEqual({ text: "a".repeat(10), truncated: true });
+    expect(formatConsoleArgs([{ s: huge }], 10)).toEqual({ text: '{"s":"aaaa', truncated: true });
   });
 
   it("stops serializing large objects once the maximum length is reached", () => {
-    let reads = 0;
+    let visited = 0;
     const big: Record<string, unknown> = {};
     for (let i = 0; i < 40; i++) {
-      Object.defineProperty(big, `key${i}`, {
-        enumerable: true,
-        get() {
-          reads++;
-          return "x".repeat(100);
-        },
-      });
+      // Counts how many of the values are serialized: `Object.keys` runs the `ownKeys` trap once per value.
+      big[`key${i}`] = new Proxy(
+        { s: "x".repeat(100) },
+        {
+          ownKeys(target) {
+            visited++;
+            return Reflect.ownKeys(target);
+          },
+        }
+      );
     }
 
     const result = formatConsoleArgs([big], 200);
 
-    expect(result).toHaveLength(201);
-    expect(reads).toBeLessThan(5);
+    expect(result.text).toHaveLength(200);
+    expect(result.truncated).toBe(true);
+    expect(visited).toBeLessThan(5);
   });
 });
