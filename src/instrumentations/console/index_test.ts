@@ -61,6 +61,18 @@ describe("console instrumentation", () => {
     expect(sentLogs().map((l) => l.body)).toEqual([{ stringValue: "careful 1" }, { stringValue: "broken" }]);
   });
 
+  it("wraps no console method when no levels are configured", () => {
+    vars.consoleLogs.levels = [];
+    startConsoleInstrumentation();
+
+    console.warn("not captured");
+    console.error("not captured");
+
+    expect(console.warn).toBe(originals.warn);
+    expect(console.error).toBe(originals.error);
+    expect(sendConsoleLog).not.toHaveBeenCalled();
+  });
+
   it("calls the original method with the original arguments and this", () => {
     startConsoleInstrumentation();
     const payload = { a: 1 };

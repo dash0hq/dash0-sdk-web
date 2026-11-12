@@ -340,9 +340,21 @@ The SDK auto-detects VCS (version control) context from the build environment an
 #### Console logs
 
 The `@dash0/console` instrumentation sends messages logged through the browser console as `browser.console` events.
-By default only `console.warn` and `console.error` are captured; list more methods in `consoleLogs.levels` to capture
-all console output. The original console method is always called, so the browser's developer tools show every message
-as before.
+It is on by default and captures `console.warn` and `console.error`; list more methods in `consoleLogs.levels` to
+capture all console output. The original console method is always called, so the browser's developer tools show every
+message as before.
+
+To turn console capture off, set `consoleLogs.levels` to an empty array. No console method is then wrapped:
+
+```js
+init({
+  // ...
+  consoleLogs: { levels: [] },
+});
+```
+
+Leaving `@dash0/console` out of `enabledInstrumentations` turns it off as well, but that list replaces the default set,
+so it must name every other instrumentation you want to keep.
 
 Each event carries the formatted message as its body, a severity derived from the method (`debug` and `trace` are
 `DEBUG`, `log` and `info` are `INFO`, `warn` is `WARN`, `error` is `ERROR`), the method in `browser.console.method`,
@@ -370,7 +382,8 @@ show the Dash0 SDK as the source location of console messages.
   type: `Array<'debug' | 'log' | 'info' | 'warn' | 'error' | 'trace'>`<br>
   optional: `true`<br>
   default: `['warn', 'error']`<br>
-  The console methods whose messages are sent. Replaces the default rather than adding to it.
+  The console methods whose messages are sent. Replaces the default rather than adding to it. An empty array turns
+  console capture off.
 - **Ignore Messages**<br>
   key: `consoleLogs.ignoreMessages`<br>
   type: `Array<RegExp>`<br>
