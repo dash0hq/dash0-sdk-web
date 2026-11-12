@@ -202,7 +202,7 @@ export type Vars = {
   /**
    * Which console messages the `@dash0/console` instrumentation sends.
    */
-  consoleLogs: ConsoleLogSettings;
+  consoleLogs: Required<ConsoleLogSettings>;
 
   /**
    * Enables telemetry transport compression using gzip.

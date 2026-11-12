@@ -20,9 +20,6 @@ import { KeyValue } from "../../types/otlp";
 import { ConsoleMethod } from "../../types/console";
 import { formatConsoleArgs, isError } from "./format";
 
-export const DEFAULT_CONSOLE_LEVELS: ConsoleMethod[] = ["warn", "error"];
-export const DEFAULT_MAX_CONSOLE_MESSAGE_LENGTH = 4096;
-
 const SEVERITIES: Record<ConsoleMethod, LOG_SEVERITY_TEXT> = {
   trace: "DEBUG",
   debug: "DEBUG",
@@ -58,10 +55,10 @@ export function startConsoleInstrumentation(): void {
   // typically the noisiest ones, cannot use it up and crowd out the messages that matter.
   isOverSendingBudget = createRateLimiter({ maxCallsPerTenMinutes: 1000, maxCallsPerTenSeconds: 50 });
 
-  const levels = vars.consoleLogs.levels ?? DEFAULT_CONSOLE_LEVELS;
+  const levels = vars.consoleLogs.levels;
   for (let i = 0; i < levels.length; i++) {
     const method = levels[i]!;
-    if (!(method in SEVERITIES)) {
+    if (!Object.prototype.hasOwnProperty.call(SEVERITIES, method)) {
       debug(`Unknown console level ${method}, not capturing it`);
       continue;
     }
@@ -96,9 +93,9 @@ function onConsoleCall(method: ConsoleMethod, args: IArguments, stack: string | 
   if (win && isUrlIgnored(win.location.href)) return;
   if (isOverFormattingCap()) return;
 
-  const maxLength = vars.consoleLogs.maxMessageLength ?? DEFAULT_MAX_CONSOLE_MESSAGE_LENGTH;
+  const maxLength = vars.consoleLogs.maxMessageLength;
   const message = args.length === 0 ? "console.trace" : formatMessage(args, maxLength);
-  if (!message || matchesAny(vars.consoleLogs.ignoreMessages ?? [], message)) return;
+  if (!message || matchesAny(vars.consoleLogs.ignoreMessages, message)) return;
   if (isOverSendingBudget()) return;
 
   const attributes: KeyValue[] = [];

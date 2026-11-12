@@ -173,14 +173,42 @@ describe("sendConsoleLog", () => {
     expect(sentLogRecords(0)).toHaveLength(2);
   });
 
-  it("does not let a message logged during a transmission cause a transmission", () => {
+  it("holds messages logged during a transmission until the hold delay ends", () => {
     isTransmitting.mockReturnValue(true);
     for (let i = 0; i < 100; i++) {
       mod.sendConsoleLog(log(i));
     }
-    vi.advanceTimersByTime(60_000);
+    vi.advanceTimersByTime(9_999);
 
     expect(send).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(sentLogRecords(0)).toHaveLength(60);
+  });
+
+  it("doubles the hold delay while it is what sends the messages, and resets it on a regular send", () => {
+    const start = Date.now();
+    const sendTimes: number[] = [];
+    // Like a page whose fetch wrapper logs during every request, also the SDK's.
+    send.mockImplementation(() => {
+      sendTimes.push(Date.now() - start);
+      isTransmitting.mockReturnValue(true);
+      mod.sendConsoleLog(log(0));
+      isTransmitting.mockReturnValue(false);
+      return Promise.resolve();
+    });
+
+    mod.sendConsoleLog(log(1));
+    vi.advanceTimersByTime(71_000);
+
+    expect(sendTimes).toEqual([1_000, 11_000, 31_000, 71_000]);
+
+    mod.sendConsoleLog(log(2));
+    vi.advanceTimersByTime(11_000);
+
+    expect(sendTimes.slice(4)).toEqual([72_000, 82_000]);
   });
 
   it("sends a message logged during a transmission with the next transmission", () => {

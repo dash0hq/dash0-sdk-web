@@ -1,6 +1,7 @@
 import { AttributeValueType } from "../utils/otel";
 import { AnyValue } from "./otlp";
 import { Endpoint, Vars, PropagatorConfig } from "../vars";
+import { ConsoleLogSettings } from "./console";
 
 export type InstrumentationName =
   | "@dash0/navigation"
@@ -132,6 +133,11 @@ export type InitOptions = {
    * Each propagator defines which header type to send for matching URLs.
    */
   propagators?: PropagatorConfig[];
+
+  /**
+   * Which console messages the `@dash0/console` instrumentation sends.
+   */
+  consoleLogs?: ConsoleLogSettings;
 } & Partial<
   Pick<
     Vars,
@@ -148,7 +154,6 @@ export type InitOptions = {
     | "sessionRecording"
     | "frustrationSignals"
     | "profiling"
-    | "consoleLogs"
     | "enableTransportCompression"
   >
 >;

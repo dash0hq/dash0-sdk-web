@@ -73,6 +73,17 @@ describe("console instrumentation", () => {
     expect(sendConsoleLog).not.toHaveBeenCalled();
   });
 
+  it("ignores levels that are not console methods, also those inherited from Object", () => {
+    vars.consoleLogs.levels = ["toString", "constructor", "warn"] as any;
+    startConsoleInstrumentation();
+
+    console.warn("captured");
+
+    expect(Object.prototype.hasOwnProperty.call(console, "toString")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(console, "constructor")).toBe(false);
+    expect(sentLogs().map((l) => l.body)).toEqual([{ stringValue: "captured" }]);
+  });
+
   it("calls the original method with the original arguments and this", () => {
     startConsoleInstrumentation();
     const payload = { a: 1 };

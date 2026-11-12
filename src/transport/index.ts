@@ -77,8 +77,8 @@ export function sendConsoleLog(log: LogRecord): void {
   if (!vars.isSessionSampled) return;
 
   // Page code that wraps `fetch` may log on every request, also on the SDK's. Sending such a message on its own would
-  // cause the next request and the next message, forever on an otherwise idle page. It waits for the next
-  // transmission instead.
+  // cause the next request and the next message, forever on an otherwise idle page. It is held until the next
+  // transmission, or until the batcher's hold delay ends.
   if (isTransmitting()) {
     logBatcher.enqueue(log);
     return;

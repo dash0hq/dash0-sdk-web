@@ -10,6 +10,8 @@ vi.mock("../../utils/timers", () => ({
 
 describe("console messages logged by a page that wraps fetch", () => {
   let sentBodies: string[][];
+  let sentAt: number[];
+  let start: number;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -17,17 +19,18 @@ describe("console messages logged by a page that wraps fetch", () => {
     vi.stubGlobal("console", { debug: vi.fn(), log: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
 
     sentBodies = [];
-    // The page wrapped `fetch` before the SDK loaded. It logs every request and every failure, also the SDK's.
+    sentAt = [];
+    start = Date.now();
+    // The page wrapped `fetch` before the SDK loaded. It logs every request, also the SDK's, and reads and logs every
+    // response after its promise settled.
     vi.stubGlobal("fetch", async (_url: unknown, init: { body: string }) => {
       const records = JSON.parse(init.body).resourceLogs[0].scopeLogs[0].logRecords;
       sentBodies.push(records.map((r: { body: { stringValue: string } }) => r.body.stringValue));
+      sentAt.push(Date.now() - start);
       console.warn("request started");
-      try {
-        return await Promise.reject(new TypeError("Failed to fetch"));
-      } catch (e) {
-        console.warn("request failed:", e);
-        throw e;
-      }
+      const response = { ok: true, status: 200, statusText: "OK", text: () => Promise.resolve("") };
+      setTimeout(() => console.warn("response read"), 100);
+      return response;
     });
 
     const { vars } = await import("../../vars");
@@ -40,18 +43,17 @@ describe("console messages logged by a page that wraps fetch", () => {
     vi.unstubAllGlobals();
   });
 
-  it("do not keep the SDK sending on an idle page, and arrive with the next transmission", async () => {
+  it("are sent less and less often on an idle page, and arrive with the next transmission", async () => {
     console.warn("first");
     await vi.advanceTimersByTimeAsync(60_000);
 
-    expect(sentBodies).toEqual([["first"]]);
+    expect(sentAt).toEqual([1_000, 11_000, 31_000]);
+    expect(sentBodies).toEqual([["first"], ["request started", "response read"], ["request started", "response read"]]);
 
     console.warn("second");
-    await vi.advanceTimersByTimeAsync(60_000);
+    await vi.advanceTimersByTimeAsync(1_000);
 
-    expect(sentBodies).toEqual([
-      ["first"],
-      ["request started", "request failed: TypeError: Failed to fetch", "second"],
-    ]);
+    expect(sentAt[3]).toBe(61_000);
+    expect(sentBodies[3]).toEqual(["request started", "response read", "second"]);
   });
 });

@@ -1,5 +1,5 @@
 import { vars } from "../vars";
-import { noop, warn, fetch, debug } from "../utils";
+import { noop, warn, fetch, debug, now } from "../utils";
 
 // The bacon api enforces a size limit across all pending beacon requests per fetch group
 // There also seems to be a limit of 15 pending requests at the same time
@@ -9,14 +9,19 @@ const BEACON_BODY_SIZE_LIMIT = 60000;
 let pendingBodySize = 0;
 let pendingRequestCount = 0;
 
+// Page code that wraps `fetch` can keep working on the SDK's request after its promise settled, for example reading
+// the response body and logging it. This covers that work.
+const SETTLE_GRACE_MILLIS = 2000;
+
 let transmissionsInFlight = 0;
+let lastSettledAt = -Infinity;
 
 /**
- * True while a request to an endpoint is on its way. Page code that wraps `fetch` runs during that time, also for
- * the SDK's requests, from the call until its own handlers for the response or failure have run.
+ * True while a request to an endpoint is on its way, and for a short time after it settled. Page code that wraps
+ * `fetch` runs during that time, also for the SDK's requests.
  */
 export function isTransmitting(): boolean {
-  return transmissionsInFlight > 0;
+  return transmissionsInFlight > 0 || now() - lastSettledAt < SETTLE_GRACE_MILLIS;
 }
 
 async function whileTransmitting<T>(request: () => Promise<T>): Promise<T> {
@@ -25,6 +30,7 @@ async function whileTransmitting<T>(request: () => Promise<T>): Promise<T> {
     return await request();
   } finally {
     transmissionsInFlight--;
+    lastSettledAt = now();
   }
 }
 

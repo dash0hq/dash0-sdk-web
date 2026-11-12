@@ -312,7 +312,9 @@ function isInstrumentationEnabled(name: InstrumentationName, opts: InitOptions):
   return instrumentations.includes(name);
 }
 
-function merge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
+type NestedPartial<T> = { [K in keyof T]?: T[K] extends Record<string, unknown> ? Partial<T[K]> : T[K] };
+
+function merge<T extends Record<string, unknown>>(target: T, source: NestedPartial<T>): T {
   const result = { ...target };
   for (const key of Object.keys(source) as Array<keyof T>) {
     const srcVal = source[key];
