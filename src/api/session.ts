@@ -2,6 +2,7 @@ import { isSupported, getItem, setItem, removeItem } from "../utils";
 import { debug, now } from "../utils";
 import { info, warn } from "../utils";
 import { generateSessionId } from "../utils/session-id";
+import { storageKey } from "../utils/storage-key";
 
 interface Session {
   id: string;
@@ -36,7 +37,7 @@ export function trackSessions(sessionInactivityTimeoutMillis?: number, sessionTe
   sessionTerminationTimeoutMillis = Math.min(sessionTerminationTimeoutMillis, MAX_ALLOWED_SESSION_TIMEOUT_MILLIS);
 
   try {
-    const storedValue = getItem(SESSION_STORAGE_KEY);
+    const storedValue = getItem(storageKey(SESSION_STORAGE_KEY));
 
     let session = parseSession(storedValue);
     if (session && !isSessionValid(session, sessionInactivityTimeoutMillis, sessionTerminationTimeoutMillis)) {
@@ -53,7 +54,7 @@ export function trackSessions(sessionInactivityTimeoutMillis?: number, sessionTe
       };
     }
 
-    setItem(SESSION_STORAGE_KEY, serializeSession(session));
+    setItem(storageKey(SESSION_STORAGE_KEY), serializeSession(session));
     sessionId = session.id;
   } catch (e) {
     warn("Failed to record session information", e);
@@ -69,7 +70,7 @@ export function terminateSession() {
   }
 
   try {
-    removeItem(SESSION_STORAGE_KEY);
+    removeItem(storageKey(SESSION_STORAGE_KEY));
   } catch (e) {
     info("Failed to terminate session", e);
   }

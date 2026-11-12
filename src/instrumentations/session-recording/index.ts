@@ -2,6 +2,7 @@ import { vars } from "../../vars";
 import { sessionId } from "../../api/session";
 import { debug, doc, generateUniqueId, isSessionSampledIn, TRACE_ID_BYTES, warn, win } from "../../utils";
 import * as localStorage from "../../utils/local-storage";
+import { storageKey } from "../../utils/storage-key";
 import { setTimeout } from "../../utils/timers";
 import { generateTraceId } from "../../utils/trace-id";
 import { generateSpanId } from "../../utils/span-id";
@@ -379,12 +380,12 @@ function stopWhileHidden(): void {
 
 function markShown(recordingId: string): void {
   try {
-    localStorage.setItem(SHOWN_RECORDING_STORAGE_KEY, recordingId);
+    localStorage.setItem(storageKey(SHOWN_RECORDING_STORAGE_KEY), recordingId);
   } catch (e) {
     debug("Failed to store the shown session recording", e);
     // A stale value could let another tab believe it was shown last. Without a value, every tab takes a snapshot.
     try {
-      localStorage.removeItem(SHOWN_RECORDING_STORAGE_KEY);
+      localStorage.removeItem(storageKey(SHOWN_RECORDING_STORAGE_KEY));
     } catch (e2) {
       debug("Failed to clear the shown session recording", e2);
     }
@@ -393,7 +394,7 @@ function markShown(recordingId: string): void {
 
 function wasShownLast(recordingId: string): boolean {
   try {
-    return localStorage.getItem(SHOWN_RECORDING_STORAGE_KEY) === recordingId;
+    return localStorage.getItem(storageKey(SHOWN_RECORDING_STORAGE_KEY)) === recordingId;
   } catch (e) {
     debug("Failed to read the shown session recording", e);
     return false;

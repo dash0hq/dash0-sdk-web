@@ -490,6 +490,41 @@ describe("session recording lifecycle", () => {
       expect(mod.activeRecordingId()).toBe(newRunId);
     });
 
+    describe("with a storage namespace", () => {
+      const namespacedKey = () => `docs:${mod.SHOWN_RECORDING_STORAGE_KEY}`;
+
+      beforeEach(() => {
+        vars.storageNamespace = "docs";
+      });
+
+      afterEach(() => {
+        storage.removeItem(namespacedKey());
+      });
+
+      it("records the shown run under the namespaced key", () => {
+        mod.armSessionRecording();
+        mod.registerSessionRecorder(recorder);
+
+        expect(storage.getItem(namespacedKey())).toBe(mod.activeRecordingId());
+        expect(storage.getItem(mod.SHOWN_RECORDING_STORAGE_KEY)).toBeNull();
+      });
+
+      it("continues the same run when an app without the namespace was shown while hidden", () => {
+        const takeFullSnapshot = withSnapshotOnDemand();
+        mod.armSessionRecording();
+        mod.registerSessionRecorder(recorder);
+        const runId = mod.activeRecordingId();
+        setVisibility("hidden");
+        // What an app on the same origin without this namespace writes when its run is shown.
+        storage.setItem(mod.SHOWN_RECORDING_STORAGE_KEY, "another-app-run");
+
+        setVisibility("visible");
+
+        expect(takeFullSnapshot).not.toHaveBeenCalled();
+        expect(mod.activeRecordingId()).toBe(runId);
+      });
+    });
+
     it("treats a missing record of the shown run as another run having been shown", () => {
       const takeFullSnapshot = withSnapshotOnDemand();
       mod.armSessionRecording();
