@@ -356,7 +356,8 @@ getters are not run: they are written as `[Getter]`. URLs are scrubbed like in e
 `urlAttributeScrubber` and `ignoreUrls`), and nothing is sent while the page URL matches `ignoreUrls`. Console messages
 have their own rate limit of 50 messages per 10 seconds and 1000 per 10 minutes, so a page that logs heavily cannot
 crowd out errors and requests. Messages dropped by `consoleLogs.ignoreMessages` do not count against it. Messages the
-Dash0 SDK logs itself are never captured.
+Dash0 SDK logs itself are never captured. A message logged while the SDK is sending data, for example by a `fetch`
+wrapper that logs every request, does not cause a request of its own: it is sent together with the next data.
 
 Console messages may contain personal data or secrets that the application logs. Use `consoleLogs.ignoreMessages` to
 drop such messages, or keep the captured levels to the ones your application uses for actionable problems.

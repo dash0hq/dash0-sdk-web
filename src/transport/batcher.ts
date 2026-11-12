@@ -5,9 +5,18 @@ import { SendOptions } from "./fetch";
 
 const SCHEDULE_DELAY_MILLIS = 1000;
 const MAX_QUEUE_SIZE = 15;
+// Items queued by `enqueue` wait for a transmission that something else causes. This bounds the memory they use
+// until then. It holds a burst of console messages, which are limited to 50 per 10 seconds.
+const MAX_HELD_QUEUE_SIZE = 60;
 
 export type Batcher<T> = {
   send(item: T): void;
+
+  /**
+   * Queues an item without ever causing a transmission. It is sent with the next one, and dropped when too many
+   * items are waiting.
+   */
+  enqueue(item: T): void;
 };
 
 // Compression is asynchronous. A document that is hidden or being unloaded may be gone before `fetch()` is called.
@@ -44,6 +53,12 @@ export function newBatcher<T>(sendInternal: (items: T[], opts?: SendOptions) => 
         pendingFlushTimeout = setTimeout(() => flush(), SCHEDULE_DELAY_MILLIS);
       }
     },
+
+    enqueue(item: T): void {
+      if (queuedItems.length < MAX_HELD_QUEUE_SIZE) {
+        queuedItems.push(item);
+      }
+    },
   };
 
   function flush(opts?: SendOptions) {
@@ -53,8 +68,8 @@ export function newBatcher<T>(sendInternal: (items: T[], opts?: SendOptions) => 
     }
 
     if (queuedItems.length > 0) {
-      sendInternal(queuedItems.slice(), opts);
-      queuedItems.length = 0;
+      // Emptied before sending: page code that wraps `fetch` can log during the send, which queues an item.
+      sendInternal(queuedItems.splice(0), opts);
     }
   }
 }

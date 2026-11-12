@@ -1,5 +1,5 @@
 import { newBatcher } from "./batcher";
-import { send, SendOptions } from "./fetch";
+import { isTransmitting, send, SendOptions } from "./fetch";
 import { vars } from "../vars";
 import { debug, error, createRateLimiter } from "../utils";
 import { ExportLogsServiceRequest, ExportTraceServiceRequest, LogRecord, Span } from "../types/otlp";
@@ -75,6 +75,14 @@ export function sendLog(log: LogRecord): void {
  */
 export function sendConsoleLog(log: LogRecord): void {
   if (!vars.isSessionSampled) return;
+
+  // Page code that wraps `fetch` may log on every request, also on the SDK's. Sending such a message on its own would
+  // cause the next request and the next message, forever on an otherwise idle page. It waits for the next
+  // transmission instead.
+  if (isTransmitting()) {
+    logBatcher.enqueue(log);
+    return;
+  }
 
   logBatcher.send(log);
 }

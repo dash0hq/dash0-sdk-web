@@ -9,6 +9,25 @@ const BEACON_BODY_SIZE_LIMIT = 60000;
 let pendingBodySize = 0;
 let pendingRequestCount = 0;
 
+let transmissionsInFlight = 0;
+
+/**
+ * True while a request to an endpoint is on its way. Page code that wraps `fetch` runs during that time, also for
+ * the SDK's requests, from the call until its own handlers for the response or failure have run.
+ */
+export function isTransmitting(): boolean {
+  return transmissionsInFlight > 0;
+}
+
+async function whileTransmitting<T>(request: () => Promise<T>): Promise<T> {
+  transmissionsInFlight++;
+  try {
+    return await request();
+  } finally {
+    transmissionsInFlight--;
+  }
+}
+
 export type SendOptions = {
   /**
    * Overrides `vars.enableTransportCompression` for this request. `true` is used for payloads that are large and
@@ -61,14 +80,17 @@ export async function send(path: string, body: unknown, opts?: SendOptions): Pro
 
         pendingBodySize += byteLength;
         pendingRequestCount++;
-        const response = await fetch(url, {
-          method: "POST",
-          headers,
-          body: requestBody,
+        const request = fetch;
+        const response = await whileTransmitting(() =>
+          request(url, {
+            method: "POST",
+            headers,
+            body: requestBody,
 
-          // The keepalive flag is related to the window.sendBeacon API. This in turn has size limitations.
-          keepalive: pendingBodySize <= BEACON_BODY_SIZE_LIMIT && pendingRequestCount <= 15,
-        });
+            // The keepalive flag is related to the window.sendBeacon API. This in turn has size limitations.
+            keepalive: pendingBodySize <= BEACON_BODY_SIZE_LIMIT && pendingRequestCount <= 15,
+          })
+        );
 
         // read the body so the connection can be closed
         response.text().catch(noop);

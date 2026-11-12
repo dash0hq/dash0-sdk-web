@@ -3,6 +3,7 @@ import type { LogRecord } from "../types/otlp";
 
 vi.mock("./fetch", () => ({
   send: vi.fn(() => Promise.resolve()),
+  isTransmitting: vi.fn(() => false),
 }));
 
 // The SDK's timer wrapper captures the window timers at import time, before vitest installs fake timers.
@@ -134,5 +135,71 @@ describe("sendLog", () => {
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0]![1].resourceLogs[0].scopeLogs[0].logRecords).toHaveLength(2);
     expect(send.mock.calls[0]![2]).toEqual({ compress: false });
+  });
+});
+
+describe("sendConsoleLog", () => {
+  let mod: Module;
+  let vars: typeof import("../vars").vars;
+  let send: ReturnType<typeof vi.fn>;
+  let isTransmitting: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    mod = await import("./index");
+    vars = (await import("../vars")).vars;
+    send = (await import("./fetch")).send as any;
+    isTransmitting = (await import("./fetch")).isTransmitting as any;
+    send.mockClear();
+    isTransmitting.mockReturnValue(false);
+    vars.isSessionSampled = true;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function sentLogRecords(call: number): LogRecord[] {
+    return send.mock.calls[call]![1].resourceLogs[0].scopeLogs[0].logRecords;
+  }
+
+  it("sends console messages in batches", () => {
+    mod.sendConsoleLog(log(0));
+    mod.sendConsoleLog(log(1));
+    vi.advanceTimersByTime(1000);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(sentLogRecords(0)).toHaveLength(2);
+  });
+
+  it("does not let a message logged during a transmission cause a transmission", () => {
+    isTransmitting.mockReturnValue(true);
+    for (let i = 0; i < 100; i++) {
+      mod.sendConsoleLog(log(i));
+    }
+    vi.advanceTimersByTime(60_000);
+
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("sends a message logged during a transmission with the next transmission", () => {
+    isTransmitting.mockReturnValue(true);
+    mod.sendConsoleLog(log(0));
+    isTransmitting.mockReturnValue(false);
+
+    mod.sendLog(log(1));
+    vi.advanceTimersByTime(1000);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(sentLogRecords(0)).toEqual([log(0), log(1)]);
+  });
+
+  it("does not send when the session is not sampled", () => {
+    vars.isSessionSampled = false;
+    mod.sendConsoleLog(log(0));
+    vi.advanceTimersByTime(1000);
+
+    expect(send).not.toHaveBeenCalled();
   });
 });
