@@ -128,6 +128,23 @@ export function scrubPageUrls(text: string, requestUrl?: string): string {
 }
 
 /**
+ * Scrubs the first `maxLength` characters of the text and drops the rest, because a page url in a cut text may be
+ * incomplete there. A page url that starts before `maxLength` is scrubbed as a whole, even where it ends beyond it.
+ */
+export function scrubPageUrlsUpTo(text: string, maxLength: number): string {
+  let result = "";
+  let from = 0;
+  for (const { start, end } of findKnownUrls(text, knownUrls())) {
+    if (start < from) continue;
+    if (start >= maxLength) break;
+    const url = text.slice(start, end);
+    result += text.slice(from, start) + (matchesAny(vars.ignoreUrls, url) ? REDACTED : scrubUrl(url));
+    from = end;
+  }
+  return result + text.slice(from, Math.max(from, maxLength));
+}
+
+/**
  * The length of the longest url that `scrubPageUrls` replaces. Text that must be cut has to be scrubbed first: a page
  * url that the cut shortens no longer matches and would be sent as it is. Formatting at least this many characters
  * beyond the cut means that every page url starting before the cut is complete when it is scrubbed.

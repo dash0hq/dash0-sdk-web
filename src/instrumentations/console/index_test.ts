@@ -211,9 +211,7 @@ describe("console instrumentation", () => {
 
       console.error(prefix + href + " " + "y".repeat(100));
 
-      const expected = (prefix + scrubbedHref + " " + "y".repeat(100)).substring(0, prefix.length + href.length - 3);
-      expect(sentLogs()[0]!.body).toEqual({ stringValue: expected + "…" });
-      expect(JSON.stringify(sentLogs()[0]!.body)).not.toContain("code=");
+      expect(sentLogs()[0]!.body).toEqual({ stringValue: prefix + scrubbedHref + "…" });
     });
 
     it("when the cut falls right after the url", () => {
@@ -230,8 +228,20 @@ describe("console instrumentation", () => {
 
       console.error(href + " " + "y".repeat(10000));
 
+      expect(sentLogs()[0]!.body).toEqual({ stringValue: scrubbedHref + "…" });
+    });
+
+    it("when a second url is cut while the message is formatted", () => {
+      // Scrubbing the leading urls shortens the message by more than the length of the url that is cut.
+      const leading = 4;
+      const filler = "x".repeat(20);
+      vars.consoleLogs.maxMessageLength = (href + " ").repeat(leading).length + filler.length;
+
+      console.error((href + " ").repeat(leading) + filler + " " + href + " and more");
+
       const body = (sentLogs()[0]!.body as { stringValue: string }).stringValue;
-      expect(body).toBe((scrubbedHref + " " + "y".repeat(10000)).substring(0, href.length) + "…");
+      expect(body).toBe((scrubbedHref + " ").repeat(leading) + filler + "…");
+      expect(body).not.toContain("code=");
     });
   });
 

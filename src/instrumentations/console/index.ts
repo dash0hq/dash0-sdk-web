@@ -9,7 +9,7 @@ import {
   LOG_SEVERITIES,
   LOG_SEVERITY_TEXT,
 } from "../../semantic-conventions";
-import { addCommonAttributes, longestPageUrlLength, scrubPageUrls } from "../../attributes";
+import { addCommonAttributes, longestPageUrlLength, scrubPageUrls, scrubPageUrlsUpTo } from "../../attributes";
 import { sendConsoleLog } from "../../transport";
 import { addAttribute } from "../../utils/otel";
 import { createRateLimiter, debug, isLoggingInternally, nowNanos, win, wrap } from "../../utils";
@@ -136,11 +136,13 @@ function onConsoleCall(method: ConsoleMethod, args: IArguments, stack: string | 
  * Formats, scrubs and only then cuts the message. Cutting first could shorten a page url so that it no longer matches,
  * and it would be sent unscrubbed. Formatting goes past `maxLength` by the longest page url, so every page url that
  * starts before the cut is complete when it is scrubbed.
+ *
+ * A message that was cut while formatting can end in an incomplete page url. Only its first `maxLength` characters
+ * are scrubbed and kept, so that the incomplete url cannot move before the cut when scrubbing shortens the text.
  */
 function formatMessage(args: IArguments, maxLength: number): string {
   const formatted = formatConsoleArgs(args, maxLength + longestPageUrlLength());
-  const scrubbed = scrubPageUrls(formatted.text);
-  // Scrubbing can shorten a message that was cut while formatting. It still lacks its end.
+  const scrubbed = formatted.truncated ? scrubPageUrlsUpTo(formatted.text, maxLength) : scrubPageUrls(formatted.text);
   if (formatted.truncated || scrubbed.length > maxLength) {
     return scrubbed.substring(0, maxLength) + TRUNCATION_MARKER;
   }
