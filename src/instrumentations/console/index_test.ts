@@ -104,7 +104,7 @@ describe("console instrumentation", () => {
     console.warn("w");
     console.error("e");
 
-    expect(sentLogs().map((l) => [l.severityText, l.severityNumber, attr(l, "browser.console.method")])).toEqual([
+    expect(sentLogs().map((l) => [l.severityText, l.severityNumber, attr(l, "dash0.web.console.method")])).toEqual([
       ["DEBUG", 5, "debug"],
       ["INFO", 9, "log"],
       ["INFO", 9, "info"],

@@ -28,7 +28,7 @@ export const WINDOW_WIDTH = "browser.window.width";
 export const WINDOW_HEIGHT = "browser.window.height";
 export const NETWORK_CONNECTION_TYPE = "network.connection.subtype";
 export const EXCEPTION_COMPONENT_STACK = "exception.component_stack";
-export const CONSOLE_METHOD = "browser.console.method";
+export const CONSOLE_METHOD = "dash0.web.console.method";
 export const CODE_STACKTRACE = "code.stacktrace";
 
 // Session Recording Attribute Keys

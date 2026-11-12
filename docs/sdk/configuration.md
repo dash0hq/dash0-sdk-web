@@ -357,7 +357,7 @@ Leaving `@dash0/console` out of `enabledInstrumentations` turns it off as well, 
 so it must name every other instrumentation you want to keep.
 
 Each event carries the formatted message as its body, a severity derived from the method (`debug` and `trace` are
-`DEBUG`, `log` and `info` are `INFO`, `warn` is `WARN`, `error` is `ERROR`), the method in `browser.console.method`,
+`DEBUG`, `log` and `info` are `INFO`, `warn` is `WARN`, `error` is `ERROR`), the method in `dash0.web.console.method`,
 and the same session, tab and page attributes as other events. When an argument is an `Error`, its type, message and
 stack trace are added as `exception.*` attributes. `console.trace` adds the caller's stack trace as `code.stacktrace`.
 Capturing a console error does not report a `browser.error`.

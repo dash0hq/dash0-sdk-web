@@ -19,7 +19,7 @@ describe("Console Instrumentation", () => {
         expect.objectContaining({
           attributes: expect.arrayContaining([
             { key: "event.name", value: { stringValue: "browser.console" } },
-            { key: "browser.console.method", value: { stringValue: "log" } },
+            { key: "dash0.web.console.method", value: { stringValue: "log" } },
             { key: "session.id", value: { stringValue: expect.any(String) } },
             { key: "page.url.query", value: { stringValue: `testId=${testId}` } },
           ]),
@@ -33,7 +33,7 @@ describe("Console Instrumentation", () => {
         expect.objectContaining({
           attributes: expect.arrayContaining([
             { key: "event.name", value: { stringValue: "browser.console" } },
-            { key: "browser.console.method", value: { stringValue: "error" } },
+            { key: "dash0.web.console.method", value: { stringValue: "error" } },
             { key: "exception.type", value: { stringValue: "TypeError" } },
             { key: "exception.message", value: { stringValue: "price is undefined" } },
             { key: "exception.stacktrace", value: { stringValue: expect.any(String) } },
