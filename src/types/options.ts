@@ -129,6 +129,14 @@ export type InitOptions = {
   sessionTerminationTimeoutMillis?: number;
 
   /**
+   * Separates the SDK's browser storage from other apps on the same origin. When set, every key the SDK writes to
+   * localStorage and sessionStorage is prefixed with it, e.g. `storageNamespace: "docs"` stores the session under
+   * `docs:d0_session` instead of `d0_session`. Give each app on a shared origin its own namespace so that they do not
+   * share a session or session recording. Leading and trailing whitespace is ignored.
+   */
+  storageNamespace?: string;
+
+  /**
    * Configure trace context propagators for different URL patterns.
    * Each propagator defines which header type to send for matching URLs.
    */
@@ -143,6 +151,8 @@ export type InitOptions = {
     Vars,
     | "ignoreUrls"
     | "ignoreErrorMessages"
+    | "ignoreCrossOriginScriptErrors"
+    | "ignoreBrowserExtensionErrors"
     | "wrapEventHandlers"
     | "wrapTimers"
     | "propagateTraceHeadersCorsURLs"

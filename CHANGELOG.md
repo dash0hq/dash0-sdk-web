@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.33.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.32.0...0.33.0) (2026-11-12)
+
+### Features
+
+- **session:** apps on one origin keep separate sessions with storageNamespace ([#141](https://github.com/dash0hq/dash0-sdk-web/issues/141)) ([811ffea](https://github.com/dash0hq/dash0-sdk-web/commit/811ffeab42bb6a2385591d944b8535a5bfb926c1))
+
+## [0.32.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.31.1...0.32.0) (2026-11-11)
+
+### Features
+
+- **errors:** drop cross-origin "Script error." and browser extension errors by default ([#145](https://github.com/dash0hq/dash0-sdk-web/issues/145)) ([5f390f3](https://github.com/dash0hq/dash0-sdk-web/commit/5f390f3aaf651bd3a88654cca1a496d015f84d49))
+
 ## [0.31.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.31.0...0.31.1) (2026-11-10)
 
 ### Bug Fixes

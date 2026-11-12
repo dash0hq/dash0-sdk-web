@@ -16,6 +16,7 @@ import {
   VCS_REPOSITORY_URL_FULL,
 } from "../semantic-conventions";
 import { init as initFun } from "./init";
+import { localStorage, sessionStorage } from "../utils/globals";
 
 // Mock all the instrumentation modules
 vi.mock("../instrumentations/web-vitals", () => ({
@@ -347,6 +348,71 @@ describe("init", () => {
 
       const namespaceAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAMESPACE);
       expect(namespaceAttr).toBeUndefined();
+    });
+  });
+
+  describe("storageNamespace", () => {
+    beforeEach(() => {
+      localStorage!.clear();
+      sessionStorage!.clear();
+    });
+
+    afterEach(() => {
+      localStorage!.clear();
+      sessionStorage!.clear();
+    });
+
+    async function initFresh(options: InitOptions): Promise<string | null> {
+      vi.resetModules();
+      const { init: freshInit } = await import("./init");
+      freshInit(options);
+      return (await import("./session")).sessionId;
+    }
+
+    it("stores the session and tab under unprefixed keys by default", () => {
+      init(baseOptions);
+
+      expect(localStorage!.getItem("d0_session")).not.toBeNull();
+      expect(sessionStorage!.getItem("d0_tab")).not.toBeNull();
+    });
+
+    it("prefixes the session and tab keys with the namespace", () => {
+      init({ ...baseOptions, storageNamespace: "docs" });
+
+      expect(localStorage!.getItem("docs:d0_session")).not.toBeNull();
+      expect(sessionStorage!.getItem("docs:d0_tab")).not.toBeNull();
+      expect(localStorage!.getItem("d0_session")).toBeNull();
+      expect(sessionStorage!.getItem("d0_tab")).toBeNull();
+    });
+
+    it("ignores a whitespace-only namespace", () => {
+      init({ ...baseOptions, storageNamespace: "  " });
+
+      expect(vars.storageNamespace).toBe("");
+      expect(localStorage!.getItem("d0_session")).not.toBeNull();
+    });
+
+    it("trims the namespace", () => {
+      init({ ...baseOptions, storageNamespace: " docs " });
+
+      expect(localStorage!.getItem("docs:d0_session")).not.toBeNull();
+    });
+
+    it("gives apps on one origin separate sessions when their namespaces differ", async () => {
+      const docsSession = await initFresh({ ...baseOptions, serviceName: "docs", storageNamespace: "docs" });
+      const shopSession = await initFresh({ ...baseOptions, serviceName: "shop", storageNamespace: "shop" });
+      const docsSessionAgain = await initFresh({ ...baseOptions, serviceName: "docs", storageNamespace: "docs" });
+
+      expect(docsSession).not.toBeNull();
+      expect(shopSession).not.toBe(docsSession);
+      expect(docsSessionAgain).toBe(docsSession);
+    });
+
+    it("shares a session between apps without a namespace", async () => {
+      const first = await initFresh({ ...baseOptions, serviceName: "docs" });
+      const second = await initFresh({ ...baseOptions, serviceName: "shop" });
+
+      expect(second).toBe(first);
     });
   });
 

@@ -54,6 +54,57 @@ function isTransportRequest(url: string) {
   return false;
 }
 
-export function isErrorMessageIgnored(message?: string) {
-  return !message || matchesAny(vars.ignoreErrorMessages, message);
+// The second form is what old Edge and IE report.
+const CROSS_ORIGIN_SCRIPT_ERROR = /^(Script error\.?|Javascript error: Script error\.? on line 0)$/;
+
+const BROWSER_EXTENSION_URL =
+  /^(chrome-extension|moz-extension|ms-browser-extension|safari-extension|safari-web-extension|webkit-masked-url):\/\//i;
+
+const URL_IN_FRAME = /[a-z][a-z0-9+.-]*:\/\/[^\s()]+/i;
+
+export function isErrorIgnored(message: string, stack?: string): boolean {
+  if (matchesAny(vars.ignoreErrorMessages, message)) {
+    return true;
+  }
+  if (vars.ignoreCrossOriginScriptErrors && CROSS_ORIGIN_SCRIPT_ERROR.test(message)) {
+    return true;
+  }
+  return vars.ignoreBrowserExtensionErrors && hasOnlyBrowserExtensionFrames(message, stack);
+}
+
+/**
+ * True when the stack has frames with a URL and every one of them belongs to a browser extension. A single page
+ * frame keeps the error, so a page error that passes through an extension's wrapper of fetch, XHR,
+ * addEventListener or setTimeout is still reported.
+ */
+function hasOnlyBrowserExtensionFrames(message: string, stack?: string): boolean {
+  if (!stack) {
+    return false;
+  }
+  const lines = stack.split("\n");
+  // V8 starts the stack with "<name>: <message>". The message can span lines and hold URLs, even another error's stack.
+  const firstFrame = isMessageHeader(lines[0]!, message) ? message.split("\n").length : 0;
+  let hasExtensionFrame = false;
+  for (let i = firstFrame; i < lines.length; i++) {
+    const url = URL_IN_FRAME.exec(lines[i]!);
+    if (!url) {
+      continue;
+    }
+    if (!BROWSER_EXTENSION_URL.test(url[0])) {
+      return false;
+    }
+    hasExtensionFrame = true;
+  }
+  return hasExtensionFrame;
+}
+
+/**
+ * Whether the stack's first line is the error message, as in V8's "TypeError: x". The reported message may carry a
+ * prefix such as "Uncaught " or "Unhandled promise rejection: ", so the line's text must end the message's first line.
+ */
+function isMessageHeader(firstLine: string, message: string): boolean {
+  const separator = firstLine.indexOf(": ");
+  const text = separator < 0 ? firstLine : firstLine.slice(separator + 2);
+  const messageEnd = message.indexOf("\n");
+  return text !== "" && (messageEnd < 0 ? message : message.slice(0, messageEnd)).endsWith(text);
 }

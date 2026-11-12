@@ -85,6 +85,8 @@ export function init(opts: InitOptions) {
       pick(opts, [
         "ignoreUrls",
         "ignoreErrorMessages",
+        "ignoreCrossOriginScriptErrors",
+        "ignoreBrowserExtensionErrors",
         "wrapEventHandlers",
         "wrapTimers",
         "propagateTraceHeadersCorsURLs",
@@ -106,6 +108,7 @@ export function init(opts: InitOptions) {
 
   initializeResourceAttributes(opts);
   initializeSignalAttributes(opts);
+  vars.storageNamespace = opts.storageNamespace?.trim() ?? "";
   initializeTabId();
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
 

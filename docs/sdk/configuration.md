@@ -310,6 +310,19 @@ The SDK auto-detects VCS (version control) context from the build environment an
   default: `21600000` (6 hours)<br>
   The default session termination timeout. Session termination is the maximum allowed time to pass since session start
   before the session is considered to be expired.
+- **Storage Namespace**<br>
+  key: `storageNamespace`<br>
+  type: `string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  Prefixes every key the SDK writes to `localStorage` and `sessionStorage`. For example, `storageNamespace: "docs"`
+  stores the session under `docs:d0_session` instead of `d0_session`.
+
+  Browser storage is shared by all pages of an origin, so two apps on different paths of one origin (for example
+  `example.com/docs` and `example.com/shop`) share a session and a session recording by default, even when their
+  `serviceName` values differ. Give each of them its own namespace to keep their sessions apart.
+
+  Setting or changing the namespace starts a new session for visitors who already have one.
 
 #### Error tracking
 
@@ -319,6 +332,24 @@ The SDK auto-detects VCS (version control) context from the build environment an
   optional: `true`<br>
   default: `undefined`<br>
   An array of error message regular expressions for which no data should be collected.
+- **Ignore Cross-Origin Script Errors**<br>
+  key: `ignoreCrossOriginScriptErrors`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `true`<br>
+  Whether to drop the "Script error." that browsers report in place of an error thrown by a script they treat as
+  cross-origin. It carries no message, stack or location. To see these errors in full instead, load the script with
+  the `crossorigin` attribute and serve it with an `Access-Control-Allow-Origin` header.
+- **Ignore Browser Extension Errors**<br>
+  key: `ignoreBrowserExtensionErrors`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `true`<br>
+  Whether to drop errors whose stack frames with a URL all belong to a browser extension: `chrome-extension://`,
+  `moz-extension://`, `ms-browser-extension://`, `safari-extension://`, `safari-web-extension://` or Safari's
+  `webkit-masked-url://`. An error with any frame from the page is still reported, including a page error that
+  passes through an extension's wrapper of `fetch` or `setTimeout`. Errors without a stack are always reported.
+  Dropped errors are logged at the `debug` log level.
 - **Wrap Event Handlers**<br>
   key: `wrapEventHandlers`<br>
   type: `boolean`<br>
