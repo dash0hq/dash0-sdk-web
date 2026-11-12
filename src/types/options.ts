@@ -144,6 +144,8 @@ export type InitOptions = {
     Vars,
     | "ignoreUrls"
     | "ignoreErrorMessages"
+    | "ignoreCrossOriginScriptErrors"
+    | "ignoreBrowserExtensionErrors"
     | "wrapEventHandlers"
     | "wrapTimers"
     | "propagateTraceHeadersCorsURLs"

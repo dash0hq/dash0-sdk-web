@@ -287,6 +287,48 @@ stopSessionRecording();
 dash0("stopSessionRecording");
 ```
 
+### Trace Context
+
+#### `setParentTraceContext(traceparent)`
+
+Makes every fetch and XHR span that starts afterwards join an outside trace. Each span takes the trace id of the given
+W3C `traceparent` and uses its span id as parent, until the context is cleared with `undefined` or `null`. The request's
+own `traceparent` header then names the browser span, so backend spans join the same trace, when a configured propagator
+matches the request URL. This API does not enable header propagation or override sampling and URL ignore rules. It can
+connect a page in a native app's web view or another traced flow to its caller's trace.
+
+An invalid `traceparent`, including an empty string or a value that is not a string, is ignored and leaves the current
+parent unchanged. Only `undefined` and `null` clear the context. Accepted values use version `00`, lowercase hexadecimal
+non-zero trace and span ids, and exactly two lowercase hexadecimal flag digits. Surrounding whitespace is accepted.
+Incoming flags are not inherited: the SDK keeps its existing sampling behavior and emits `01` in outgoing `traceparent`
+headers.
+
+**Parameters:**
+
+- `traceparent` (string | null | undefined): A W3C `traceparent` value, or `undefined` or `null` to clear it.
+
+**Example:**
+
+```js
+import { setParentTraceContext } from "@dash0/sdk-web";
+
+setParentTraceContext("00-4bf92f3577b34da6a3ce929d0e0e4736-a1b2c3d4e5f6a7b8-01");
+await fetch("/api/cart");
+setParentTraceContext(undefined);
+
+dash0("setParentTraceContext", "00-4bf92f3577b34da6a3ce929d0e0e4736-a1b2c3d4e5f6a7b8-01");
+```
+
+**Note:** The parent is read when a span starts. A request still in flight when the context changes keeps the parent it
+started with. Fetch reads it during `fetch()` and XHR during `send()`, not `open()`. The setting applies to subsequent
+HTTP spans in this SDK instance until replaced or cleared. Each SDK instance holds its own parent: a full page load
+starts without one, and so does an SDK running in an iframe. A client-side route change keeps it. It does not reparent
+page views, web vitals, or other log events, and it does not provide async-local context isolation for concurrent
+callers.
+
+Spans in an adopted trace use that trace's id instead of one the SDK generates for the session, so backend spans under
+these requests are not linked to the browser session.
+
 ### Internal Telemetry
 
 #### `setActiveLogLevel(logLevel)`

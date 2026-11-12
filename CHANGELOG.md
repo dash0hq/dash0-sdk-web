@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.32.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.31.1...0.32.0) (2026-11-11)
+
+### Features
+
+- **errors:** drop cross-origin "Script error." and browser extension errors by default ([#145](https://github.com/dash0hq/dash0-sdk-web/issues/145)) ([5f390f3](https://github.com/dash0hq/dash0-sdk-web/commit/5f390f3aaf651bd3a88654cca1a496d015f84d49))
+
+## [0.31.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.31.0...0.31.1) (2026-11-10)
+
+### Bug Fixes
+
+- **http:** preserve completed XHR responses when aborted ([#143](https://github.com/dash0hq/dash0-sdk-web/issues/143)) ([f59ccf6](https://github.com/dash0hq/dash0-sdk-web/commit/f59ccf6d08ab426ce6035c163bf92b934ad10b23))
+
+## [0.31.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.30.1...0.31.0) (2026-11-10)
+
+### Features
+
+- **tracing:** fetch and XHR spans can join a test runner's trace, instead of starting their own ([#133](https://github.com/dash0hq/dash0-sdk-web/issues/133)) ([67f7b90](https://github.com/dash0hq/dash0-sdk-web/commit/67f7b90e6361c4a92a68a89ac1946e84774aa83b))
+
 ## [0.30.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.30.0...0.30.1) (2026-11-09)
 
 ### Bug Fixes
