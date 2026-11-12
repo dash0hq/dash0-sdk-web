@@ -134,7 +134,7 @@ describe("init", () => {
   });
 
   describe("instrumentation enablement", () => {
-    it("should enable all instrumentations when enabledInstrumentations is undefined", async () => {
+    it("should enable all default instrumentations when enabledInstrumentations is undefined", async () => {
       init({
         ...baseOptions,
         enabledInstrumentations: undefined,
@@ -145,7 +145,6 @@ describe("init", () => {
       expect(startErrorInstrumentation).toHaveBeenCalled();
       expect(instrumentFetch).toHaveBeenCalled();
       expect(instrumentXhr).toHaveBeenCalled();
-      expect(startConsoleInstrumentation).toHaveBeenCalled();
     });
 
     it("should not enable profiling when enabledInstrumentations is undefined", async () => {
@@ -155,6 +154,16 @@ describe("init", () => {
       });
 
       expect(startProfiling).not.toHaveBeenCalled();
+    });
+
+    it("should not enable console capture when enabledInstrumentations is undefined, even with consoleLogs set", async () => {
+      init({
+        ...baseOptions,
+        enabledInstrumentations: undefined,
+        consoleLogs: { levels: ["warn", "error"] },
+      });
+
+      expect(startConsoleInstrumentation).not.toHaveBeenCalled();
     });
 
     const instrumentations: InstrumentationName[] = [

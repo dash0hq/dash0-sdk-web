@@ -9,7 +9,7 @@ Features include:
 - Navigation timing instrumentation
 - HTTP request instrumentation (fetch and XMLHttpRequest)
 - Error tracking
-- Console log capture (`console.warn` and `console.error` by default)
+- Console log capture (opt-in)
 - Session replay with [rrweb](https://github.com/rrweb-io/rrweb), shipped as an optional separate bundle (see [Setup](docs/sdk/setup.md#session-replay))
 
 ## Getting started

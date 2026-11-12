@@ -128,7 +128,7 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations.
   Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals' | '@dash0/profiling' | '@dash0/console'`
-  `'@dash0/profiling'` is not part of the default: it only runs when listed here.
+  `'@dash0/profiling'` and `'@dash0/console'` are not part of the default: they only run when listed here.
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
 - **Ignore URLs**<br>
@@ -340,9 +340,10 @@ The SDK auto-detects VCS (version control) context from the build environment an
 #### Console logs
 
 The `@dash0/console` instrumentation sends messages logged through the browser console as `browser.console` events.
-By default only `console.warn` and `console.error` are captured; list more methods in `consoleLogs.levels` to capture
-all console output. The original console method is always called, so the browser's developer tools show every message
-as before.
+It is off by default and runs only when `@dash0/console` is listed in `enabledInstrumentations`; `consoleLogs` alone
+does not turn it on. It then captures `console.warn` and `console.error`; list more methods in `consoleLogs.levels`
+to capture all console output. The original console method is always called, so the browser's developer tools show
+every message as before.
 
 Each event carries the formatted message as its body, a severity derived from the method (`debug` and `trace` are
 `DEBUG`, `log` and `info` are `INFO`, `warn` is `WARN`, `error` is `ERROR`), the method in `browser.console.method`,

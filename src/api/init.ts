@@ -45,7 +45,7 @@ declare const process: { env?: BrowserBuildEnv } | undefined;
 let hasBeenInitialised: boolean = false;
 
 // Not part of the default set: these run only when listed in `enabledInstrumentations`.
-const OPT_IN_INSTRUMENTATIONS: InstrumentationName[] = ["@dash0/profiling"];
+const OPT_IN_INSTRUMENTATIONS: InstrumentationName[] = ["@dash0/profiling", "@dash0/console"];
 
 export function init(opts: InitOptions) {
   if (hasBeenInitialised) {
