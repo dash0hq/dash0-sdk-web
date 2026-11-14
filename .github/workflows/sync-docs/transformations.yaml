@@ -37,6 +37,8 @@ files:
     target: dash0/miscellaneous/tooling/web-sdk/overview.md
     title: About the Dash0 Web SDK
     description: Introduction to the Dash0 Web SDK — what it instruments, its features, and how to get started capturing frontend telemetry.
+    tags:
+      - real-user-monitoring
     transformations:
       - description: rewrite the relative INSTALL.md link to the Installation sub-page
         type: replace-regex
@@ -59,6 +61,8 @@ files:
     target: dash0/miscellaneous/tooling/web-sdk/installation.md
     title: Installation
     description: Prerequisites for the Dash0 Web SDK and an index of the setup, configuration, and API guides.
+    tags:
+      - real-user-monitoring
     transformations:
       - description: rewrite the Setup doc link to the sibling page
         type: replace-regex
@@ -77,13 +81,19 @@ files:
     target: dash0/miscellaneous/tooling/web-sdk/setup.md
     title: Setup
     description: Add the Dash0 Web SDK via modules or script tags, initialize it, and configure Content Security Policy.
+    tags:
+      - real-user-monitoring
 
   - source: docs/sdk/configuration.md
     target: dash0/miscellaneous/tooling/web-sdk/configuration.md
     title: Configuration
     description: All Dash0 Web SDK init options — backend correlation, auto-detection, website attributes, telemetry transmission, session and error tracking, and instrumentation.
+    tags:
+      - real-user-monitoring
 
   - source: docs/sdk/api.md
     target: dash0/miscellaneous/tooling/web-sdk/api.md
     title: API Reference
     description: Runtime API functions of the Dash0 Web SDK for managing signal attributes, user identification, custom events, error reporting, and sessions.
+    tags:
+      - real-user-monitoring
