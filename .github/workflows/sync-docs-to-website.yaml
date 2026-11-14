@@ -66,7 +66,7 @@ jobs:
       # can be supplied unconditionally. source-root and transformations-file inherit their defaults (`.` and
       # `.github/workflows/sync-docs/transformations.yaml`).
       - name: synchronize docs to the website
-        uses: dash0hq/sync-docs-action@4c9eef64cafde3358467a43f54be95f228fa2a42 # TODO: replace with the v0.6.0 release commit SHA (dash0hq/sync-docs-action#12)
+        uses: dash0hq/sync-docs-action@c30aaaaa93f3f8a88b9f9e3acd31cfff3e086954 # v0.6.0
         with:
           dry-run: ${{ inputs.dry-run }}
           target-repository: ${{ secrets.SYNC_DOCUMENTATION_TARGET_REPOSITORY }}
