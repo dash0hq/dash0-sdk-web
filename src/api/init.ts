@@ -28,6 +28,7 @@ import { sessionId, trackSessions } from "./session";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { startErrorInstrumentation } from "../instrumentations/errors";
 import { addAttribute } from "../utils/otel";
+import { normalizePatterns } from "../utils/ignore-rules";
 import { instrumentFetch } from "../instrumentations/http/fetch";
 import { instrumentXhr } from "../instrumentations/http/xhr";
 import { startNavigationInstrumentation } from "../instrumentations/navigation";
@@ -102,6 +103,8 @@ export function init(opts: InitOptions) {
     )
   );
 
+  vars.ignoreUrls = normalizePatterns(vars.ignoreUrls, "ignoreUrls");
+  vars.ignoreErrorMessages = normalizePatterns(vars.ignoreErrorMessages, "ignoreErrorMessages");
   initializePropagators(opts);
 
   initializeResourceAttributes(opts);
@@ -277,7 +280,12 @@ function initializePropagators(opts: InitOptions) {
         "Both 'propagators' and deprecated 'propagateTraceHeadersCorsURLs' were provided. Using 'propagators' configuration. Please migrate to the new 'propagators' config."
       );
     }
-    vars.propagators = opts.propagators;
+    // Configurations from plain JavaScript can hold anything. They must not break init.
+    vars.propagators = Array.isArray(opts.propagators)
+      ? opts.propagators.map(
+          (propagator) => propagator && { ...propagator, match: normalizePatterns(propagator.match, "propagators") }
+        )
+      : opts.propagators;
   }
   // Handle legacy configuration
   else if (opts.propagateTraceHeadersCorsURLs && opts.propagateTraceHeadersCorsURLs.length > 0) {
@@ -286,7 +294,7 @@ function initializePropagators(opts: InitOptions) {
     vars.propagators = [
       {
         type: "traceparent",
-        match: [...opts.propagateTraceHeadersCorsURLs],
+        match: normalizePatterns(opts.propagateTraceHeadersCorsURLs, "propagateTraceHeadersCorsURLs"),
       },
     ];
   }

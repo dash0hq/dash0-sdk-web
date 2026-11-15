@@ -6,11 +6,22 @@ import { SessionRecordingSettings } from "./types/session-recording";
 import { FrustrationSignalSettings } from "./types/frustration";
 import { ProfilingSettings } from "./types/profiling";
 
+/**
+ * A string matches any value that contains it, case-sensitive. Leading and trailing whitespace is removed from it at
+ * init, and a string that is empty after that matches nothing. A regular expression matches as `RegExp.test` does; use
+ * one to anchor, to ignore case or to match whitespace.
+ */
+export type MatchPattern = string | RegExp;
+
 export type PropagatorType = "traceparent" | "xray";
 
 export type PropagatorConfig = {
   type: PropagatorType;
-  match: RegExp[];
+  /**
+   * Cross-origin request URLs that get this propagator's header. A string matches any URL that contains it, so include
+   * the scheme and a trailing slash: `"https://api.example.com/"` does not match `https://api.example.com.evil.net/`.
+   */
+  match: MatchPattern[];
 };
 
 export type Endpoint = {
@@ -84,9 +95,11 @@ export type Vars = {
   signalAttributes: KeyValue[];
 
   /**
-   * An array of URL regular expression for which no data should be
-   * collected. These regular expressions are evaluated against
-   * the document, XMLHttpRequest and fetch URLs. While the document URL
+   * URLs for which no data should be collected. A string matches any URL
+   * that contains it (case-sensitive, trimmed), a regular expression matches
+   * as `RegExp.test` does. Prefer strings: they are fast for URLs of any
+   * length. These patterns are evaluated against the document,
+   * XMLHttpRequest and fetch URLs. While the document URL
    * matches, no page views, navigation timings, web vitals, errors or
    * rage clicks are sent, and no session recording is started.
    * XMLHttpRequest and fetch requests made from an ignored page are still
@@ -95,13 +108,14 @@ export type Vars = {
    * error messages and stack traces, the page, referrer, document and
    * request URLs are redacted when they match. Other URLs are not changed.
    */
-  ignoreUrls: RegExp[];
+  ignoreUrls: MatchPattern[];
 
   /**
-   * An array of error message regular expressions for which no data
-   * should be collected.
+   * Error messages for which no data should be collected. A string matches
+   * any message that contains it (case-sensitive, trimmed), a regular
+   * expression matches as `RegExp.test` does.
    */
-  ignoreErrorMessages: RegExp[];
+  ignoreErrorMessages: MatchPattern[];
 
   /**
    * Whether to drop the "Script error." that browsers report in place of an error
@@ -155,7 +169,7 @@ export type Vars = {
    * for which trace context headers should be sent across origins by http client instrumentations.
    * @deprecated Use propagators instead
    */
-  propagateTraceHeadersCorsURLs: RegExp[];
+  propagateTraceHeadersCorsURLs: MatchPattern[];
 
   /**
    * How long to wait after an XMLHttpRequest or fetch request has finished

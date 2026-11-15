@@ -23,12 +23,12 @@ Configure trace context propagators for different URL patterns:
 init({
   propagators: [
     // W3C traceparent headers for internal APIs
-    { type: "traceparent", match: [/.*\/api\/internal.*/] },
-    // AWS X-Ray headers for AWS services
-    { type: "xray", match: [/.*\.amazonaws\.com.*/] },
+    { type: "traceparent", match: ["https://api.example.com/internal/"] },
+    // AWS X-Ray headers for AWS services, on any subdomain
+    { type: "xray", match: [/^https:\/\/[^/]+\.amazonaws\.com\//] },
     // Send both headers to specific endpoints
-    { type: "traceparent", match: [/.*\/api\/special.*/] },
-    { type: "xray", match: [/.*\/api\/special.*/] },
+    { type: "traceparent", match: ["https://api.example.com/special/"] },
+    { type: "xray", match: ["https://api.example.com/special/"] },
   ],
 });
 ```
@@ -44,7 +44,14 @@ application.
 
 **Match patterns for cross-origin requests:**
 
-- `RegExp`: Regular expressions to match against full URLs
+- `string`: matches any full URL that contains it, case-sensitive. Leading and trailing whitespace is removed, and an
+  empty string matches nothing.
+- `RegExp`: matches the full URL as `RegExp.test` does.
+
+A string also matches where you might not expect it: `"api.example.com"` matches
+`https://api.example.com.evil.net/` and `https://other.com/?next=api.example.com`, and these requests then get trace
+headers too. Include the scheme and the slash after the host, as in `"https://api.example.com/"`, or use an anchored
+regular expression. Browsers lowercase the host in request URLs, so write hosts in lowercase.
 
 **Multiple Headers**: When multiple propagators match the same URL, both headers will be added to the request. This is
 useful when you need to support multiple tracing systems simultaneously.
@@ -62,7 +69,7 @@ useful when you need to support multiple tracing systems simultaneously.
 
 The legacy `propagateTraceHeadersCorsURLs` configuration is still supported but deprecated:
 
-- Include a regex matching the endpoint you want to enable in
+- Include a string or regular expression matching the endpoint you want to enable in
   the [propagateTraceHeadersCorsURLs](#http-request-instrumentation) configuration option.
 
 ### Configuration auto-detection
@@ -133,11 +140,25 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
 
 - **Ignore URLs**<br>
   key: `ignoreUrls`<br>
-  type: `Array<RegExp>`<br>
+  type: `Array<string | RegExp>`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  An array of URL regular expression for which no data should be collected.
-  These regular expressions are evaluated against the document, XMLHttpRequest and fetch URLs.
+  URLs for which no data should be collected.
+  A string matches any URL that contains it, anywhere and case-sensitive.
+  Leading and trailing whitespace is removed from a string, and a string that is empty after that matches nothing.
+  A regular expression matches the URL as `RegExp.test` does; use one to anchor, to ignore case or to match whitespace.
+  Prefer strings where a substring is enough, as a string check stays fast on long URLs.
+  Do not wrap a regular expression in `.*`, such as `/.*\/callback.*/`. It matches the same URLs as `/\/callback/`, but
+  on a URL that does not match, its run time grows with the square of the URL length.
+
+  ```js
+  ignoreUrls: [
+    "/callback", // contains "/callback"
+    /^https:\/\/[^/]+\/admin\//, // admin pages, on any host
+  ];
+  ```
+
+  These patterns are evaluated against the document, XMLHttpRequest and fetch URLs.
   While the document URL matches, no page views, navigation timings, web vitals, errors or rage clicks are sent, and no session recording is started.
   Page views from `startView` and custom events from `sendEvent` are always sent.
   XMLHttpRequest and fetch requests made from an ignored page are still recorded, unless the request URL matches too.
@@ -328,10 +349,22 @@ The SDK auto-detects VCS (version control) context from the build environment an
 
 - **Ignore Error Messages**<br>
   key: `ignoreErrorMessages`<br>
-  type: `Array<RegExp>`<br>
+  type: `Array<string | RegExp>`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  An array of error message regular expressions for which no data should be collected.
+  Error messages for which no data should be collected.
+  A string matches any message that contains it, anywhere and case-sensitive.
+  Leading and trailing whitespace is removed from a string, and a string that is empty after that matches nothing.
+  A regular expression matches the message as `RegExp.test` does; use one to anchor, to ignore case or to match
+  whitespace.
+
+  ```js
+  ignoreErrorMessages: [
+    "ResizeObserver loop", // contains "ResizeObserver loop"
+    /^Network request failed$/i, // exactly this message, in any case
+  ];
+  ```
+
 - **Ignore Cross-Origin Script Errors**<br>
   key: `ignoreCrossOriginScriptErrors`<br>
   type: `boolean`<br>
@@ -381,20 +414,26 @@ The SDK auto-detects VCS (version control) context from the build environment an
   ```typescript
   type PropagatorConfig = {
     type: "traceparent" | "xray";
-    match: RegExp[];
+    match: Array<string | RegExp>;
   };
   ```
+
+  A string in `match` matches any cross-origin URL that contains it, case-sensitive. Leading and trailing whitespace is
+  removed, and an empty string matches nothing. A regular expression matches the URL as `RegExp.test` does.
+  Include the scheme and the slash after the host in a string: `"https://api.example.com/"` does not match
+  `https://api.example.com.evil.net/`, but `"api.example.com"` does, and that request then gets trace headers too.
 
   Example:
 
   ```js
   propagators: [
-    // Use RegExp for specific cross-origin URL patterns
-    { type: "traceparent", match: [/.*\/api\/internal.*/] },
-    { type: "xray", match: [/.*\.amazonaws\.com.*/] },
+    // A string matches URLs that contain it
+    { type: "traceparent", match: ["https://api.example.com/internal/"] },
+    // A RegExp for patterns, here any amazonaws.com subdomain
+    { type: "xray", match: [/^https:\/\/[^/]+\.amazonaws\.com\//] },
     // Multiple propagators can match the same URL to send both headers
-    { type: "traceparent", match: [/.*\/api\/both.*/] },
-    { type: "xray", match: [/.*\/api\/both.*/] },
+    { type: "traceparent", match: ["https://api.example.com/both/"] },
+    { type: "xray", match: ["https://api.example.com/both/"] },
   ];
   ```
 
@@ -410,11 +449,11 @@ The SDK auto-detects VCS (version control) context from the build environment an
 
 - **Propagate Trace Header Cors URLs** ⚠️ **DEPRECATED**<br>
   key: `propagateTraceHeadersCorsURLs`<br>
-  type: `Array<RegExp>`<br>
+  type: `Array<string | RegExp>`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  **DEPRECATED: Use `propagators` instead.** An array of URL regular expressions for which trace context headers should
-  be sent across origins by http client instrumentations.
+  **DEPRECATED: Use `propagators` instead.** URLs for which trace context headers should be sent across origins by http
+  client instrumentations. Strings and regular expressions match as in `propagators`.
   NOTE: Any cross origin endpoints allowed via this option need to include `traceparent` in the
   `Access-Control-Allow-Headers`
   response header. Misconfiguration will cause request failures!

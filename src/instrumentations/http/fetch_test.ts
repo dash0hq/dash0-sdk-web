@@ -46,6 +46,28 @@ describe("fetch test", () => {
     expect(fetchHeaders.get("traceparent")).not.toBeNull();
   });
 
+  it("should inject traceparent header for cross-origin requests whose url contains a match string", async () => {
+    vars.propagators = [{ type: "traceparent", match: ["http://foo.bar/"] }];
+    instrumentFetch();
+    // eslint-disable-next-line no-restricted-globals
+    await fetch("http://foo.bar/foo");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const fetchHeaders = (fetchMock.mock.calls[0]!.at(1)! as { headers: Headers }).headers;
+    expect(fetchHeaders.get("traceparent")).not.toBeNull();
+  });
+
+  it("should not inject headers for cross-origin requests whose url does not contain a match string", async () => {
+    vars.propagators = [{ type: "traceparent", match: ["http://foo.bar/"] }];
+    instrumentFetch();
+    // eslint-disable-next-line no-restricted-globals
+    await fetch("http://foo.bar.example.com/foo");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const init = fetchMock.mock.calls[0]!.at(1) as { headers?: Headers } | undefined;
+    expect(init?.headers?.get("traceparent") ?? null).toBeNull();
+  });
+
   it("should inject xray header for cross-origin requests", async () => {
     vars.propagators = [
       {
@@ -218,8 +240,8 @@ describe("fetch test", () => {
   // SDK-internal errors (e.g. config typos) must degrade to an uninstrumented fetch call, never
   // to a rejected promise the page did not cause.
 
-  it("falls back to an uninstrumented fetch when ignoreUrls contains plain strings instead of RegExps", async () => {
-    vars.ignoreUrls = ["/health"] as unknown as RegExp[];
+  it("falls back to an uninstrumented fetch when ignoreUrls contains a value that is neither a string nor a RegExp", async () => {
+    vars.ignoreUrls = [{}] as unknown as RegExp[];
     instrumentFetch();
 
     // eslint-disable-next-line no-restricted-globals
@@ -231,8 +253,8 @@ describe("fetch test", () => {
     expect(sendSpan).not.toHaveBeenCalled();
   });
 
-  it("falls back to an uninstrumented fetch when a propagator match contains plain strings instead of RegExps", async () => {
-    vars.propagators = [{ type: "traceparent", match: ["http://foo.bar/"] as unknown as RegExp[] }];
+  it("falls back to an uninstrumented fetch when a propagator match contains a value that is neither a string nor a RegExp", async () => {
+    vars.propagators = [{ type: "traceparent", match: [{}] as unknown as RegExp[] }];
     instrumentFetch();
 
     // eslint-disable-next-line no-restricted-globals

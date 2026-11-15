@@ -198,6 +198,57 @@ describe("init", () => {
     });
   });
 
+  describe("match patterns", () => {
+    it("trims strings and drops empty ones in ignoreUrls and ignoreErrorMessages", async () => {
+      init({
+        ...baseOptions,
+        ignoreUrls: [" /callback ", "", /\/admin\//],
+        ignoreErrorMessages: ["  ", "ResizeObserver loop "],
+      });
+
+      expect(vars.ignoreUrls).toEqual(["/callback", /\/admin\//]);
+      expect(vars.ignoreErrorMessages).toEqual(["ResizeObserver loop"]);
+    });
+
+    it("trims strings and drops empty ones in propagator match lists", async () => {
+      init({
+        ...baseOptions,
+        propagators: [{ type: "xray", match: [" https://api.example.com/ ", "", /\.amazonaws\.com/] }],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "xray", match: ["https://api.example.com/", /\.amazonaws\.com/] }]);
+    });
+
+    it("trims strings and drops empty ones in legacy propagateTraceHeadersCorsURLs", async () => {
+      init({
+        ...baseOptions,
+        propagateTraceHeadersCorsURLs: ["https://api.example.com/ ", " "],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "traceparent", match: ["https://api.example.com/"] }]);
+    });
+
+    it("uses a single string as a one-item array, so it does not match every url", async () => {
+      init({
+        ...baseOptions,
+        ignoreUrls: "/health" as unknown as string[],
+        ignoreErrorMessages: "ResizeObserver loop" as unknown as string[],
+        propagators: [{ type: "traceparent", match: "https://api.example.com/" as unknown as string[] }],
+      });
+
+      expect(vars.ignoreUrls).toEqual(["/health"]);
+      expect(vars.ignoreErrorMessages).toEqual(["ResizeObserver loop"]);
+      expect(vars.propagators).toEqual([{ type: "traceparent", match: ["https://api.example.com/"] }]);
+    });
+
+    it("does not break init on propagators that are not an array", async () => {
+      const propagators = {} as unknown as PropagatorConfig[];
+      init({ ...baseOptions, propagators });
+
+      expect(vars.propagators).toBe(propagators);
+    });
+  });
+
   describe("propagator configuration", () => {
     it("should set propagators configuration when provided", async () => {
       const propagators: PropagatorConfig[] = [

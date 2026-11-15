@@ -114,6 +114,9 @@ describe("Fetch Instrumentation", () => {
     const btn1 = await $("button=Fetch With Ignored URL");
     await btn1.click();
 
+    const btnString = await $("button=Fetch With Ignored URL String");
+    await btnString.click();
+
     const btn2 = await $("button=Same Origin Fetch");
     await btn2.click();
 

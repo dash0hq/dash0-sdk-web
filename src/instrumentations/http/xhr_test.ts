@@ -195,6 +195,19 @@ describe("xhr test", () => {
     expect(sendSpan).not.toHaveBeenCalled();
   });
 
+  it("should not create a span or inject headers for URLs that contain an ignoreUrls string", () => {
+    vars.ignoreUrls = ["/you-cant-see-this"];
+    vars.propagators = [{ type: "traceparent", match: [] }];
+    instrumentXhr();
+
+    const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
+    xhr.open("GET", "/you-cant-see-this?x=1");
+    xhr.send();
+
+    expect(xhr.requestHeaders["traceparent"]).toBeUndefined();
+    expect(sendSpan).not.toHaveBeenCalled();
+  });
+
   // Ignore rules must match against the resolved absolute URL -- the same form the fetch
   // instrumentation matches against -- so origin-anchored regexes apply uniformly to relative
   // XHR URLs.
@@ -924,8 +937,8 @@ describe("xhr test", () => {
   // open()/send() calls -- a misconfigured SDK must degrade to "no telemetry", never to a
   // page-wide XHR outage.
 
-  it("does not break the page's XHR when ignoreUrls contains plain strings instead of RegExps", () => {
-    vars.ignoreUrls = ["/health"] as unknown as RegExp[];
+  it("does not break the page's XHR when ignoreUrls contains a value that is neither a string nor a RegExp", () => {
+    vars.ignoreUrls = [{}] as unknown as RegExp[];
     instrumentXhr();
 
     const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;
@@ -942,8 +955,8 @@ describe("xhr test", () => {
     expect(sendSpan).not.toHaveBeenCalled();
   });
 
-  it("does not break the page's XHR when a propagator match contains plain strings instead of RegExps", () => {
-    vars.propagators = [{ type: "traceparent", match: ["http://foo.bar/"] as unknown as RegExp[] }];
+  it("does not break the page's XHR when a propagator match contains a value that is neither a string nor a RegExp", () => {
+    vars.propagators = [{ type: "traceparent", match: [{}] as unknown as RegExp[] }];
     instrumentXhr();
 
     const xhr = new XMLHttpRequest() as unknown as FakeXMLHttpRequest;

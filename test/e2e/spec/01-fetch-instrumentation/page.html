@@ -27,7 +27,7 @@
         ],
         propagateTraceHeadersCorsURLs: [new RegExp(`http:\/\/${window.location.hostname.replace(".", "\.")}:8012`)],
         headersToCapture: [/x-test-header/],
-        ignoreUrls: [/you-cant-see-this/],
+        ignoreUrls: [/you-cant-see-this/, "?not-this-either"],
       });
       dash0("addSignalAttribute", "the_answer", 42);
     </script>
@@ -80,6 +80,10 @@
 
       function onFetchWithIgnoredUrl() {
         return fetch("/ajax?you-cant-see-this");
+      }
+
+      function onFetchWithIgnoredUrlString() {
+        return fetch("/ajax?not-this-either");
       }
 
       function onFailingFetch() {
@@ -136,6 +140,7 @@
     <button onclick="onFetchWithRequest()">Fetch With Request Object</button>
     <button onclick="onFetchWithRequestAndInit()">Fetch With Request and Init</button>
     <button onclick="onFetchWithIgnoredUrl()">Fetch With Ignored URL</button>
+    <button onclick="onFetchWithIgnoredUrlString()">Fetch With Ignored URL String</button>
     <button onclick="onFailingFetch()">Failing Fetch</button>
     <button onclick="onFetchWithBodyFromInit()">Fetch With Body From Init</button>
     <button onclick="onFetchWithBodyFromRequest()">Fetch With Body From Request</button>
