@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.35.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.34.0...0.35.0) (2026-11-16)
+
+### Features
+
+- ignoreUrls, ignoreErrorMessages and propagator match lists accept strings that match anywhere in the value ([#148](https://github.com/dash0hq/dash0-sdk-web/issues/148)) ([7c83ff3](https://github.com/dash0hq/dash0-sdk-web/commit/7c83ff30685807bdf624ffb01c49550060e04a55))
+
 ## [0.34.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.33.0...0.34.0) (2026-11-16)
 
 ### Features
