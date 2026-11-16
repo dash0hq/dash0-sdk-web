@@ -263,7 +263,7 @@ jobs:
         uses: JoshuaKGoldberg/release-it-action@8ee87d0d30f97b452ef5d8aa9f4d0490eed439aa #0.4.0
 
   # On every pull request, verify that the doc transformations in sync-docs/transformations.yaml still apply
-  # cleanly (including the coverage check) before anything is merged. Dry-run mode stops after the transformation
+  # cleanly (including the coverage and tagging checks) before anything is merged. Dry-run mode stops after the transformation
   # step: no target repository is checked out, no PR is created, and no token is required.
   sync_docs_dry_run:
     name: Verify Web SDK docs sync (dry run)
@@ -285,3 +285,4 @@ jobs:
       DASH0_DOCS_REPO_GITHUB_PAT: ${{ secrets.DASH0_DOCS_REPO_GITHUB_PAT }}
       SYNC_DOCUMENTATION_TARGET_REPOSITORY: ${{ secrets.SYNC_DOCUMENTATION_TARGET_REPOSITORY }}
       SYNC_DOCUMENTATION_TARGET_DIRECTORY: ${{ secrets.SYNC_DOCUMENTATION_TARGET_DIRECTORY }}
+      SYNC_DOCUMENTATION_TAG_VOCABULARY_FILE: ${{ secrets.SYNC_DOCUMENTATION_TAG_VOCABULARY_FILE }}

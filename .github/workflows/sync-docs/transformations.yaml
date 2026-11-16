@@ -10,6 +10,10 @@
 # nav fragment attaches under the "Tooling" section label (parentPath: Tooling) with an order just
 # after dash0-cli (72.6). The website's build-navigation script merges this fragment into the tree.
 #
+# Each page's `tags:` are rendered into its frontmatter and must be canonical slugs from the website's tag
+# vocabulary. Declare them here, not in the website: the next sync overwrites frontmatter edited there. The
+# `tagging:` block fails the run when an entry has no tags, unless its source is listed under `untagged`.
+#
 # See https://github.com/dash0hq/sync-docs-action for the transformation-engine reference.
 
 common:
@@ -24,6 +28,9 @@ coverage:
     - INSTALL.md
     - docs/sdk/*.md
   ignore: []
+
+tagging:
+  untagged: []
 
 nav:
   target: dash0/miscellaneous/tooling/web-sdk/nav.json
