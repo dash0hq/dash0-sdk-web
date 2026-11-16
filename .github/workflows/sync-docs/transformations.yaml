@@ -10,6 +10,10 @@
 # nav fragment attaches under the "Tooling" section label (parentPath: Tooling) with an order just
 # after dash0-cli (72.6). The website's build-navigation script merges this fragment into the tree.
 #
+# Each page's `tags:` are optional. When declared, they are rendered into its frontmatter and must be canonical
+# slugs from the website's tag vocabulary. Declare them here, not in the website: the next sync overwrites
+# frontmatter edited there.
+#
 # See https://github.com/dash0hq/sync-docs-action for the transformation-engine reference.
 
 common:

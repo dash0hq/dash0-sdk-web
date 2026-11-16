@@ -23,6 +23,10 @@ name: Synchronize Web SDK docs to dash0.com/docs
 # SYNC_DOCUMENTATION_TARGET_DIRECTORY secrets, so the (non-public) target repo name and its internal layout
 # are not hardcoded here. Authentication uses the DASH0_DOCS_REPO_GITHUB_PAT secret: a fine-grained PAT scoped
 # to the target repository with Contents: Read and write and Pull requests: Read and write.
+#
+# The optional SYNC_DOCUMENTATION_TAG_VOCABULARY_FILE secret names the website's tag vocabulary file. Full syncs
+# check every declared tag against it; pages without tags are allowed. Dry runs skip this check because they do
+# not check out the target repository.
 
 # sync-docs-action pinned to v0.6.0, the first release to render per-file `tags` from transformations.yaml into the
 # generated frontmatter (from https://github.com/dash0hq/sync-docs-action/pull/12).
@@ -50,6 +54,9 @@ on:
       SYNC_DOCUMENTATION_TARGET_DIRECTORY:
         description: Directory within the target repository that receives the transformed pages. Only required when dry-run is false.
         required: false
+      SYNC_DOCUMENTATION_TAG_VOCABULARY_FILE:
+        description: Path of the tag vocabulary JSON within the target repository. When set, a full sync fails on tags that are not canonical slugs in it.
+        required: false
 
 jobs:
   sync-docs:
@@ -72,6 +79,7 @@ jobs:
           target-repository: ${{ secrets.SYNC_DOCUMENTATION_TARGET_REPOSITORY }}
           target-directory: ${{ secrets.SYNC_DOCUMENTATION_TARGET_DIRECTORY }}
           target-github-token: ${{ secrets.DASH0_DOCS_REPO_GITHUB_PAT }}
+          tag-vocabulary-file: ${{ secrets.SYNC_DOCUMENTATION_TAG_VOCABULARY_FILE }}
           pr-branch: sync-dash0-sdk-web-docs
           pr-title: "docs: synchronize Dash0 Web SDK documentation"
           pr-body: >-
