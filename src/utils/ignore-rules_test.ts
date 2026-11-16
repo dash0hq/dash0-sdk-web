@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { vars } from "../vars";
 import { isErrorIgnored, isUrlIgnored, matchesAny, normalizePatterns } from "./ignore-rules";
 
@@ -92,5 +92,152 @@ describe("normalizePatterns", () => {
     const junk = {} as unknown as RegExp;
     expect(normalizePatterns([junk], "ignoreUrls")).toEqual([junk]);
     expect(normalizePatterns(null as unknown as RegExp[], "ignoreUrls")).toBeNull();
+  });
+});
+
+describe("normalizePatterns with regular expressions", () => {
+  it.each([
+    [/.*\/ingest\/.*/i, /\/ingest\/.*/i],
+    [/.*?\/callback/, /\/callback/],
+    [/.*.*\/callback/, /\/callback/],
+    [/\S*token=/, /token=/],
+    [/[^?]*\/callback/, /\/callback/],
+    [/[\s\S]*secret/s, /secret/s],
+    [/[^]*secret/, /secret/],
+    [/\.*x/, /x/],
+    [/[\]a]*x/, /x/],
+    [/.*/, /(?:)/],
+    [/.*a|b/g, /a|b/g],
+  ])("rewrites %s to %s", (pattern, expected) => {
+    expect(normalizePatterns([pattern], "ignoreUrls")).toEqual([expected]);
+  });
+
+  it.each([
+    /^.*\/callback/,
+    /.+\/callback/,
+    /(.*)\/callback\1/,
+    /(?:ab)*c/,
+    /\1*a(b)/,
+    /\p{L}*a/u,
+    /[a-z]*a/v,
+    /.*a/y,
+    /a.*/,
+    /\/callback/,
+  ])("keeps %s", (pattern) => {
+    expect(normalizePatterns([pattern], "ignoreUrls")[0]).toBe(pattern);
+  });
+
+  it("gives the same test results as the original patterns", () => {
+    const patterns = [
+      /.*\/ingest\/.*/i,
+      /.*\.google\.com.*/i,
+      /.*?a.b/,
+      /\S*token=/,
+      /[^?]*\?code=/,
+      /.*^a/m,
+      /.*\bfoo/,
+      /.*(?<=a)b/,
+      /.*$/,
+      /.*a|b/,
+      /\w*\d{3}/,
+      /[\s\S]*end/s,
+      /.*\n/,
+      /.*{/,
+    ];
+    const values = [
+      "",
+      "a",
+      "ab",
+      "a\nb",
+      "\na",
+      "xx\nab",
+      "x.google.com",
+      "https://example.com/ingest/e/?x=1",
+      "https://EXAMPLE.COM/INGEST/",
+      "https://example.com/ingest",
+      "token=1",
+      "?token=1",
+      " token=",
+      "/a?code=1",
+      "/a#?code=1",
+      "foo",
+      "xfoo",
+      "x foo",
+      "aab",
+      "a\nb",
+      "abc123",
+      "end",
+      "x\nend",
+      "{",
+      "x{",
+    ];
+    const optimized = normalizePatterns(patterns, "ignoreUrls");
+    for (let i = 0; i < patterns.length; i++) {
+      expect(optimized[i]!.source).not.toBe(patterns[i]!.source);
+      for (const value of values) {
+        expect(optimized[i]!.test(value), `${patterns[i]} on ${JSON.stringify(value)}`).toBe(patterns[i]!.test(value));
+      }
+    }
+  });
+});
+
+describe("matchesAny with global and sticky patterns", () => {
+  it("matches a repeated value on every call", () => {
+    const patterns = [/callback/g];
+    for (let i = 0; i < 4; i++) {
+      expect(testsWithoutCache(patterns, "/callback")).toBe(true);
+    }
+  });
+
+  it("matches a sticky pattern from the start of every value", () => {
+    const patterns = [/\/callback/y];
+    expect(testsWithoutCache(patterns, "/callback")).toBe(true);
+    expect(testsWithoutCache(patterns, "/callback")).toBe(true);
+    expect(testsWithoutCache(patterns, "/x/callback")).toBe(false);
+  });
+
+  // A fresh array per call, so every call tests the pattern instead of reading a cached result.
+  function testsWithoutCache(patterns: RegExp[], value: string) {
+    return matchesAny([...patterns], value);
+  }
+});
+
+describe("matchesAny result cache", () => {
+  it("tests a repeated value only once", () => {
+    const pattern = /\/callback/;
+    const spy = vi.spyOn(pattern, "test");
+    const patterns = [pattern];
+
+    expect(matchesAny(patterns, "https://example.com/callback")).toBe(true);
+    expect(matchesAny(patterns, "https://example.com/callback")).toBe(true);
+    expect(matchesAny(patterns, "https://example.com/home")).toBe(false);
+    expect(matchesAny(patterns, "https://example.com/home")).toBe(false);
+
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps results per pattern list", () => {
+    expect(matchesAny([/a/], "a")).toBe(true);
+    expect(matchesAny([/b/], "a")).toBe(false);
+  });
+
+  it("keeps the most recently used values", () => {
+    const pattern = /page/;
+    const spy = vi.spyOn(pattern, "test");
+    const patterns = [pattern];
+
+    matchesAny(patterns, "page");
+    for (let i = 0; i < 20; i++) {
+      matchesAny(patterns, `request-${i}`);
+      matchesAny(patterns, "page");
+    }
+
+    expect(spy.mock.calls.filter(([value]) => value === "page")).toHaveLength(1);
+  });
+
+  it("does not cache a value whose test throws", () => {
+    const patterns = [{} as unknown as RegExp];
+    expect(() => matchesAny(patterns, "x")).toThrow();
+    expect(() => matchesAny(patterns, "x")).toThrow();
   });
 });

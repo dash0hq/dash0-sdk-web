@@ -265,13 +265,24 @@ describe("init", () => {
 
       expect(vars.propagators).toBe(propagators);
     });
+
+    it("removes a leading .* from regular expressions and keeps strings", async () => {
+      init({
+        ...baseOptions,
+        ignoreUrls: [/.*\/ingest\/.*/i, "/health"],
+        ignoreErrorMessages: [/.*ResizeObserver/],
+      });
+
+      expect(vars.ignoreUrls).toEqual([/\/ingest\/.*/i, "/health"]);
+      expect(vars.ignoreErrorMessages).toEqual([/ResizeObserver/]);
+    });
   });
 
   describe("propagator configuration", () => {
     it("should set propagators configuration when provided", async () => {
       const propagators: PropagatorConfig[] = [
-        { type: "traceparent" as const, match: [/.*\/api\/.*/] },
-        { type: "xray" as const, match: [/.*\.amazonaws\.com.*/] },
+        { type: "traceparent" as const, match: [/\/api\//] },
+        { type: "xray" as const, match: [/\.amazonaws\.com/] },
       ];
 
       init({
@@ -284,12 +295,12 @@ describe("init", () => {
 
     it("should warn when both propagators and legacy config are provided", async () => {
       const spyOnWarn = vi.spyOn(console, "warn");
-      const propagators: PropagatorConfig[] = [{ type: "traceparent" as const, match: [/.*\/api\/.*/] }];
+      const propagators: PropagatorConfig[] = [{ type: "traceparent" as const, match: [/\/api\//] }];
 
       init({
         ...baseOptions,
         propagators,
-        propagateTraceHeadersCorsURLs: [/.*\.example\.com.*/],
+        propagateTraceHeadersCorsURLs: [/\.example\.com/],
       });
 
       expect(spyOnWarn).toHaveBeenCalledWith(
@@ -300,7 +311,7 @@ describe("init", () => {
 
     it("should convert legacy config to new format with deprecation warning", async () => {
       const spyOnWarn = vi.spyOn(console, "warn");
-      const legacyConfig = [/.*\.example\.com.*/, /.*\.test\.com.*/];
+      const legacyConfig = [/\.example\.com/, /\.test\.com/];
 
       init({
         ...baseOptions,
@@ -353,11 +364,11 @@ describe("init", () => {
       const propagators: PropagatorConfig[] = [
         {
           type: "traceparent" as const,
-          match: [/.*\/api\/.*/],
+          match: [/\/api\//],
         },
         {
           type: "xray" as const,
-          match: [/.*\.amazonaws\.com.*/, /.*\.aws\.com.*/],
+          match: [/\.amazonaws\.com/, /\.aws\.com/],
         },
       ];
 
@@ -368,6 +379,24 @@ describe("init", () => {
 
       expect(vars.propagators).toEqual(propagators);
       expect(spyOnWarn).not.toHaveBeenCalled();
+    });
+
+    it("removes a leading .* from match patterns", async () => {
+      init({
+        ...baseOptions,
+        propagators: [{ type: "xray", match: [/.*\.amazonaws\.com.*/i] }],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "xray", match: [/\.amazonaws\.com.*/i] }]);
+    });
+
+    it("removes a leading .* from legacy propagateTraceHeadersCorsURLs", async () => {
+      init({
+        ...baseOptions,
+        propagateTraceHeadersCorsURLs: [/.*\.example\.com.*/],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "traceparent", match: [/\.example\.com.*/] }]);
     });
 
     it("should handle empty propagators array", async () => {

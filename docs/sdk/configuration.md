@@ -148,8 +148,8 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   Leading and trailing whitespace is removed from a string, and a string that is empty after that matches nothing.
   A regular expression matches the URL as `RegExp.test` does; use one to anchor, to ignore case or to match whitespace.
   Prefer strings where a substring is enough, as a string check stays fast on long URLs.
-  Do not wrap a regular expression in `.*`, such as `/.*\/callback.*/`. It matches the same URLs as `/\/callback/`, but
-  on a URL that does not match, its run time grows with the square of the URL length.
+  A regular expression does not need `.*` at its start or end: `/\/callback/` matches the same URLs as
+  `/.*\/callback.*/`.
 
   ```js
   ignoreUrls: [
