@@ -127,6 +127,9 @@ jobs:
     # means the job — and its matrix — is never evaluated at all when there's nothing to run.
     if: ${{ needs.build.outputs.lambdatest-capabilities != '[]' && needs.build.outputs.lambdatest-capabilities != '' }}
     runs-on: ubuntu-latest
+    # Successful runs take 10 minutes at the median and 34 at most, waiting for LambdaTest's session queue included.
+    # Without a limit, a hung session holds the job for GitHub's 6-hour default.
+    timeout-minutes: 60
     strategy:
       max-parallel: 1
       matrix:
@@ -165,6 +168,8 @@ jobs:
     # Same empty-matrix guard as test-e2e above.
     if: ${{ needs.build.outputs.browser-capabilities != '[]' && needs.build.outputs.browser-capabilities != '' }}
     runs-on: ubuntu-latest
+    # Successful runs take 4 to 5.5 minutes. Without a limit, a hung browser holds the job for GitHub's 6-hour default.
+    timeout-minutes: 15
     strategy:
       matrix:
         capability: ${{ fromJson(needs.build.outputs.browser-capabilities) }}
