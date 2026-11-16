@@ -16,7 +16,7 @@ export { startSessionRecording, stopSessionRecording } from "../api/session-reco
 // Additional utility types
 export type { AttributeValueType } from "../utils/otel";
 export type { AnyValue } from "../types/otlp";
-export type { PageViewMeta, PropagatorConfig, PropagatorType } from "../vars";
+export type { MatchPattern, PageViewMeta, PropagatorConfig, PropagatorType } from "../vars";
 export type { UrlAttributeScrubber, UrlAttributeRecord } from "../attributes/url";
 export type { StartViewOptions } from "../api/start-view";
 export type { SessionRecorder, SessionRecorderOptions, SessionRecordingSettings } from "../types/session-recording";

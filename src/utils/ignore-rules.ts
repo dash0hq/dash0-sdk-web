@@ -1,13 +1,45 @@
-import { vars } from "../vars";
+import { MatchPattern, vars } from "../vars";
+import { debug } from "./debug";
 
-export function matchesAny(regexp: RegExp[], s: string) {
-  for (let i = 0, len = regexp.length; i < len; i++) {
-    if (regexp[i]!.test(s)) {
+export function matchesAny(patterns: readonly MatchPattern[], s: string) {
+  for (let i = 0, len = patterns.length; i < len; i++) {
+    const pattern = patterns[i]!;
+    if (typeof pattern === "string" ? s.includes(pattern) : pattern.test(s)) {
       return true;
     }
   }
 
   return false;
+}
+
+/**
+ * Prepares configured patterns for `matchesAny`: strings are trimmed, and strings that are empty after that are
+ * dropped. An empty string would match every value, which an unset variable in e.g. `IGNORE_URLS.split(",")` gives by
+ * accident.
+ */
+export function normalizePatterns(patterns: MatchPattern[], option: string): MatchPattern[] {
+  // Plain JavaScript configurations can pass a single value without the brackets. Looping over the characters of a
+  // string like "/health" would match "/" against every value, so a single value is used as a one-item array.
+  const single = patterns as unknown;
+  if (typeof single === "string" || single instanceof RegExp) {
+    debug(`'${option}' should be an array. Using the single value as a one-item array.`);
+    patterns = [single];
+  }
+  // Configurations from plain JavaScript can hold anything. They must not break init.
+  if (!Array.isArray(patterns)) {
+    return patterns;
+  }
+  const result: MatchPattern[] = [];
+  for (const pattern of patterns) {
+    if (typeof pattern !== "string") {
+      result.push(pattern);
+    } else if (pattern.trim()) {
+      result.push(pattern.trim());
+    } else {
+      debug(`Ignoring an empty string in '${option}'. Use a regular expression to match whitespace.`);
+    }
+  }
+  return result;
 }
 
 const DATA_URL_PREFIX = "data:";
