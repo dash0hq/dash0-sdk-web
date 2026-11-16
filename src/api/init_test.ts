@@ -216,11 +216,73 @@ describe("init", () => {
     });
   });
 
+  describe("match patterns", () => {
+    it("trims strings and drops empty ones in ignoreUrls and ignoreErrorMessages", async () => {
+      init({
+        ...baseOptions,
+        ignoreUrls: [" /callback ", "", /\/admin\//],
+        ignoreErrorMessages: ["  ", "ResizeObserver loop "],
+      });
+
+      expect(vars.ignoreUrls).toEqual(["/callback", /\/admin\//]);
+      expect(vars.ignoreErrorMessages).toEqual(["ResizeObserver loop"]);
+    });
+
+    it("trims strings and drops empty ones in propagator match lists", async () => {
+      init({
+        ...baseOptions,
+        propagators: [{ type: "xray", match: [" https://api.example.com/ ", "", /\.amazonaws\.com/] }],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "xray", match: ["https://api.example.com/", /\.amazonaws\.com/] }]);
+    });
+
+    it("trims strings and drops empty ones in legacy propagateTraceHeadersCorsURLs", async () => {
+      init({
+        ...baseOptions,
+        propagateTraceHeadersCorsURLs: ["https://api.example.com/ ", " "],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "traceparent", match: ["https://api.example.com/"] }]);
+    });
+
+    it("uses a single string as a one-item array, so it does not match every url", async () => {
+      init({
+        ...baseOptions,
+        ignoreUrls: "/health" as unknown as string[],
+        ignoreErrorMessages: "ResizeObserver loop" as unknown as string[],
+        propagators: [{ type: "traceparent", match: "https://api.example.com/" as unknown as string[] }],
+      });
+
+      expect(vars.ignoreUrls).toEqual(["/health"]);
+      expect(vars.ignoreErrorMessages).toEqual(["ResizeObserver loop"]);
+      expect(vars.propagators).toEqual([{ type: "traceparent", match: ["https://api.example.com/"] }]);
+    });
+
+    it("does not break init on propagators that are not an array", async () => {
+      const propagators = {} as unknown as PropagatorConfig[];
+      init({ ...baseOptions, propagators });
+
+      expect(vars.propagators).toBe(propagators);
+    });
+
+    it("removes a leading .* from regular expressions and keeps strings", async () => {
+      init({
+        ...baseOptions,
+        ignoreUrls: [/.*\/ingest\/.*/i, "/health"],
+        ignoreErrorMessages: [/.*ResizeObserver/],
+      });
+
+      expect(vars.ignoreUrls).toEqual([/\/ingest\/.*/i, "/health"]);
+      expect(vars.ignoreErrorMessages).toEqual([/ResizeObserver/]);
+    });
+  });
+
   describe("propagator configuration", () => {
     it("should set propagators configuration when provided", async () => {
       const propagators: PropagatorConfig[] = [
-        { type: "traceparent" as const, match: [/.*\/api\/.*/] },
-        { type: "xray" as const, match: [/.*\.amazonaws\.com.*/] },
+        { type: "traceparent" as const, match: [/\/api\//] },
+        { type: "xray" as const, match: [/\.amazonaws\.com/] },
       ];
 
       init({
@@ -233,12 +295,12 @@ describe("init", () => {
 
     it("should warn when both propagators and legacy config are provided", async () => {
       const spyOnWarn = vi.spyOn(console, "warn");
-      const propagators: PropagatorConfig[] = [{ type: "traceparent" as const, match: [/.*\/api\/.*/] }];
+      const propagators: PropagatorConfig[] = [{ type: "traceparent" as const, match: [/\/api\//] }];
 
       init({
         ...baseOptions,
         propagators,
-        propagateTraceHeadersCorsURLs: [/.*\.example\.com.*/],
+        propagateTraceHeadersCorsURLs: [/\.example\.com/],
       });
 
       expect(spyOnWarn).toHaveBeenCalledWith(
@@ -249,7 +311,7 @@ describe("init", () => {
 
     it("should convert legacy config to new format with deprecation warning", async () => {
       const spyOnWarn = vi.spyOn(console, "warn");
-      const legacyConfig = [/.*\.example\.com.*/, /.*\.test\.com.*/];
+      const legacyConfig = [/\.example\.com/, /\.test\.com/];
 
       init({
         ...baseOptions,
@@ -302,11 +364,11 @@ describe("init", () => {
       const propagators: PropagatorConfig[] = [
         {
           type: "traceparent" as const,
-          match: [/.*\/api\/.*/],
+          match: [/\/api\//],
         },
         {
           type: "xray" as const,
-          match: [/.*\.amazonaws\.com.*/, /.*\.aws\.com.*/],
+          match: [/\.amazonaws\.com/, /\.aws\.com/],
         },
       ];
 
@@ -317,6 +379,24 @@ describe("init", () => {
 
       expect(vars.propagators).toEqual(propagators);
       expect(spyOnWarn).not.toHaveBeenCalled();
+    });
+
+    it("removes a leading .* from match patterns", async () => {
+      init({
+        ...baseOptions,
+        propagators: [{ type: "xray", match: [/.*\.amazonaws\.com.*/i] }],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "xray", match: [/\.amazonaws\.com.*/i] }]);
+    });
+
+    it("removes a leading .* from legacy propagateTraceHeadersCorsURLs", async () => {
+      init({
+        ...baseOptions,
+        propagateTraceHeadersCorsURLs: [/.*\.example\.com.*/],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "traceparent", match: [/\.example\.com.*/] }]);
     });
 
     it("should handle empty propagators array", async () => {
