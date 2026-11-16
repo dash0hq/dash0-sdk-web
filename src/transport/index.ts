@@ -1,5 +1,5 @@
 import { newBatcher } from "./batcher";
-import { send, SendOptions } from "./fetch";
+import { isTransmitting, send, SendOptions } from "./fetch";
 import { vars } from "../vars";
 import { debug, error, createRateLimiter } from "../utils";
 import { ExportLogsServiceRequest, ExportTraceServiceRequest, LogRecord, Span } from "../types/otlp";
@@ -63,6 +63,24 @@ export function sendLog(log: LogRecord): void {
 
   if (isRateLimited()) {
     debug("Transport rate limit. Will not send item.", log);
+    return;
+  }
+
+  logBatcher.send(log);
+}
+
+/**
+ * Queues a captured console message. Console messages bypass the budget shared by spans and logs, so a chatty page
+ * cannot starve errors and requests of it. The console instrumentation enforces its own budget before formatting.
+ */
+export function sendConsoleLog(log: LogRecord): void {
+  if (!vars.isSessionSampled) return;
+
+  // Page code that wraps `fetch` may log on every request, also on the SDK's. Sending such a message on its own would
+  // cause the next request and the next message, forever on an otherwise idle page. It is held until the next
+  // transmission, or until the batcher's hold delay ends.
+  if (isTransmitting()) {
+    logBatcher.enqueue(log);
     return;
   }
 

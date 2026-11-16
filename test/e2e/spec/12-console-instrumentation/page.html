@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>console-instrumentation test</title>
+
+    <script>
+      (function (d, a, s, h, z, e, r, o) {
+        d[a] ||
+          ((z = d[a] =
+            function () {
+              h.push(arguments);
+            }),
+          (z._t = new Date()),
+          (z._v = 1),
+          (h = z._q = []));
+      })(window, "dash0");
+      dash0("init", {
+        serviceName: "dash0.com",
+        serviceVersion: "1.2.3",
+        environment: "prod",
+        endpoint: {
+          url: `http://${window.location.hostname}:8011?cors=true`,
+          authToken: "auth_abc123",
+          dataset: "production",
+        },
+        consoleLogs: {
+          levels: ["log", "warn", "error"],
+          ignoreMessages: [/ignore me/],
+        },
+      });
+
+      function onLog() {
+        console.log("cart updated:", { items: 3 });
+        console.info("info is not captured");
+        console.log("please ignore me");
+      }
+
+      function onError() {
+        console.error("checkout failed:", new TypeError("price is undefined"));
+      }
+    </script>
+    <script defer crossorigin="anonymous" src="/dist/dash0.iife.js"></script>
+  </head>
+  <body>
+    <button onclick="onLog()">Log</button>
+    <button onclick="onError()">Error</button>
+  </body>
+</html>

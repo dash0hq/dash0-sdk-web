@@ -51,6 +51,10 @@ vi.mock("../instrumentations/profiling", () => ({
   startProfiling: vi.fn(),
 }));
 
+vi.mock("../instrumentations/console", () => ({
+  startConsoleInstrumentation: vi.fn(),
+}));
+
 // Mock the utils module to control loc.hostname
 vi.mock("../utils", async () => {
   const actual = await vi.importActual("../utils");
@@ -68,6 +72,7 @@ import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { armSessionRecording } from "../instrumentations/session-recording";
 import { startRageClickInstrumentation } from "../instrumentations/frustration/rage-click";
 import { startProfiling } from "../instrumentations/profiling";
+import { startConsoleInstrumentation } from "../instrumentations/console";
 
 describe("init", () => {
   const baseOptions: InitOptions = {
@@ -106,6 +111,16 @@ describe("init", () => {
       expect(vars.sessionRecording.chunkMaxMillis).toBe(1000);
     });
 
+    it("replaces the default console levels and keeps the other console defaults", () => {
+      init({
+        ...baseOptions,
+        consoleLogs: { levels: ["log", "error"] },
+      });
+
+      expect(vars.consoleLogs.levels).toEqual(["log", "error"]);
+      expect(vars.consoleLogs.maxMessageLength).toBe(4096);
+    });
+
     it("still lets an explicit false override a nested default", () => {
       init({
         ...baseOptions,
@@ -131,6 +146,7 @@ describe("init", () => {
       expect(startErrorInstrumentation).toHaveBeenCalled();
       expect(instrumentFetch).toHaveBeenCalled();
       expect(instrumentXhr).toHaveBeenCalled();
+      expect(startConsoleInstrumentation).toHaveBeenCalled();
     });
 
     it("should not enable profiling when enabledInstrumentations is undefined", async () => {
@@ -151,6 +167,7 @@ describe("init", () => {
       "@dash0/session-recording",
       "@dash0/frustration-signals",
       "@dash0/profiling",
+      "@dash0/console",
     ];
     const instrumentationMocks: Record<InstrumentationName, () => void> = {
       "@dash0/navigation": startNavigationInstrumentation,
@@ -161,6 +178,7 @@ describe("init", () => {
       "@dash0/session-recording": armSessionRecording,
       "@dash0/frustration-signals": startRageClickInstrumentation,
       "@dash0/profiling": startProfiling,
+      "@dash0/console": startConsoleInstrumentation,
     };
 
     instrumentations.forEach((instrumentation) => {

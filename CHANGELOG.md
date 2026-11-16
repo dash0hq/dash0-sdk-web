@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.34.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.33.0...0.34.0) (2026-11-16)
+
+### Features
+
+- **console:** send console messages to Dash0 as browser.console events ([#144](https://github.com/dash0hq/dash0-sdk-web/issues/144)) ([ea5edb4](https://github.com/dash0hq/dash0-sdk-web/commit/ea5edb42795e28c8472b25c4e14724a89eb150c7))
+
 ## [0.33.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.32.0...0.33.0) (2026-11-12)
 
 ### Features
