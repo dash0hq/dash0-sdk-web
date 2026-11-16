@@ -1,6 +1,7 @@
 import { AttributeValueType } from "../utils/otel";
 import { AnyValue } from "./otlp";
 import { Endpoint, Vars, PropagatorConfig } from "../vars";
+import { ConsoleLogSettings } from "./console";
 
 export type InstrumentationName =
   | "@dash0/navigation"
@@ -10,7 +11,8 @@ export type InstrumentationName =
   | "@dash0/xhr"
   | "@dash0/session-recording"
   | "@dash0/frustration-signals"
-  | "@dash0/profiling";
+  | "@dash0/profiling"
+  | "@dash0/console";
 
 /**
  * VCS (version control) context describing the build the SDK is running
@@ -139,6 +141,11 @@ export type InitOptions = {
    * Each propagator defines which header type to send for matching URLs.
    */
   propagators?: PropagatorConfig[];
+
+  /**
+   * Which console messages the `@dash0/console` instrumentation sends.
+   */
+  consoleLogs?: ConsoleLogSettings;
 } & Partial<
   Pick<
     Vars,

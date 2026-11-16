@@ -11,6 +11,17 @@ export type LogLevel = keyof typeof logLevels;
 
 let activeLogLevel: number = logLevels.warn;
 
+let internalLoggingDepth = 0;
+
+/**
+ * True while the SDK writes one of its own messages to the console. The console instrumentation must not capture
+ * these: the SDK reports failed transmissions through this logger, so capturing them would feed every failure back
+ * into the transport.
+ */
+export function isLoggingInternally(): boolean {
+  return internalLoggingDepth > 0;
+}
+
 /**
  * Changes the logging verbosity of Dash0's web SDK. By default, only warnings and errors are logged.
  */
@@ -31,7 +42,12 @@ function createLogger(logLevel: LogLevel): Logger {
 
     return function () {
       if (numericLogLevel >= activeLogLevel) {
-        console[logLevel].apply(console, arguments as any);
+        internalLoggingDepth++;
+        try {
+          console[logLevel].apply(console, arguments as any);
+        } finally {
+          internalLoggingDepth--;
+        }
       }
     };
   }

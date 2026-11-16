@@ -5,6 +5,7 @@ import { identity } from "./utils";
 import { SessionRecordingSettings } from "./types/session-recording";
 import { FrustrationSignalSettings } from "./types/frustration";
 import { ProfilingSettings } from "./types/profiling";
+import { ConsoleLogSettings } from "./types/console";
 
 export type PropagatorType = "traceparent" | "xray";
 
@@ -218,6 +219,11 @@ export type Vars = {
   profiling: ProfilingSettings;
 
   /**
+   * Which console messages the `@dash0/console` instrumentation sends.
+   */
+  consoleLogs: Required<ConsoleLogSettings>;
+
+  /**
    * Enables telemetry transport compression using gzip.
    * experimental - in rare cases causes Chrome to crash to use at your own risk.
    */
@@ -283,6 +289,11 @@ export const vars: Vars = {
     sampleRate: 10,
     sampleIntervalMs: 10,
     chunkDurationMs: 15000,
+  },
+  consoleLogs: {
+    levels: ["warn", "error"],
+    ignoreMessages: [],
+    maxMessageLength: 4096,
   },
   enableTransportCompression: false,
   isSessionSampled: true,

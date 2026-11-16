@@ -38,6 +38,7 @@ import { applyVcsResourceAttributes } from "./vcs";
 import { armSessionRecording } from "../instrumentations/session-recording";
 import { startRageClickInstrumentation } from "../instrumentations/frustration/rage-click";
 import { startProfiling } from "../instrumentations/profiling";
+import { startConsoleInstrumentation } from "../instrumentations/console";
 
 declare const process: { env?: BrowserBuildEnv } | undefined;
 
@@ -97,6 +98,7 @@ export function init(opts: InitOptions) {
         "sessionRecording",
         "frustrationSignals",
         "profiling",
+        "consoleLogs",
         "enableTransportCompression",
       ])
     )
@@ -144,6 +146,9 @@ export function init(opts: InitOptions) {
   }
   if (isInstrumentationEnabled("@dash0/profiling", opts)) {
     startProfiling();
+  }
+  if (isInstrumentationEnabled("@dash0/console", opts)) {
+    startConsoleInstrumentation();
   }
 
   hasBeenInitialised = true;
@@ -310,7 +315,9 @@ function isInstrumentationEnabled(name: InstrumentationName, opts: InitOptions):
   return instrumentations.includes(name);
 }
 
-function merge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
+type NestedPartial<T> = { [K in keyof T]?: T[K] extends Record<string, unknown> ? Partial<T[K]> : T[K] };
+
+function merge<T extends Record<string, unknown>>(target: T, source: NestedPartial<T>): T {
   const result = { ...target };
   for (const key of Object.keys(source) as Array<keyof T>) {
     const srcVal = source[key];
