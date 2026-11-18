@@ -46,6 +46,28 @@ describe("fetch test", () => {
     expect(fetchHeaders.get("traceparent")).not.toBeNull();
   });
 
+  it("should inject traceparent header for cross-origin requests whose url contains a match string", async () => {
+    vars.propagators = [{ type: "traceparent", match: ["http://foo.bar/"] }];
+    instrumentFetch();
+    // eslint-disable-next-line no-restricted-globals
+    await fetch("http://foo.bar/foo");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const fetchHeaders = (fetchMock.mock.calls[0]!.at(1)! as { headers: Headers }).headers;
+    expect(fetchHeaders.get("traceparent")).not.toBeNull();
+  });
+
+  it("should not inject headers for cross-origin requests whose url does not contain a match string", async () => {
+    vars.propagators = [{ type: "traceparent", match: ["http://foo.bar/"] }];
+    instrumentFetch();
+    // eslint-disable-next-line no-restricted-globals
+    await fetch("http://foo.bar.example.com/foo");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const init = fetchMock.mock.calls[0]!.at(1) as { headers?: Headers } | undefined;
+    expect(init?.headers?.get("traceparent") ?? null).toBeNull();
+  });
+
   it("should inject xray header for cross-origin requests", async () => {
     vars.propagators = [
       {
@@ -196,11 +218,30 @@ describe("fetch test", () => {
     expect(fetchHeaders.get("X-Amzn-Trace-Id")).toBeNull();
   });
 
+  it("sends the span and trace header of a request from an ignored page, without the page url", async () => {
+    vi.stubGlobal("location", { origin: "http://localhost:3000", href: "http://localhost:3000/callback?code=secret" });
+    vars.ignoreUrls = [/\/callback/];
+    vars.propagators = [{ type: "traceparent", match: [] }];
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    instrumentFetch();
+
+    // eslint-disable-next-line no-restricted-globals
+    await expect(fetch("http://localhost:3000/oauth/token")).rejects.toThrow();
+
+    const fetchHeaders = (fetchMock.mock.calls[0]!.at(1)! as { headers: Headers }).headers;
+    expect(fetchHeaders.get("traceparent")).not.toBeNull();
+    const sendSpanMock = sendSpan as unknown as ReturnType<typeof vi.fn>;
+    expect(sendSpanMock).toHaveBeenCalledTimes(1);
+    const span = sendSpanMock.mock.calls[0]![0] as Span;
+    expect(span.attributes.some((a) => a.key.startsWith("page.url."))).toBe(false);
+    expect(span.attributes).toContainEqual(expect.objectContaining({ key: "url.full" }));
+  });
+
   // SDK-internal errors (e.g. config typos) must degrade to an uninstrumented fetch call, never
   // to a rejected promise the page did not cause.
 
-  it("falls back to an uninstrumented fetch when ignoreUrls contains plain strings instead of RegExps", async () => {
-    vars.ignoreUrls = ["/health"] as unknown as RegExp[];
+  it("falls back to an uninstrumented fetch when ignoreUrls contains a value that is neither a string nor a RegExp", async () => {
+    vars.ignoreUrls = [{}] as unknown as RegExp[];
     instrumentFetch();
 
     // eslint-disable-next-line no-restricted-globals
@@ -212,8 +253,8 @@ describe("fetch test", () => {
     expect(sendSpan).not.toHaveBeenCalled();
   });
 
-  it("falls back to an uninstrumented fetch when a propagator match contains plain strings instead of RegExps", async () => {
-    vars.propagators = [{ type: "traceparent", match: ["http://foo.bar/"] as unknown as RegExp[] }];
+  it("falls back to an uninstrumented fetch when a propagator match contains a value that is neither a string nor a RegExp", async () => {
+    vars.propagators = [{ type: "traceparent", match: [{}] as unknown as RegExp[] }];
     instrumentFetch();
 
     // eslint-disable-next-line no-restricted-globals
@@ -341,6 +382,51 @@ describe("fetch test", () => {
       expect(hasAttribute(span, "error.type", { stringValue: "TypeError" })).toBe(true);
     });
 
+    it("scrubs the request url in the exception message and span status", async () => {
+      const originalScrubber = vars.urlAttributeScrubber;
+      vars.urlAttributeScrubber = (attrs) => ({ ...attrs, "url.full": `[${attrs["url.full"].split("?")[0]}]` });
+      fetchMock.mockImplementation(() =>
+        Promise.reject(new TypeError("Failed to load 'http://localhost:3000/api/test?token=secret'"))
+      );
+
+      try {
+        instrumentFetch();
+        // eslint-disable-next-line no-restricted-globals
+        await expect(fetch("http://localhost:3000/api/test?token=secret")).rejects.toBeInstanceOf(TypeError);
+      } finally {
+        vars.urlAttributeScrubber = originalScrubber;
+      }
+
+      const span = lastSpan();
+      expect(span.status?.message).toBe("Failed to load '[http://localhost:3000/api/test]'");
+      const exception = span.events.find((e) => e.name === "exception")!;
+      expect(exception.attributes).toContainEqual({
+        key: "exception.message",
+        value: { stringValue: "Failed to load '[http://localhost:3000/api/test]'" },
+      });
+    });
+
+    it("keeps the custom text of a rejection without a message as span status", async () => {
+      fetchMock.mockImplementation(() => Promise.reject({ toString: () => "net down" }));
+
+      instrumentFetch();
+      // eslint-disable-next-line no-restricted-globals
+      await expect(fetch("http://localhost:3000/api/test")).rejects.toBeDefined();
+
+      expect(lastSpan().status?.message).toBe("net down");
+    });
+
+    it("passes on rejections with a non-string message unchanged", async () => {
+      const rejection = { name: "CustomError", message: 42 };
+      fetchMock.mockImplementation(() => Promise.reject(rejection));
+
+      instrumentFetch();
+      // eslint-disable-next-line no-restricted-globals
+      await expect(fetch("http://localhost:3000/api/test")).rejects.toBe(rejection);
+
+      expect(sendSpanMock).toHaveBeenCalledTimes(1);
+    });
+
     it("sets error.type from the exception name when reading the response body fails", async () => {
       const body = new ReadableStream({
         start(streamController) {
@@ -367,6 +453,48 @@ describe("fetch test", () => {
       expect(hasAttribute(span, "dash0.web.request.cancelled", { boolValue: true })).toBe(false);
       expect(span.events.some((e) => e.name === "exception")).toBe(true);
       expect(hasAttribute(span, "error.type", { stringValue: "TypeError" })).toBe(true);
+    });
+  });
+
+  describe("response identity", () => {
+    // A constructed Response cannot be redirected, so the read-only getters are shadowed to stand in
+    // for what the browser hands back after following a redirect.
+    const redirectedResponse = () => {
+      const response = new Response('{"hello":"world"}', {
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+      });
+      Object.defineProperties(response, {
+        url: { value: "http://localhost:3000/landing" },
+        redirected: { value: true },
+        type: { value: "basic" },
+      });
+      return response;
+    };
+
+    it("preserves url, redirected and type on the wrapped response", async () => {
+      fetchMock.mockImplementation(() => Promise.resolve(redirectedResponse()));
+      instrumentFetch();
+      // eslint-disable-next-line no-restricted-globals
+      const response = await fetch("http://localhost:3000/api/submit", { method: "POST", body: "a=1" });
+
+      expect(response.url).toBe("http://localhost:3000/landing");
+      expect(response.redirected).toBe(true);
+      expect(response.type).toBe("basic");
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({ hello: "world" });
+    });
+
+    it("preserves url, redirected and type on a clone of the wrapped response", async () => {
+      fetchMock.mockImplementation(() => Promise.resolve(redirectedResponse()));
+      instrumentFetch();
+      // eslint-disable-next-line no-restricted-globals
+      const clone = (await fetch("http://localhost:3000/api/submit")).clone();
+
+      expect(clone.url).toBe("http://localhost:3000/landing");
+      expect(clone.redirected).toBe(true);
+      expect(clone.type).toBe("basic");
+      await expect(clone.json()).resolves.toEqual({ hello: "world" });
     });
   });
 });

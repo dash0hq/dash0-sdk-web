@@ -16,10 +16,11 @@ import {
  * the recorder is kept and recording starts as soon as the SDK is initialized. The recording is transmitted
  * as `browser.session_recording` log records that share one trace ID, which embeds the session ID.
  *
- * Only the visible document is recorded. A tab that is hidden — switched away from, or opened in the
- * background — stops recording and flushes what it buffered, and starts a fresh recording when it is shown
- * again. So a session is a sequence of recordings that do not overlap in time, which is what lets the whole
- * session, tab switches included, be replayed as one.
+ * Only the visible document is transmitted. A tab opened in the background starts recording when it is first
+ * shown. A tab that is hidden flushes what it buffered and holds back whatever changes while it is hidden. When
+ * it is shown again, it continues the same recording if no other tab of the session was shown in the meantime,
+ * and otherwise starts a fresh recording with a new full snapshot. So a session is a sequence of recordings that
+ * do not overlap in time, which is what lets the whole session, tab switches included, be replayed as one.
  */
 export function startSessionRecording(recorder?: SessionRecorder): void {
   // The script entrypoint forwards dash0("startSessionRecording", ...) arguments without type checking,

@@ -1,5 +1,114 @@
 # Changelog
 
+## [0.35.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.35.0...0.35.1) (2026-11-16)
+
+### Performance Improvements
+
+- ignore and propagator patterns stay fast on long URLs ([#149](https://github.com/dash0hq/dash0-sdk-web/issues/149)) ([49e97ab](https://github.com/dash0hq/dash0-sdk-web/commit/49e97abef4b768cb8961b94a3a5799ba6e52d9bd))
+
+## [0.35.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.34.0...0.35.0) (2026-11-16)
+
+### Features
+
+- ignoreUrls, ignoreErrorMessages and propagator match lists accept strings that match anywhere in the value ([#148](https://github.com/dash0hq/dash0-sdk-web/issues/148)) ([7c83ff3](https://github.com/dash0hq/dash0-sdk-web/commit/7c83ff30685807bdf624ffb01c49550060e04a55))
+
+## [0.34.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.33.0...0.34.0) (2026-11-16)
+
+### Features
+
+- **console:** send console messages to Dash0 as browser.console events ([#144](https://github.com/dash0hq/dash0-sdk-web/issues/144)) ([ea5edb4](https://github.com/dash0hq/dash0-sdk-web/commit/ea5edb42795e28c8472b25c4e14724a89eb150c7))
+
+## [0.33.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.32.0...0.33.0) (2026-11-12)
+
+### Features
+
+- **session:** apps on one origin keep separate sessions with storageNamespace ([#141](https://github.com/dash0hq/dash0-sdk-web/issues/141)) ([811ffea](https://github.com/dash0hq/dash0-sdk-web/commit/811ffeab42bb6a2385591d944b8535a5bfb926c1))
+
+## [0.32.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.31.1...0.32.0) (2026-11-11)
+
+### Features
+
+- **errors:** drop cross-origin "Script error." and browser extension errors by default ([#145](https://github.com/dash0hq/dash0-sdk-web/issues/145)) ([5f390f3](https://github.com/dash0hq/dash0-sdk-web/commit/5f390f3aaf651bd3a88654cca1a496d015f84d49))
+
+## [0.31.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.31.0...0.31.1) (2026-11-10)
+
+### Bug Fixes
+
+- **http:** preserve completed XHR responses when aborted ([#143](https://github.com/dash0hq/dash0-sdk-web/issues/143)) ([f59ccf6](https://github.com/dash0hq/dash0-sdk-web/commit/f59ccf6d08ab426ce6035c163bf92b934ad10b23))
+
+## [0.31.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.30.1...0.31.0) (2026-11-10)
+
+### Features
+
+- **tracing:** fetch and XHR spans can join a test runner's trace, instead of starting their own ([#133](https://github.com/dash0hq/dash0-sdk-web/issues/133)) ([67f7b90](https://github.com/dash0hq/dash0-sdk-web/commit/67f7b90e6361c4a92a68a89ac1946e84774aa83b))
+
+## [0.30.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.30.0...0.30.1) (2026-11-09)
+
+### Bug Fixes
+
+- **session-recording:** start the recorder once the document is parsed ([#139](https://github.com/dash0hq/dash0-sdk-web/issues/139)) ([8d1829a](https://github.com/dash0hq/dash0-sdk-web/commit/8d1829a0e0f00b34394d54b76fadb5c1eea64526))
+
+## [0.30.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.29.0...0.30.0) (2026-11-04)
+
+### Features
+
+- **profiling:** profile frames carry their script url, so the backend can find their source map ([#140](https://github.com/dash0hq/dash0-sdk-web/issues/140)) ([327172e](https://github.com/dash0hq/dash0-sdk-web/commit/327172e225446f0aae2f48c31617a3a2c85a5aeb))
+
+## [0.29.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.3...0.29.0) (2026-11-03)
+
+### Features
+
+- **profiling:** send JS Self-Profiling samples as OTLP profiles ([#137](https://github.com/dash0hq/dash0-sdk-web/issues/137)) ([d8f4d67](https://github.com/dash0hq/dash0-sdk-web/commit/d8f4d6703160add801e9f09747d4ca89a3aa17e4))
+
+## [0.28.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.2...0.28.3) (2026-10-26)
+
+### Bug Fixes
+
+- **ignore-urls:** do not send the url of an ignored page with other signals ([9e929a0](https://github.com/dash0hq/dash0-sdk-web/commit/9e929a08983c880771283534e2cbd77d49dc1d21))
+
+## [0.28.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.1...0.28.2) (2026-10-23)
+
+### Bug Fixes
+
+- **errors:** send errors and rage clicks captured just before a page unload ([11a422e](https://github.com/dash0hq/dash0-sdk-web/commit/11a422ed6e79ada8c9e9116d2d7e67ba2f6fbde1))
+
+## [0.28.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.28.0...0.28.1) (2026-10-23)
+
+### Bug Fixes
+
+- **http:** keep url, redirected and type on instrumented fetch responses ([ec3e975](https://github.com/dash0hq/dash0-sdk-web/commit/ec3e97582e061bc056bfbf14223bbf67e5d66aa0))
+
+## [0.28.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.4...0.28.0) (2026-10-22)
+
+### Features
+
+- **session-recording:** resume the same run when a tab is shown again ([#128](https://github.com/dash0hq/dash0-sdk-web/issues/128)) ([581ad9d](https://github.com/dash0hq/dash0-sdk-web/commit/581ad9d805b25f757da1188ab6e8d2bdd8e22d57)), closes [#115](https://github.com/dash0hq/dash0-sdk-web/issues/115) [#115](https://github.com/dash0hq/dash0-sdk-web/issues/115)
+
+## [0.27.4](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.3...0.27.4) (2026-10-22)
+
+### Bug Fixes
+
+- stop listener wrapping and session recording from leaking ([#126](https://github.com/dash0hq/dash0-sdk-web/issues/126)) ([629ce8f](https://github.com/dash0hq/dash0-sdk-web/commit/629ce8f396fee06562b1d583946b0db9aa9db762))
+
+## [0.27.3](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.2...0.27.3) (2026-10-22)
+
+### Bug Fixes
+
+- **ignore-urls:** check rage clicks against the page they happened on ([d796af8](https://github.com/dash0hq/dash0-sdk-web/commit/d796af82735c35271e0531286407d16b46bea19d))
+- **ignore-urls:** skip page-level signals while the page url is ignored ([0bbbbb6](https://github.com/dash0hq/dash0-sdk-web/commit/0bbbbb67aaab59f6c44cbaaf70aa3d0392ba67ee))
+
+## [0.27.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.1...0.27.2) (2026-10-21)
+
+### Bug Fixes
+
+- **http:** record exception events for string exceptions ([2bc8767](https://github.com/dash0hq/dash0-sdk-web/commit/2bc876762996984337f7687dd89e20c20833e049))
+
+## [0.27.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.27.0...0.27.1) (2026-10-21)
+
+### Bug Fixes
+
+- **url-scrubbing:** apply urlAttributeScrubber to urls reported as plain text ([6c8d55d](https://github.com/dash0hq/dash0-sdk-web/commit/6c8d55d27335251c540f5d1c9d8862baf93f54cc))
+
 ## [0.27.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.26.0...0.27.0) (2026-09-24)
 
 ### Features

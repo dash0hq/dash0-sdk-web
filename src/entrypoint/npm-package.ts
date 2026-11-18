@@ -10,15 +10,18 @@ export * from "../api/log-level";
 export { terminateSession } from "../api/session";
 export { reportError } from "../api/report-error";
 export { startView } from "../api/start-view";
+export { setParentTraceContext } from "../api/parent-trace-context";
 export { startSessionRecording, stopSessionRecording } from "../api/session-recording";
 
 // Additional utility types
 export type { AttributeValueType } from "../utils/otel";
 export type { AnyValue } from "../types/otlp";
-export type { PageViewMeta, PropagatorConfig, PropagatorType } from "../vars";
+export type { MatchPattern, PageViewMeta, PropagatorConfig, PropagatorType } from "../vars";
 export type { UrlAttributeScrubber, UrlAttributeRecord } from "../attributes/url";
 export type { StartViewOptions } from "../api/start-view";
 export type { SessionRecorder, SessionRecorderOptions, SessionRecordingSettings } from "../types/session-recording";
+export type { ProfilingSettings } from "../types/profiling";
+export type { ConsoleLogSettings, ConsoleMethod } from "../types/console";
 
 export function init(opts: InitOptions): void {
   debug(`${INIT_MESSAGE} (via package)`);

@@ -1,5 +1,5 @@
 import { vars } from "../vars";
-import { noop, warn, fetch, debug } from "../utils";
+import { noop, warn, fetch, debug, now } from "../utils";
 
 // The bacon api enforces a size limit across all pending beacon requests per fetch group
 // There also seems to be a limit of 15 pending requests at the same time
@@ -9,10 +9,36 @@ const BEACON_BODY_SIZE_LIMIT = 60000;
 let pendingBodySize = 0;
 let pendingRequestCount = 0;
 
+// Page code that wraps `fetch` can keep working on the SDK's request after its promise settled, for example reading
+// the response body and logging it. This covers that work.
+const SETTLE_GRACE_MILLIS = 2000;
+
+let transmissionsInFlight = 0;
+let lastSettledAt = -Infinity;
+
+/**
+ * True while a request to an endpoint is on its way, and for a short time after it settled. Page code that wraps
+ * `fetch` runs during that time, also for the SDK's requests.
+ */
+export function isTransmitting(): boolean {
+  return transmissionsInFlight > 0 || now() - lastSettledAt < SETTLE_GRACE_MILLIS;
+}
+
+async function whileTransmitting<T>(request: () => Promise<T>): Promise<T> {
+  transmissionsInFlight++;
+  try {
+    return await request();
+  } finally {
+    transmissionsInFlight--;
+    lastSettledAt = now();
+  }
+}
+
 export type SendOptions = {
   /**
-   * Compress this request regardless of `vars.enableTransportCompression`. Used for payloads that are
-   * large and highly compressible, such as session recording chunks.
+   * Overrides `vars.enableTransportCompression` for this request. `true` is used for payloads that are large and
+   * highly compressible, such as session recording chunks. `false` is used while the document may be unloaded:
+   * compression is asynchronous, and the page may be gone before `fetch()` is ever called.
    */
   compress?: boolean;
 };
@@ -20,13 +46,13 @@ export type SendOptions = {
 export async function send(path: string, body: unknown, opts?: SendOptions): Promise<void> {
   debug("Transmitting telemetry to endpoints", body);
 
-  const jsonString = JSON.stringify(body);
+  const jsonString = typeof body === "string" ? body : JSON.stringify(body);
   let requestBody: ArrayBuffer | string = jsonString;
   let byteLength = new Blob([jsonString]).size;
   let isCompressed = false;
 
   // Try to compress if supported
-  if (typeof CompressionStream !== "undefined" && (vars.enableTransportCompression || opts?.compress)) {
+  if (typeof CompressionStream !== "undefined" && (opts?.compress ?? vars.enableTransportCompression)) {
     requestBody = await compressWithGzip(jsonString);
     byteLength = requestBody.byteLength;
     isCompressed = true;
@@ -60,14 +86,17 @@ export async function send(path: string, body: unknown, opts?: SendOptions): Pro
 
         pendingBodySize += byteLength;
         pendingRequestCount++;
-        const response = await fetch(url, {
-          method: "POST",
-          headers,
-          body: requestBody,
+        const request = fetch;
+        const response = await whileTransmitting(() =>
+          request(url, {
+            method: "POST",
+            headers,
+            body: requestBody,
 
-          // The keepalive flag is related to the window.sendBeacon API. This in turn has size limitations.
-          keepalive: pendingBodySize <= BEACON_BODY_SIZE_LIMIT && pendingRequestCount <= 15,
-        });
+            // The keepalive flag is related to the window.sendBeacon API. This in turn has size limitations.
+            keepalive: pendingBodySize <= BEACON_BODY_SIZE_LIMIT && pendingRequestCount <= 15,
+          })
+        );
 
         // read the body so the connection can be closed
         response.text().catch(noop);

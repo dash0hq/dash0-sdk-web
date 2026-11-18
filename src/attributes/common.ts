@@ -14,6 +14,7 @@ import { addAttribute } from "../utils/otel";
 import { addUrlAttributes } from "./url";
 import { tabId } from "../utils/tab-id";
 import { KeyValue } from "../types/otlp";
+import { isUrlIgnored } from "../utils/ignore-rules";
 
 type Options = {
   /**
@@ -31,7 +32,13 @@ export function addCommonAttributes(attributes: KeyValue[], options?: Options): 
     attributes.push(vars.signalAttributes[i]!);
   }
 
-  addUrlAttributes(attributes, options?.url ?? win?.location.href ?? NO_VALUE_FALLBACK, PAGE_URL_ATTR_PREFIX);
+  if (options?.url) {
+    addUrlAttributes(attributes, options.url, PAGE_URL_ATTR_PREFIX);
+  } else if (!win || !isUrlIgnored(win.location.href)) {
+    // Requests and custom events from an ignored page are still sent. They must not leak the page url, which can
+    // contain e.g. OAuth parameters.
+    addUrlAttributes(attributes, win?.location.href ?? NO_VALUE_FALLBACK, PAGE_URL_ATTR_PREFIX);
+  }
 
   if (sessionId) {
     addAttribute(attributes, SESSION_ID, sessionId);

@@ -16,6 +16,7 @@ import {
   VCS_REPOSITORY_URL_FULL,
 } from "../semantic-conventions";
 import { init as initFun } from "./init";
+import { localStorage, sessionStorage } from "../utils/globals";
 
 // Mock all the instrumentation modules
 vi.mock("../instrumentations/web-vitals", () => ({
@@ -50,6 +51,14 @@ vi.mock("../instrumentations/resources", () => ({
   startResourceTimingInstrumentation: vi.fn(),
 }));
 
+vi.mock("../instrumentations/profiling", () => ({
+  startProfiling: vi.fn(),
+}));
+
+vi.mock("../instrumentations/console", () => ({
+  startConsoleInstrumentation: vi.fn(),
+}));
+
 // Mock the utils module to control loc.hostname
 vi.mock("../utils", async () => {
   const actual = await vi.importActual("../utils");
@@ -67,6 +76,8 @@ import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { armSessionRecording } from "../instrumentations/session-recording";
 import { startRageClickInstrumentation } from "../instrumentations/frustration/rage-click";
 import { startResourceTimingInstrumentation } from "../instrumentations/resources";
+import { startProfiling } from "../instrumentations/profiling";
+import { startConsoleInstrumentation } from "../instrumentations/console";
 
 describe("init", () => {
   const baseOptions: InitOptions = {
@@ -105,6 +116,16 @@ describe("init", () => {
       expect(vars.sessionRecording.chunkMaxMillis).toBe(1000);
     });
 
+    it("replaces the default console levels and keeps the other console defaults", () => {
+      init({
+        ...baseOptions,
+        consoleLogs: { levels: ["log", "error"] },
+      });
+
+      expect(vars.consoleLogs.levels).toEqual(["log", "error"]);
+      expect(vars.consoleLogs.maxMessageLength).toBe(4096);
+    });
+
     it("still lets an explicit false override a nested default", () => {
       init({
         ...baseOptions,
@@ -130,6 +151,16 @@ describe("init", () => {
       expect(startErrorInstrumentation).toHaveBeenCalled();
       expect(instrumentFetch).toHaveBeenCalled();
       expect(instrumentXhr).toHaveBeenCalled();
+      expect(startConsoleInstrumentation).toHaveBeenCalled();
+    });
+
+    it("should not enable profiling when enabledInstrumentations is undefined", async () => {
+      init({
+        ...baseOptions,
+        enabledInstrumentations: undefined,
+      });
+
+      expect(startProfiling).not.toHaveBeenCalled();
     });
 
     it("should not enable resource timing when enabledInstrumentations is undefined", async () => {
@@ -152,6 +183,8 @@ describe("init", () => {
       "@dash0/session-recording",
       "@dash0/frustration-signals",
       "@dash0/resource-timing",
+      "@dash0/profiling",
+      "@dash0/console",
     ];
     const instrumentationMocks: Record<InstrumentationName, () => void> = {
       "@dash0/navigation": startNavigationInstrumentation,
@@ -162,6 +195,8 @@ describe("init", () => {
       "@dash0/session-recording": armSessionRecording,
       "@dash0/frustration-signals": startRageClickInstrumentation,
       "@dash0/resource-timing": startResourceTimingInstrumentation,
+      "@dash0/profiling": startProfiling,
+      "@dash0/console": startConsoleInstrumentation,
     };
 
     instrumentations.forEach((instrumentation) => {
@@ -199,11 +234,73 @@ describe("init", () => {
     });
   });
 
+  describe("match patterns", () => {
+    it("trims strings and drops empty ones in ignoreUrls and ignoreErrorMessages", async () => {
+      init({
+        ...baseOptions,
+        ignoreUrls: [" /callback ", "", /\/admin\//],
+        ignoreErrorMessages: ["  ", "ResizeObserver loop "],
+      });
+
+      expect(vars.ignoreUrls).toEqual(["/callback", /\/admin\//]);
+      expect(vars.ignoreErrorMessages).toEqual(["ResizeObserver loop"]);
+    });
+
+    it("trims strings and drops empty ones in propagator match lists", async () => {
+      init({
+        ...baseOptions,
+        propagators: [{ type: "xray", match: [" https://api.example.com/ ", "", /\.amazonaws\.com/] }],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "xray", match: ["https://api.example.com/", /\.amazonaws\.com/] }]);
+    });
+
+    it("trims strings and drops empty ones in legacy propagateTraceHeadersCorsURLs", async () => {
+      init({
+        ...baseOptions,
+        propagateTraceHeadersCorsURLs: ["https://api.example.com/ ", " "],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "traceparent", match: ["https://api.example.com/"] }]);
+    });
+
+    it("uses a single string as a one-item array, so it does not match every url", async () => {
+      init({
+        ...baseOptions,
+        ignoreUrls: "/health" as unknown as string[],
+        ignoreErrorMessages: "ResizeObserver loop" as unknown as string[],
+        propagators: [{ type: "traceparent", match: "https://api.example.com/" as unknown as string[] }],
+      });
+
+      expect(vars.ignoreUrls).toEqual(["/health"]);
+      expect(vars.ignoreErrorMessages).toEqual(["ResizeObserver loop"]);
+      expect(vars.propagators).toEqual([{ type: "traceparent", match: ["https://api.example.com/"] }]);
+    });
+
+    it("does not break init on propagators that are not an array", async () => {
+      const propagators = {} as unknown as PropagatorConfig[];
+      init({ ...baseOptions, propagators });
+
+      expect(vars.propagators).toBe(propagators);
+    });
+
+    it("removes a leading .* from regular expressions and keeps strings", async () => {
+      init({
+        ...baseOptions,
+        ignoreUrls: [/.*\/ingest\/.*/i, "/health"],
+        ignoreErrorMessages: [/.*ResizeObserver/],
+      });
+
+      expect(vars.ignoreUrls).toEqual([/\/ingest\/.*/i, "/health"]);
+      expect(vars.ignoreErrorMessages).toEqual([/ResizeObserver/]);
+    });
+  });
+
   describe("propagator configuration", () => {
     it("should set propagators configuration when provided", async () => {
       const propagators: PropagatorConfig[] = [
-        { type: "traceparent" as const, match: [/.*\/api\/.*/] },
-        { type: "xray" as const, match: [/.*\.amazonaws\.com.*/] },
+        { type: "traceparent" as const, match: [/\/api\//] },
+        { type: "xray" as const, match: [/\.amazonaws\.com/] },
       ];
 
       init({
@@ -216,12 +313,12 @@ describe("init", () => {
 
     it("should warn when both propagators and legacy config are provided", async () => {
       const spyOnWarn = vi.spyOn(console, "warn");
-      const propagators: PropagatorConfig[] = [{ type: "traceparent" as const, match: [/.*\/api\/.*/] }];
+      const propagators: PropagatorConfig[] = [{ type: "traceparent" as const, match: [/\/api\//] }];
 
       init({
         ...baseOptions,
         propagators,
-        propagateTraceHeadersCorsURLs: [/.*\.example\.com.*/],
+        propagateTraceHeadersCorsURLs: [/\.example\.com/],
       });
 
       expect(spyOnWarn).toHaveBeenCalledWith(
@@ -232,7 +329,7 @@ describe("init", () => {
 
     it("should convert legacy config to new format with deprecation warning", async () => {
       const spyOnWarn = vi.spyOn(console, "warn");
-      const legacyConfig = [/.*\.example\.com.*/, /.*\.test\.com.*/];
+      const legacyConfig = [/\.example\.com/, /\.test\.com/];
 
       init({
         ...baseOptions,
@@ -285,11 +382,11 @@ describe("init", () => {
       const propagators: PropagatorConfig[] = [
         {
           type: "traceparent" as const,
-          match: [/.*\/api\/.*/],
+          match: [/\/api\//],
         },
         {
           type: "xray" as const,
-          match: [/.*\.amazonaws\.com.*/, /.*\.aws\.com.*/],
+          match: [/\.amazonaws\.com/, /\.aws\.com/],
         },
       ];
 
@@ -300,6 +397,24 @@ describe("init", () => {
 
       expect(vars.propagators).toEqual(propagators);
       expect(spyOnWarn).not.toHaveBeenCalled();
+    });
+
+    it("removes a leading .* from match patterns", async () => {
+      init({
+        ...baseOptions,
+        propagators: [{ type: "xray", match: [/.*\.amazonaws\.com.*/i] }],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "xray", match: [/\.amazonaws\.com.*/i] }]);
+    });
+
+    it("removes a leading .* from legacy propagateTraceHeadersCorsURLs", async () => {
+      init({
+        ...baseOptions,
+        propagateTraceHeadersCorsURLs: [/.*\.example\.com.*/],
+      });
+
+      expect(vars.propagators).toEqual([{ type: "traceparent", match: [/\.example\.com.*/] }]);
     });
 
     it("should handle empty propagators array", async () => {
@@ -331,6 +446,71 @@ describe("init", () => {
 
       const namespaceAttr = vars.resource.attributes.find((attr) => attr.key === SERVICE_NAMESPACE);
       expect(namespaceAttr).toBeUndefined();
+    });
+  });
+
+  describe("storageNamespace", () => {
+    beforeEach(() => {
+      localStorage!.clear();
+      sessionStorage!.clear();
+    });
+
+    afterEach(() => {
+      localStorage!.clear();
+      sessionStorage!.clear();
+    });
+
+    async function initFresh(options: InitOptions): Promise<string | null> {
+      vi.resetModules();
+      const { init: freshInit } = await import("./init");
+      freshInit(options);
+      return (await import("./session")).sessionId;
+    }
+
+    it("stores the session and tab under unprefixed keys by default", () => {
+      init(baseOptions);
+
+      expect(localStorage!.getItem("d0_session")).not.toBeNull();
+      expect(sessionStorage!.getItem("d0_tab")).not.toBeNull();
+    });
+
+    it("prefixes the session and tab keys with the namespace", () => {
+      init({ ...baseOptions, storageNamespace: "docs" });
+
+      expect(localStorage!.getItem("docs:d0_session")).not.toBeNull();
+      expect(sessionStorage!.getItem("docs:d0_tab")).not.toBeNull();
+      expect(localStorage!.getItem("d0_session")).toBeNull();
+      expect(sessionStorage!.getItem("d0_tab")).toBeNull();
+    });
+
+    it("ignores a whitespace-only namespace", () => {
+      init({ ...baseOptions, storageNamespace: "  " });
+
+      expect(vars.storageNamespace).toBe("");
+      expect(localStorage!.getItem("d0_session")).not.toBeNull();
+    });
+
+    it("trims the namespace", () => {
+      init({ ...baseOptions, storageNamespace: " docs " });
+
+      expect(localStorage!.getItem("docs:d0_session")).not.toBeNull();
+    });
+
+    it("gives apps on one origin separate sessions when their namespaces differ", async () => {
+      const docsSession = await initFresh({ ...baseOptions, serviceName: "docs", storageNamespace: "docs" });
+      const shopSession = await initFresh({ ...baseOptions, serviceName: "shop", storageNamespace: "shop" });
+      const docsSessionAgain = await initFresh({ ...baseOptions, serviceName: "docs", storageNamespace: "docs" });
+
+      expect(docsSession).not.toBeNull();
+      expect(shopSession).not.toBe(docsSession);
+      expect(docsSessionAgain).toBe(docsSession);
+    });
+
+    it("shares a session between apps without a namespace", async () => {
+      const first = await initFresh({ ...baseOptions, serviceName: "docs" });
+      const second = await initFresh({ ...baseOptions, serviceName: "shop" });
+
+      expect(second).toBe(first);
     });
   });
 

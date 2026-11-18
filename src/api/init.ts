@@ -28,6 +28,7 @@ import { sessionId, trackSessions } from "./session";
 import { startWebVitalsInstrumentation } from "../instrumentations/web-vitals";
 import { startErrorInstrumentation } from "../instrumentations/errors";
 import { addAttribute } from "../utils/otel";
+import { normalizePatterns } from "../utils/ignore-rules";
 import { instrumentFetch } from "../instrumentations/http/fetch";
 import { instrumentXhr } from "../instrumentations/http/xhr";
 import { startNavigationInstrumentation } from "../instrumentations/navigation";
@@ -38,10 +39,15 @@ import { applyVcsResourceAttributes } from "./vcs";
 import { armSessionRecording } from "../instrumentations/session-recording";
 import { startRageClickInstrumentation } from "../instrumentations/frustration/rage-click";
 import { startResourceTimingInstrumentation } from "../instrumentations/resources";
+import { startProfiling } from "../instrumentations/profiling";
+import { startConsoleInstrumentation } from "../instrumentations/console";
 
 declare const process: { env?: BrowserBuildEnv } | undefined;
 
 let hasBeenInitialised: boolean = false;
+
+// Not part of the default set: these run only when listed in `enabledInstrumentations`.
+const OPT_IN_INSTRUMENTATIONS: InstrumentationName[] = ["@dash0/profiling", "@dash0/resource-timing"];
 
 export function init(opts: InitOptions) {
   if (hasBeenInitialised) {
@@ -81,6 +87,8 @@ export function init(opts: InitOptions) {
       pick(opts, [
         "ignoreUrls",
         "ignoreErrorMessages",
+        "ignoreCrossOriginScriptErrors",
+        "ignoreBrowserExtensionErrors",
         "wrapEventHandlers",
         "wrapTimers",
         "propagateTraceHeadersCorsURLs",
@@ -92,15 +100,20 @@ export function init(opts: InitOptions) {
         "sessionRecording",
         "frustrationSignals",
         "resourceTiming",
+        "profiling",
+        "consoleLogs",
         "enableTransportCompression",
       ])
     )
   );
 
+  vars.ignoreUrls = normalizePatterns(vars.ignoreUrls, "ignoreUrls");
+  vars.ignoreErrorMessages = normalizePatterns(vars.ignoreErrorMessages, "ignoreErrorMessages");
   initializePropagators(opts);
 
   initializeResourceAttributes(opts);
   initializeSignalAttributes(opts);
+  vars.storageNamespace = opts.storageNamespace?.trim() ?? "";
   initializeTabId();
   trackSessions(opts.sessionInactivityTimeoutMillis, opts.sessionTerminationTimeoutMillis);
 
@@ -136,9 +149,14 @@ export function init(opts: InitOptions) {
   if (isInstrumentationEnabled("@dash0/frustration-signals", opts)) {
     startRageClickInstrumentation();
   }
-  // Opt-in, so deliberately not routed through isInstrumentationEnabled.
-  if (opts.enabledInstrumentations?.includes("@dash0/resource-timing")) {
+  if (isInstrumentationEnabled("@dash0/resource-timing", opts)) {
     startResourceTimingInstrumentation();
+  }
+  if (isInstrumentationEnabled("@dash0/profiling", opts)) {
+    startProfiling();
+  }
+  if (isInstrumentationEnabled("@dash0/console", opts)) {
+    startConsoleInstrumentation();
   }
 
   hasBeenInitialised = true;
@@ -272,7 +290,12 @@ function initializePropagators(opts: InitOptions) {
         "Both 'propagators' and deprecated 'propagateTraceHeadersCorsURLs' were provided. Using 'propagators' configuration. Please migrate to the new 'propagators' config."
       );
     }
-    vars.propagators = opts.propagators;
+    // Configurations from plain JavaScript can hold anything. They must not break init.
+    vars.propagators = Array.isArray(opts.propagators)
+      ? opts.propagators.map(
+          (propagator) => propagator && { ...propagator, match: normalizePatterns(propagator.match, "propagators") }
+        )
+      : opts.propagators;
   }
   // Handle legacy configuration
   else if (opts.propagateTraceHeadersCorsURLs && opts.propagateTraceHeadersCorsURLs.length > 0) {
@@ -281,7 +304,7 @@ function initializePropagators(opts: InitOptions) {
     vars.propagators = [
       {
         type: "traceparent",
-        match: [...opts.propagateTraceHeadersCorsURLs],
+        match: normalizePatterns(opts.propagateTraceHeadersCorsURLs, "propagateTraceHeadersCorsURLs"),
       },
     ];
   }
@@ -300,12 +323,14 @@ function initializePropagators(opts: InitOptions) {
 function isInstrumentationEnabled(name: InstrumentationName, opts: InitOptions): boolean {
   const instrumentations = opts.enabledInstrumentations;
 
-  if (!instrumentations) return true;
+  if (!instrumentations) return !OPT_IN_INSTRUMENTATIONS.includes(name);
 
   return instrumentations.includes(name);
 }
 
-function merge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
+type NestedPartial<T> = { [K in keyof T]?: T[K] extends Record<string, unknown> ? Partial<T[K]> : T[K] };
+
+function merge<T extends Record<string, unknown>>(target: T, source: NestedPartial<T>): T {
   const result = { ...target };
   for (const key of Object.keys(source) as Array<keyof T>) {
     const srcVal = source[key];

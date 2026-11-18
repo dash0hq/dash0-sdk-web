@@ -23,12 +23,12 @@ Configure trace context propagators for different URL patterns:
 init({
   propagators: [
     // W3C traceparent headers for internal APIs
-    { type: "traceparent", match: [/.*\/api\/internal.*/] },
-    // AWS X-Ray headers for AWS services
-    { type: "xray", match: [/.*\.amazonaws\.com.*/] },
+    { type: "traceparent", match: ["https://api.example.com/internal/"] },
+    // AWS X-Ray headers for AWS services, on any subdomain
+    { type: "xray", match: [/^https:\/\/[^/]+\.amazonaws\.com\//] },
     // Send both headers to specific endpoints
-    { type: "traceparent", match: [/.*\/api\/special.*/] },
-    { type: "xray", match: [/.*\/api\/special.*/] },
+    { type: "traceparent", match: ["https://api.example.com/special/"] },
+    { type: "xray", match: ["https://api.example.com/special/"] },
   ],
 });
 ```
@@ -44,7 +44,14 @@ application.
 
 **Match patterns for cross-origin requests:**
 
-- `RegExp`: Regular expressions to match against full URLs
+- `string`: matches any full URL that contains it, case-sensitive. Leading and trailing whitespace is removed, and an
+  empty string matches nothing.
+- `RegExp`: matches the full URL as `RegExp.test` does.
+
+A string also matches where you might not expect it: `"api.example.com"` matches
+`https://api.example.com.evil.net/` and `https://other.com/?next=api.example.com`, and these requests then get trace
+headers too. Include the scheme and the slash after the host, as in `"https://api.example.com/"`, or use an anchored
+regular expression. Browsers lowercase the host in request URLs, so write hosts in lowercase.
 
 **Multiple Headers**: When multiple propagators match the same URL, both headers will be added to the request. This is
 useful when you need to support multiple tracing systems simultaneously.
@@ -62,7 +69,7 @@ useful when you need to support multiple tracing systems simultaneously.
 
 The legacy `propagateTraceHeadersCorsURLs` configuration is still supported but deprecated:
 
-- Include a regex matching the endpoint you want to enable in
+- Include a string or regular expression matching the endpoint you want to enable in
   the [propagateTraceHeadersCorsURLs](#http-request-instrumentation) configuration option.
 
 ### Configuration auto-detection
@@ -127,8 +134,9 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   optional: `true`<br>
   default: `undefined`<br>
   List of instrumentations to enable. Defaults to `undefined`, enabling all instrumentations except
-  `@dash0/resource-timing`.
-  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals' | '@dash0/resource-timing'`
+  `@dash0/profiling` and `@dash0/resource-timing`.
+  Supported values: `'@dash0/navigation' | '@dash0/web-vitals' | '@dash0/error' | '@dash0/fetch' | '@dash0/xhr' | '@dash0/session-recording' | '@dash0/frustration-signals' | '@dash0/profiling' | '@dash0/console' | '@dash0/resource-timing'`
+  `'@dash0/profiling'` and `'@dash0/resource-timing'` are not part of the default: they only run when listed here.
   Please note that some dash0 features might not work as expected if instrumentations are disabled.
 
   Providing a list turns off every instrumentation left out of it. To enable `@dash0/resource-timing`, list it along
@@ -137,11 +145,33 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
 
 - **Ignore URLs**<br>
   key: `ignoreUrls`<br>
-  type: `Array<RegExp>`<br>
+  type: `Array<string | RegExp>`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  An array of URL regular expression for which no data should be collected.
-  These regular expressions are evaluated against the document, XMLHttpRequest, fetch and resource URLs.
+  URLs for which no data should be collected.
+  A string matches any URL that contains it, anywhere and case-sensitive.
+  Leading and trailing whitespace is removed from a string, and a string that is empty after that matches nothing.
+  A regular expression matches the URL as `RegExp.test` does; use one to anchor, to ignore case or to match whitespace.
+  Prefer strings where a substring is enough, as a string check stays fast on long URLs.
+  A regular expression does not need `.*` at its start or end: `/\/callback/` matches the same URLs as
+  `/.*\/callback.*/`.
+
+  ```js
+  ignoreUrls: [
+    "/callback", // contains "/callback"
+    /^https:\/\/[^/]+\/admin\//, // admin pages, on any host
+  ];
+  ```
+
+  These patterns are evaluated against the document, XMLHttpRequest and fetch URLs, and against static asset URLs
+  when `@dash0/resource-timing` is enabled.
+  While the document URL matches, no page views, navigation timings, web vitals, errors or rage clicks are sent, and no session recording is started.
+  Page views from `startView` and custom events from `sendEvent` are always sent.
+  XMLHttpRequest and fetch requests made from an ignored page are still recorded, unless the request URL matches too.
+  Signals sent from an ignored page have no `page.url.*` attributes, unless `startView` sets the URL explicitly.
+  A page view has no `referrer` when the referrer matches.
+  In error messages and stack traces, the page URL, the referrer, the URL the document was loaded with and the request URL are replaced with `REDACTED` when they match.
+  Other URLs in these texts are not changed.
 
 - ** URL Attribute Scrubber**<br>
   key: `urlAttributeScrubber`<br>
@@ -154,6 +184,10 @@ The SDK enumerates the env vars above under every framework prefix the bundler e
   and `url.*` attribute namespaces.
   Sensitive parts of the url attributes should be replaced with `REDACTED`,
   avoid partially or fully dropping attributes to preserve telemetry quality.
+  The scrubbed `url.full` value is also used where a url is reported as plain text: the navigation timing `name`, the
+  page view `referrer`, HTTP request failure messages, and the page url inside error messages and stack traces. If the
+  scrubber changes or removes any other url attribute but returns `url.full` unchanged, `url.full` is rebuilt from the
+  scrubbed parts. Session replay data, including the urls it contains, does not pass this scrubber.
   Note: basic auth credentials in urls are automatically redacted before this is invoked.
 
 #### Website Details and Attributes
@@ -303,15 +337,58 @@ The SDK auto-detects VCS (version control) context from the build environment an
   default: `21600000` (6 hours)<br>
   The default session termination timeout. Session termination is the maximum allowed time to pass since session start
   before the session is considered to be expired.
+- **Storage Namespace**<br>
+  key: `storageNamespace`<br>
+  type: `string`<br>
+  optional: `true`<br>
+  default: `undefined`<br>
+  Prefixes every key the SDK writes to `localStorage` and `sessionStorage`. For example, `storageNamespace: "docs"`
+  stores the session under `docs:d0_session` instead of `d0_session`.
+
+  Browser storage is shared by all pages of an origin, so two apps on different paths of one origin (for example
+  `example.com/docs` and `example.com/shop`) share a session and a session recording by default, even when their
+  `serviceName` values differ. Give each of them its own namespace to keep their sessions apart.
+
+  Setting or changing the namespace starts a new session for visitors who already have one.
 
 #### Error tracking
 
 - **Ignore Error Messages**<br>
   key: `ignoreErrorMessages`<br>
-  type: `Array<RegExp>`<br>
+  type: `Array<string | RegExp>`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  An array of error message regular expressions for which no data should be collected.
+  Error messages for which no data should be collected.
+  A string matches any message that contains it, anywhere and case-sensitive.
+  Leading and trailing whitespace is removed from a string, and a string that is empty after that matches nothing.
+  A regular expression matches the message as `RegExp.test` does; use one to anchor, to ignore case or to match
+  whitespace.
+
+  ```js
+  ignoreErrorMessages: [
+    "ResizeObserver loop", // contains "ResizeObserver loop"
+    /^Network request failed$/i, // exactly this message, in any case
+  ];
+  ```
+
+- **Ignore Cross-Origin Script Errors**<br>
+  key: `ignoreCrossOriginScriptErrors`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `true`<br>
+  Whether to drop the "Script error." that browsers report in place of an error thrown by a script they treat as
+  cross-origin. It carries no message, stack or location. To see these errors in full instead, load the script with
+  the `crossorigin` attribute and serve it with an `Access-Control-Allow-Origin` header.
+- **Ignore Browser Extension Errors**<br>
+  key: `ignoreBrowserExtensionErrors`<br>
+  type: `boolean`<br>
+  optional: `true`<br>
+  default: `true`<br>
+  Whether to drop errors whose stack frames with a URL all belong to a browser extension: `chrome-extension://`,
+  `moz-extension://`, `ms-browser-extension://`, `safari-extension://`, `safari-web-extension://` or Safari's
+  `webkit-masked-url://`. An error with any frame from the page is still reported, including a page error that
+  passes through an extension's wrapper of `fetch` or `setTimeout`. Errors without a stack are always reported.
+  Dropped errors are logged at the `debug` log level.
 - **Wrap Event Handlers**<br>
   key: `wrapEventHandlers`<br>
   type: `boolean`<br>
@@ -330,6 +407,66 @@ The SDK auto-detects VCS (version control) context from the build environment an
   This results in improved uncaught error tracking for cross-origin errors,
   but may have adverse effects on website performance and stability.
 
+#### Console logs
+
+The `@dash0/console` instrumentation sends messages logged through the browser console as `browser.console` events.
+It is on by default and captures `console.warn` and `console.error`; list more methods in `consoleLogs.levels` to
+capture all console output. The original console method is always called, so the browser's developer tools show every
+message as before.
+
+To turn console capture off, set `consoleLogs.levels` to an empty array. No console method is then wrapped:
+
+```js
+init({
+  // ...
+  consoleLogs: { levels: [] },
+});
+```
+
+Leaving `@dash0/console` out of `enabledInstrumentations` turns it off as well, but that list replaces the default set,
+so it must name every other instrumentation you want to keep.
+
+Each event carries the formatted message as its body, a severity derived from the method (`debug` and `trace` are
+`DEBUG`, `log` and `info` are `INFO`, `warn` is `WARN`, `error` is `ERROR`), the method in `dash0.web.console.method`,
+and the same session, tab and page attributes as other events. When an argument is an `Error`, its type, message and
+stack trace are added as `exception.*` attributes. `console.trace` adds the caller's stack trace as `code.stacktrace`.
+Capturing a console error does not report a `browser.error`.
+
+Messages are formatted the way browsers print them: `%s`, `%d`, `%i`, `%f`, `%o`, `%O` and `%c` are applied, and
+objects are serialized as JSON, up to three levels deep and 50 entries per object or array. Like in developer tools,
+getters are not run: they are written as `[Getter]`. URLs are scrubbed like in error messages (see
+`urlAttributeScrubber` and `ignoreUrls`), and nothing is sent while the page URL matches `ignoreUrls`. Console messages
+have their own rate limit of 50 messages per 10 seconds and 1000 per 10 minutes, so a page that logs heavily cannot
+crowd out errors and requests. Messages dropped by `consoleLogs.ignoreMessages` do not count against it. Messages the
+Dash0 SDK logs itself are never captured. A message logged while the SDK is sending data, for example by a `fetch`
+wrapper that logs every request, does not cause a request of its own: it is sent together with the next data.
+
+Console messages may contain personal data or secrets that the application logs. Use `consoleLogs.ignoreMessages` to
+drop such messages, or keep the captured levels to the ones your application uses for actionable problems.
+
+Only messages logged after `init` are captured. Because the console methods are wrapped, browser developer tools
+show the Dash0 SDK as the source location of console messages.
+
+- **Captured Levels**<br>
+  key: `consoleLogs.levels`<br>
+  type: `Array<'debug' | 'log' | 'info' | 'warn' | 'error' | 'trace'>`<br>
+  optional: `true`<br>
+  default: `['warn', 'error']`<br>
+  The console methods whose messages are sent. Replaces the default rather than adding to it. An empty array turns
+  console capture off.
+- **Ignore Messages**<br>
+  key: `consoleLogs.ignoreMessages`<br>
+  type: `Array<RegExp>`<br>
+  optional: `true`<br>
+  default: `[]`<br>
+  Messages matching any of these regular expressions are not sent. Matched against the formatted message.
+- **Maximum Message Length**<br>
+  key: `consoleLogs.maxMessageLength`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `4096`<br>
+  The maximum length of a sent message, in characters. Longer messages are truncated.
+
 #### HTTP request instrumentation
 
 - **Propagators**<br>
@@ -343,20 +480,26 @@ The SDK auto-detects VCS (version control) context from the build environment an
   ```typescript
   type PropagatorConfig = {
     type: "traceparent" | "xray";
-    match: RegExp[];
+    match: Array<string | RegExp>;
   };
   ```
+
+  A string in `match` matches any cross-origin URL that contains it, case-sensitive. Leading and trailing whitespace is
+  removed, and an empty string matches nothing. A regular expression matches the URL as `RegExp.test` does.
+  Include the scheme and the slash after the host in a string: `"https://api.example.com/"` does not match
+  `https://api.example.com.evil.net/`, but `"api.example.com"` does, and that request then gets trace headers too.
 
   Example:
 
   ```js
   propagators: [
-    // Use RegExp for specific cross-origin URL patterns
-    { type: "traceparent", match: [/.*\/api\/internal.*/] },
-    { type: "xray", match: [/.*\.amazonaws\.com.*/] },
+    // A string matches URLs that contain it
+    { type: "traceparent", match: ["https://api.example.com/internal/"] },
+    // A RegExp for patterns, here any amazonaws.com subdomain
+    { type: "xray", match: [/^https:\/\/[^/]+\.amazonaws\.com\//] },
     // Multiple propagators can match the same URL to send both headers
-    { type: "traceparent", match: [/.*\/api\/both.*/] },
-    { type: "xray", match: [/.*\/api\/both.*/] },
+    { type: "traceparent", match: ["https://api.example.com/both/"] },
+    { type: "xray", match: ["https://api.example.com/both/"] },
   ];
   ```
 
@@ -372,11 +515,11 @@ The SDK auto-detects VCS (version control) context from the build environment an
 
 - **Propagate Trace Header Cors URLs** ⚠️ **DEPRECATED**<br>
   key: `propagateTraceHeadersCorsURLs`<br>
-  type: `Array<RegExp>`<br>
+  type: `Array<string | RegExp>`<br>
   optional: `true`<br>
   default: `undefined`<br>
-  **DEPRECATED: Use `propagators` instead.** An array of URL regular expressions for which trace context headers should
-  be sent across origins by http client instrumentations.
+  **DEPRECATED: Use `propagators` instead.** URLs for which trace context headers should be sent across origins by http
+  client instrumentations. Strings and regular expressions match as in `propagators`.
   NOTE: Any cross origin endpoints allowed via this option need to include `traceparent` in the
   `Access-Control-Allow-Headers`
   response header. Misconfiguration will cause request failures!
@@ -454,14 +597,14 @@ for `fetch`, while an `XMLHttpRequest` timeout is an error — this asymmetry is
   - "HASH" changes to the urls hash / fragment
   - "SEARCH" changes to the urls search / query parameters
 
-#### Session recording
+#### Session replay
 
-Session recording captures a replay of the user's session with [rrweb](https://github.com/rrweb-io/rrweb) and
+Session replay captures a replay of the user's session with [rrweb](https://github.com/rrweb-io/rrweb) and
 transmits it as `browser.session_recording` log records. Every record of one recording shares a trace ID that
 embeds the session ID, so a replay can be opened from any span or log of that session.
 
 The recorder ships as a separate bundle, `@dash0/sdk-web/session-recording`, so websites that do not use session
-recording do not pay for it. See [Setup](./setup.md#session-recording) for how to load it. All options below live
+replay do not pay for it. See [Setup](./setup.md#session-replay) for how to load it. All options below live
 under the `sessionRecording` key of the `init` options.
 
 By default, the value of every visible input, textarea and select is replaced with asterisks before it leaves the
@@ -563,7 +706,7 @@ to drop hidden inputs). Set `maskTextSelector` to `"*"` to mask all text on the 
   How often the recorder takes a new full snapshot of the DOM, in milliseconds. A replay can start from any chunk
   that contains a full snapshot.
 
-Session recording can be disabled without removing the recorder bundle by leaving `@dash0/session-recording` out of
+Session replay can be disabled without removing the recorder bundle by leaving `@dash0/session-recording` out of
 `enabledInstrumentations`.
 
 #### Frustration signals
@@ -572,16 +715,16 @@ The `@dash0/frustration-signals` instrumentation watches user interaction for si
 detects rage clicks: a burst of clicks in the same place, which usually means a control did not respond the way the
 user expected.
 
-**Clicks are only observed while a session recording is running.** Detection starts and stops with the recording,
+**Clicks are only observed while session replay is recording.** Detection starts and stops with the recording,
 which itself follows document visibility, so a rage click always comes with the replay that shows it. This
 instrumentation therefore does nothing unless `@dash0/session-recording` is enabled and a recorder is registered —
-see [session recording](./setup.md). A burst that is still open when a recording ends is reported at that point.
+see [session replay](./setup.md#session-replay). A burst that is still open when a recording ends is reported at that point.
 
 Each detected burst is emitted as a `browser.rage_click` event once the burst ends, carrying the number of clicks,
 its duration, a CSS selector and the visible label of the clicked element, the click coordinates, and the
 `dash0.session_recording.id` of the recording it happened in, which lets Dash0 open the replay at that moment. The
 element label is omitted whenever it could carry user data — the element is masked or blocked by the session
-recording configuration (`sessionRecording.maskTextClass`, `maskTextSelector`, `blockClass`, `blockSelector`), or it
+replay configuration (`sessionRecording.maskTextClass`, `maskTextSelector`, `blockClass`, `blockSelector`), or it
 is a field the user types into. Only trusted primary-button clicks are considered, so clicks synthesized by scripts
 are ignored.
 
@@ -617,10 +760,10 @@ actually fetched them, with the network phases of each asset recorded as span ev
 `fetch` and `XMLHttpRequest` calls are never captured here. They have their own instrumentations, which see request
 and response detail that resource timing cannot.
 
-**This instrumentation is opt-in.** Unlike every other instrumentation, it is not enabled by an unset
+**This instrumentation is opt-in.** Like `@dash0/profiling`, it is not enabled by an unset
 `enabledInstrumentations`; it has to be listed explicitly. Remember that naming any instrumentation turns off every
-one you leave out, so list everything you want — including `@dash0/session-recording` and
-`@dash0/frustration-signals` if you use them:
+one you leave out, so list everything you want — including `@dash0/session-recording`,
+`@dash0/frustration-signals` and `@dash0/console` if you use them:
 
 ```js
 init({
@@ -634,6 +777,7 @@ init({
     "@dash0/xhr",
     "@dash0/session-recording",
     "@dash0/frustration-signals",
+    "@dash0/console",
     "@dash0/resource-timing",
   ],
 });
@@ -686,3 +830,66 @@ endpoints are never captured.
   timing buffer the SDK requests, so a page view reports every asset the browser recorded for it unless you lower
   this. The budget is reset by every page view, including the virtual ones a single-page app produces. Reaching the
   cap is reported through the SDK's debug log, so a truncated waterfall is not mistaken for a complete one.
+
+#### Profiling
+
+The `@dash0/profiling` instrumentation samples the JavaScript call stack with the
+[JS Self-Profiling API](https://wicg.github.io/js-self-profiling/) and sends the samples as OTLP profiles to
+`<endpoint>/v1development/profiles`. They appear in Dash0 under Telemetry > Profiling, with the same resource as
+the website's other telemetry. The API exists in Chromium-based browsers only. Other browsers send nothing.
+
+Profiling is off by default. It runs only when all of these hold:
+
+- `@dash0/profiling` is listed in `enabledInstrumentations`.
+- The session is sampled by `sessionSamplingRate`, and then by `profiling.sampleRate`.
+- The page is served with the `Document-Policy: js-profiling` response header.
+
+The profiler runs in chunks. Each chunk is sent when it ends, on every page view, when the tab is hidden, and when
+the page is unloaded, so one chunk covers one page. Profiling pauses while the tab is hidden. Each profile carries
+the same attributes as web events, such as `session.id` and `page.url.*` (after `urlAttributeScrubber`), and every
+frame carries `profile.frame.type=v8js`. Every frame from a script also carries the script url as `url.full`, after
+`urlAttributeScrubber`, so Dash0 can find the source map uploaded for that script.
+Samples taken while no JavaScript ran are counted in `dash0.profiling.idle_sample_count` and not sent.
+Chrome adds extra samples in bursts, for example during a page load. The SDK keeps at most one sample per half
+sampling interval and counts the rest in `dash0.profiling.burst_sample_count`.
+
+When the browser refuses to start the profiler, the SDK sends one `browser.profiling_unavailable` event per page
+load. Its body holds a `reason`:
+
+- `document_policy`: the page was served without `Document-Policy: js-profiling`.
+- `start_failed`: the profiler failed to start for another reason.
+
+The auth token needs the `ingest:profiles` permission. Without it, the request succeeds but Dash0 drops the
+profiles.
+
+Scripts from another origin only show up in profiles when they are loaded with CORS: add
+`crossorigin="anonymous"` to the `<script>` tag and serve the script with an `Access-Control-Allow-Origin` header.
+Without CORS the browser leaves their frames out of the samples.
+
+Function names, files, lines and columns are sent as the browser reports them. Dash0 maps minified frames back to
+your source code the same way it does for error stack traces: it downloads each script and the source map named in
+its `//# sourceMappingURL` comment. The source map has to be reachable from Dash0, either public or behind the
+credentials of a source map integration. Anonymous functions stay `(anonymous)`, with their original file and line.
+
+- **Sampling Rate**<br>
+  key: `profiling.sampleRate`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `10`<br>
+  The percentage of sessions that are profiled, between 0 and 100. The decision is deterministic per session ID
+  and uses the same hash as `sessionSamplingRate`, so profiled sessions are always a subset of the sessions for
+  which telemetry is transmitted. `sessionRecording.samplingRate` uses the same hash too, so while this rate is not
+  above it, every profiled session also has a session replay. Set it to `100` to profile every recorded session.
+- **Sample Interval**<br>
+  key: `profiling.sampleIntervalMs`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `10`<br>
+  The requested time between two samples, in milliseconds. Browsers may sample less often; the profile records the
+  interval the browser used.
+- **Chunk Duration**<br>
+  key: `profiling.chunkDurationMs`<br>
+  type: `number`<br>
+  optional: `true`<br>
+  default: `15000`<br>
+  How long one profile covers before it is sent and a new one starts.

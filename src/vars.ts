@@ -5,12 +5,25 @@ import { identity } from "./utils";
 import { SessionRecordingSettings } from "./types/session-recording";
 import { FrustrationSignalSettings } from "./types/frustration";
 import { ResourceTimingSettings } from "./types/resource-timing";
+import { ProfilingSettings } from "./types/profiling";
+import { ConsoleLogSettings } from "./types/console";
+
+/**
+ * A string matches any value that contains it, case-sensitive. Leading and trailing whitespace is removed from it at
+ * init, and a string that is empty after that matches nothing. A regular expression matches as `RegExp.test` does; use
+ * one to anchor, to ignore case or to match whitespace.
+ */
+export type MatchPattern = string | RegExp;
 
 export type PropagatorType = "traceparent" | "xray";
 
 export type PropagatorConfig = {
   type: PropagatorType;
-  match: RegExp[];
+  /**
+   * Cross-origin request URLs that get this propagator's header. A string matches any URL that contains it, so include
+   * the scheme and a trailing slash: `"https://api.example.com/"` does not match `https://api.example.com.evil.net/`.
+   */
+  match: MatchPattern[];
 };
 
 export type Endpoint = {
@@ -84,17 +97,46 @@ export type Vars = {
   signalAttributes: KeyValue[];
 
   /**
-   * An array of URL regular expression for which no data should be
-   * collected. These regular expressions are evaluated against
-   * the document, XMLHttpRequest, fetch and resource URLs.
+   * URLs for which no data should be collected. A string matches any URL
+   * that contains it (case-sensitive, trimmed), a regular expression matches
+   * as `RegExp.test` does. Prefer strings: they are fast for URLs of any
+   * length. These patterns are evaluated against the document,
+   * XMLHttpRequest and fetch URLs. While the document URL
+   * matches, no page views, navigation timings, web vitals, errors or
+   * rage clicks are sent, and no session recording is started.
+   * XMLHttpRequest and fetch requests made from an ignored page are still
+   * recorded, unless the request URL matches too. Signals from an ignored
+   * page have no page URL attributes. Matching referrers are not sent. In
+   * error messages and stack traces, the page, referrer, document and
+   * request URLs are redacted when they match. Other URLs are not changed.
    */
-  ignoreUrls: RegExp[];
+  ignoreUrls: MatchPattern[];
 
   /**
-   * An array of error message regular expressions for which no data
-   * should be collected.
+   * Error messages for which no data should be collected. A string matches
+   * any message that contains it (case-sensitive, trimmed), a regular
+   * expression matches as `RegExp.test` does.
    */
-  ignoreErrorMessages: RegExp[];
+  ignoreErrorMessages: MatchPattern[];
+
+  /**
+   * Whether to drop the "Script error." that browsers report in place of an error
+   * thrown by a script they treat as cross-origin. It carries no message, stack or
+   * location, so nothing in it can be acted on.
+   *
+   * @default true
+   */
+  ignoreCrossOriginScriptErrors: boolean;
+
+  /**
+   * Whether to drop errors whose stack frames with a URL all belong to a browser
+   * extension (chrome-extension://, moz-extension://, ms-browser-extension://,
+   * safari-extension://, safari-web-extension:// or Safari's webkit-masked-url://).
+   * An error with any frame from the page is still reported.
+   *
+   * @default true
+   */
+  ignoreBrowserExtensionErrors: boolean;
 
   /**
    * Whether we should automatically wrap DOM event handlers
@@ -129,7 +171,7 @@ export type Vars = {
    * for which trace context headers should be sent across origins by http client instrumentations.
    * @deprecated Use propagators instead
    */
-  propagateTraceHeadersCorsURLs: RegExp[];
+  propagateTraceHeadersCorsURLs: MatchPattern[];
 
   /**
    * How long to wait after an XMLHttpRequest or fetch request has finished
@@ -164,6 +206,9 @@ export type Vars = {
    * Sensitive parts of the url attributes should be replaced with `REDACTED`,
    * avoid partially or fully dropping attributes to preserve telemetry quality.
    * Note: basic auth credentials in urls are automatically redacted before this is invoked.
+   * The scrubbed `url.full` value is also used where a url is reported as plain text, e.g. the navigation timing name,
+   * the page view referrer, HTTP request failure messages and error stack traces. If the scrubber changes or removes
+   * any other url attribute but returns `url.full` unchanged, `url.full` is rebuilt from the scrubbed parts.
    */
   urlAttributeScrubber: UrlAttributeScrubber;
 
@@ -190,6 +235,17 @@ export type Vars = {
   resourceTiming: ResourceTimingSettings;
 
   /**
+   * JS Self-Profiling settings. Profiling runs only when `@dash0/profiling` is listed in
+   * `enabledInstrumentations`.
+   */
+  profiling: ProfilingSettings;
+
+  /**
+   * Which console messages the `@dash0/console` instrumentation sends.
+   */
+  consoleLogs: Required<ConsoleLogSettings>;
+
+  /**
    * Enables telemetry transport compression using gzip.
    * experimental - in rare cases causes Chrome to crash to use at your own risk.
    */
@@ -200,6 +256,11 @@ export type Vars = {
    * Determined at init time based on sessionSamplingRate and the session ID.
    */
   isSessionSampled: boolean;
+
+  /**
+   * Prefix for the keys the SDK writes to localStorage and sessionStorage. Empty means no prefix.
+   */
+  storageNamespace: string;
 };
 
 export const vars: Vars = {
@@ -215,6 +276,8 @@ export const vars: Vars = {
   signalAttributes: [],
   ignoreUrls: [],
   ignoreErrorMessages: [],
+  ignoreCrossOriginScriptErrors: true,
+  ignoreBrowserExtensionErrors: true,
   wrapEventHandlers: true,
   wrapTimers: true,
   propagateTraceHeadersCorsURLs: [],
@@ -247,6 +310,17 @@ export const vars: Vars = {
   // Left empty on purpose: `maxSpansPerPageLoad` defaults to the resource timing buffer size, which
   // is resolved in the instrumentation so the two cannot drift apart.
   resourceTiming: {},
+  profiling: {
+    sampleRate: 10,
+    sampleIntervalMs: 10,
+    chunkDurationMs: 15000,
+  },
+  consoleLogs: {
+    levels: ["warn", "error"],
+    ignoreMessages: [],
+    maxMessageLength: 4096,
+  },
   enableTransportCompression: false,
   isSessionSampled: true,
+  storageNamespace: "",
 };

@@ -23,6 +23,7 @@ describe("addCommonAttributes", () => {
     vi.spyOn(varsModule.vars, "signalAttributes", "get").mockReturnValue([
       { key: "foo", value: { stringValue: "bar" } },
     ]);
+    vi.spyOn(varsModule.vars, "ignoreUrls", "get").mockReturnValue([]);
     vi.spyOn(sessionApi, "sessionId", "get").mockReturnValue("session-123");
     vi.spyOn(tabIdModule, "tabId", "get").mockReturnValue("tab-456");
   });
@@ -43,6 +44,22 @@ describe("addCommonAttributes", () => {
         { key: "network.connection.subtype", value: { stringValue: "4g" } },
       ])
     );
+  });
+
+  it("does not add the page url while the page url matches ignoreUrls", () => {
+    vi.spyOn(varsModule.vars, "ignoreUrls", "get").mockReturnValue([/^http:\/\/test/]);
+    const attributes: KeyValue[] = [];
+    addCommonAttributes(attributes);
+
+    expect(attributes).not.toEqual(expect.arrayContaining([{ key: "url", value: { stringValue: "http://test" } }]));
+  });
+
+  it("adds an explicit page url even while the page url matches ignoreUrls", () => {
+    vi.spyOn(varsModule.vars, "ignoreUrls", "get").mockReturnValue([/^http:\/\/test/]);
+    const attributes: KeyValue[] = [];
+    addCommonAttributes(attributes, { url: "http://test/view" });
+
+    expect(urlModule.addUrlAttributes).toHaveBeenCalledWith(attributes, "http://test/view", "page");
   });
 
   it("does not overwrite web.event_id if already present", () => {

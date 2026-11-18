@@ -1,10 +1,11 @@
 import { onLCP, onINP, onCLS, Metric } from "web-vitals";
 import { KeyValue, LogRecord } from "../types/otlp";
 import { EVENT_NAME, EVENT_NAMES, LOG_SEVERITIES } from "../semantic-conventions";
-import { nowNanos, roundToTwoDecimals } from "../utils";
+import { nowNanos, roundToTwoDecimals, win } from "../utils";
 import { sendLog } from "../transport";
 import { addAttribute } from "../utils/otel";
 import { addCommonAttributes } from "../attributes";
+import { isUrlIgnored } from "../utils/ignore-rules";
 
 export function startWebVitalsInstrumentation() {
   onLCP(onWebVital, { reportAllChanges: true });
@@ -13,6 +14,8 @@ export function startWebVitalsInstrumentation() {
 }
 
 function onWebVital(metric: Metric) {
+  if (win && isUrlIgnored(win.location.href)) return;
+
   const attributes: KeyValue[] = [];
   addAttribute(attributes, EVENT_NAME, EVENT_NAMES.WEB_VITAL);
 

@@ -28,6 +28,8 @@ export const WINDOW_WIDTH = "browser.window.width";
 export const WINDOW_HEIGHT = "browser.window.height";
 export const NETWORK_CONNECTION_TYPE = "network.connection.subtype";
 export const EXCEPTION_COMPONENT_STACK = "exception.component_stack";
+export const CONSOLE_METHOD = "dash0.web.console.method";
+export const CODE_STACKTRACE = "code.stacktrace";
 
 // Session Recording Attribute Keys
 export const SESSION_RECORDING_ID = "dash0.session_recording.id";
@@ -89,6 +91,8 @@ export const EVENT_NAMES = {
   ERROR: "browser.error",
   SESSION_RECORDING: "browser.session_recording",
   RAGE_CLICK: "browser.rage_click",
+  PROFILING_UNAVAILABLE: "browser.profiling_unavailable",
+  CONSOLE: "browser.console",
 };
 export const SPAN_EVENT_NAME_EXCEPTION = "exception";
 

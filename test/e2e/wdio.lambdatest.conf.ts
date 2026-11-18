@@ -1,51 +1,12 @@
 import * as child_process from "node:child_process";
 import * as process from "node:process";
+import { type CapabilityConfig, getEnabledCapabilityNames, getSelectedCapabilities } from "./capabilities";
 
 let serverProcess: child_process.ChildProcess;
 
-type CapabilityConfig = WebdriverIO.Config["capabilities"][number] & {
-  enabled?: boolean;
-};
-
-// Test are generally against stable, beta, and an oldest supported version.
-// Currently somewhat arbitrarily chosen based on what works with wdio/lambdatest without horribly exploding
-const allCapabilitities: Record<string, CapabilityConfig> = {
-  "chrome-latest": {
-    browserName: "chrome",
-    browserVersion: "latest",
-  },
-  "chrome-beta": {
-    browserName: "chrome",
-    browserVersion: "beta",
-  },
-  "chrome-baseline": {
-    browserName: "chrome",
-    browserVersion: "128",
-  },
-  "firefox-latest": {
-    browserName: "firefox",
-    browserVersion: "latest",
-  },
-  "firefox-beta": {
-    browserName: "firefox",
-    browserVersion: "beta",
-  },
-  "firefox-baseline": {
-    browserName: "firefox",
-    browserVersion: "119",
-  },
-  "edge-latest": {
-    browserName: "microsoftedge",
-    browserVersion: "latest",
-  },
-  "edge-beta": {
-    browserName: "microsoftedge",
-    browserVersion: "beta",
-  },
-  "edge-baseline": {
-    browserName: "microsoftedge",
-    browserVersion: "133",
-  },
+// Chrome, Firefox and Edge run directly on the CI runner (see wdio.browsers.conf.ts). LambdaTest is
+// only used for browsers that cannot run there: Safari on macOS, and mobile browsers.
+const allCapabilities: Record<string, CapabilityConfig> = {
   "safari-latest": {
     browserName: "safari",
     browserVersion: "latest",
@@ -91,22 +52,7 @@ const allCapabilitities: Record<string, CapabilityConfig> = {
 };
 
 export function getCapabilityNames() {
-  return Object.entries(allCapabilitities)
-    .filter(([_, value]) => value.enabled !== false)
-    .map(([key]) => key);
-}
-
-function getSelectedCapabilities() {
-  const selected = (process.env["WDIO_SELECTED_CAPABILITIES"] ?? "").split(",");
-
-  if (!selected.length || selected[0] === "") {
-    selected.push(...Object.keys(allCapabilitities));
-  }
-
-  return Object.entries(allCapabilitities)
-    .filter(([_, value]) => value.enabled !== false)
-    .filter(([key]) => selected.includes(key))
-    .map(([_, value]) => value);
+  return getEnabledCapabilityNames(allCapabilities);
 }
 
 export const config: WebdriverIO.Config = {
@@ -121,7 +67,7 @@ export const config: WebdriverIO.Config = {
   ],
   maxInstances: 1,
 
-  capabilities: getSelectedCapabilities(),
+  capabilities: getSelectedCapabilities(allCapabilities),
 
   logLevel: "info",
   bail: 0,

@@ -1,6 +1,8 @@
 import { hasOwnProperty, nowNanos, win } from "../../utils";
-import { isErrorMessageIgnored } from "../../utils/ignore-rules";
+import { isErrorIgnored, isUrlIgnored } from "../../utils/ignore-rules";
 import { sendLog } from "../../transport";
+import { debug } from "../../utils/debug";
+import { onLastChance } from "../../utils/on-last-chance";
 import {
   EVENT_NAME,
   EVENT_NAMES,
@@ -11,7 +13,7 @@ import {
   LOG_SEVERITIES,
 } from "../../semantic-conventions";
 import { addAttribute, addAttributes } from "../../utils/otel";
-import { addCommonAttributes } from "../../attributes";
+import { addCommonAttributes, scrubPageUrls } from "../../attributes";
 import { KeyValue, LogRecord } from "../../types/otlp";
 import { ReportErrorOpts, ErrorLike } from "../../types/errors";
 
@@ -35,6 +37,10 @@ let scheduledTransmissionTimeoutHandle: ReturnType<typeof setTimeout> | null;
 // result, it is not possible to just mark an error as reported. The simplest way to
 // avoid double reporting is to temporarily disable the global onError handler…
 let ignoreNextOnError = false;
+
+// Errors wait up to a second in `seenErrors` before they reach the log batcher. Drain them when the document
+// may be unloaded. The log batcher flushes after this.
+onLastChance(send);
 
 export function ignoreNextOnErrorEvent() {
   ignoreNextOnError = true;
@@ -99,7 +105,11 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
     return;
   }
 
-  if (isErrorMessageIgnored(message)) {
+  if (isErrorIgnored(message, stack)) {
+    debug("Error matches an ignore rule. Will not send it.", message);
+    return;
+  }
+  if (win && isUrlIgnored(win.location.href)) {
     return;
   }
 
@@ -108,8 +118,8 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
     numberOfDifferentErrorsSeen = 0;
   }
 
-  message = String(message).substring(0, 300);
-  stack = shortenStackTrace(stack);
+  message = scrubPageUrls(String(message)).substring(0, 300);
+  stack = scrubPageUrls(shortenStackTrace(stack));
   const location = win?.location.href;
   const key = message + stack + location;
 
@@ -131,7 +141,7 @@ function onUnhandledError({ message, type, stack, opts }: UnhandledErrorArgs) {
       addAttribute(attributes, EXCEPTION_STACKTRACE, stack);
     }
     if (opts?.componentStack) {
-      addAttribute(attributes, EXCEPTION_COMPONENT_STACK, opts?.componentStack.substring(0, 2048));
+      addAttribute(attributes, EXCEPTION_COMPONENT_STACK, scrubPageUrls(opts.componentStack).substring(0, 2048));
     }
 
     // Add custom attributes last to allow overrides

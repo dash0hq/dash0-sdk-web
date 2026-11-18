@@ -9,33 +9,11 @@ import {
   PAGE_VIEW_TYPE_VALUES,
 } from "../../semantic-conventions";
 import { debug, doc, NO_VALUE_FALLBACK } from "../../utils";
-import { addCommonAttributes } from "../../attributes";
+import { addCommonAttributes, scrubUrl } from "../../attributes";
 import { sendLog } from "../../transport";
+import { isUrlIgnored, matchesAny } from "../../utils/ignore-rules";
 import { PageViewMeta, vars } from "../../vars";
 import { AnyValue, KeyValue, LogRecord } from "../../types/otlp";
-
-type PageViewListener = () => void;
-
-const pageViewListeners: PageViewListener[] = [];
-
-/**
- * Registers a listener invoked whenever a page view is emitted, including virtual ones. Lets
- * instrumentations whose budgets are scoped to a page view reset without reaching into the
- * navigation instrumentation's internals.
- */
-export function onPageView(listener: PageViewListener): void {
-  pageViewListeners.push(listener);
-}
-
-function notifyPageView(): void {
-  for (let i = 0; i < pageViewListeners.length; i++) {
-    try {
-      pageViewListeners[i]!();
-    } catch (e) {
-      debug("Page view listener failed", e);
-    }
-  }
-}
 
 function getPageViewMeta(url?: URL): PageViewMeta {
   if (!url) return {};
@@ -53,6 +31,13 @@ type BuildPageViewLogOptions = {
   changeState?: (typeof PAGE_VIEW_CHANGE_STATE_VALUES)[keyof typeof PAGE_VIEW_CHANGE_STATE_VALUES];
 };
 
+type PageViewListener = (url?: URL) => void;
+const pageViewListeners: PageViewListener[] = [];
+
+export function onPageView(listener: PageViewListener): void {
+  pageViewListeners.push(listener);
+}
+
 function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
   const attributes: KeyValue[] = [];
   addAttribute(attributes, EVENT_NAME, EVENT_NAMES.PAGE_VIEW);
@@ -67,8 +52,9 @@ function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
 
   const bodyAttributes: KeyValue[] = [];
   addAttribute(bodyAttributes, "title", opts.title ?? doc?.title ?? NO_VALUE_FALLBACK);
-  if (doc?.referrer) {
-    addAttribute(bodyAttributes, "referrer", doc.referrer);
+  // The referrer can be an ignored page, e.g. an OAuth callback that redirected to this page.
+  if (doc?.referrer && !matchesAny(vars.ignoreUrls, doc.referrer)) {
+    addAttribute(bodyAttributes, "referrer", scrubUrl(doc.referrer));
   }
 
   addAttribute(bodyAttributes, PAGE_VIEW_TYPE, opts.pageViewType);
@@ -95,10 +81,23 @@ function buildAndSendPageViewLog(opts: BuildPageViewLogOptions) {
   }
 
   sendLog(log);
-  notifyPageView();
+}
+
+function notifyPageViewListeners(url?: URL) {
+  for (const listener of pageViewListeners) {
+    try {
+      listener(url);
+    } catch (e) {
+      debug("Page view listener failed", e);
+    }
+  }
 }
 
 export function transmitPageViewEvent(timeUnixNano: string, url?: URL, virtual?: boolean, replaced?: boolean) {
+  // Listeners run for ignored pages too, so they can stop collecting there.
+  notifyPageViewListeners(url);
+  if (url && isUrlIgnored(url.href)) return;
+
   const meta = getPageViewMeta(url);
 
   buildAndSendPageViewLog({
@@ -128,6 +127,7 @@ export type ManualPageViewOptions = {
  * matching the sendEvent semantics.
  */
 export function transmitManualPageViewEvent(opts: ManualPageViewOptions) {
+  notifyPageViewListeners(opts.url);
   buildAndSendPageViewLog({
     timeUnixNano: opts.timeUnixNano,
     url: opts.url,

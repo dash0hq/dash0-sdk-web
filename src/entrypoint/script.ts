@@ -9,6 +9,7 @@ import { addSignalAttribute, removeSignalAttribute } from "../api/attributes";
 import { sendEvent } from "../api/events";
 import { setActiveLogLevel } from "../api/log-level";
 import { startView } from "../api/start-view";
+import { setParentTraceContext } from "../api/parent-trace-context";
 import { startSessionRecording, stopSessionRecording } from "../api/session-recording";
 
 /**
@@ -27,6 +28,7 @@ const scriptApis = {
   startView,
   startSessionRecording,
   stopSessionRecording,
+  setParentTraceContext,
 } as const;
 
 type GlobalObject = {

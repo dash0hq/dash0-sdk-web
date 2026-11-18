@@ -26,7 +26,13 @@ export type SessionRecorderOptions = {
  * A function that starts recording and returns a function that stops it.
  * `record` from `@rrweb/record` (re-exported by `@dash0/sdk-web/session-recording`) has this shape.
  */
-export type SessionRecorder = (options: SessionRecorderOptions) => (() => void) | undefined;
+export type SessionRecorder = ((options: SessionRecorderOptions) => (() => void) | undefined) & {
+  /**
+   * Emits a new full snapshot from the running recorder, as rrweb's `record.takeFullSnapshot` does. Without it,
+   * the SDK restarts the recorder whenever it needs a new snapshot.
+   */
+  takeFullSnapshot?: (isCheckout?: boolean) => void;
+};
 
 /**
  * The shape of an rrweb event the SDK relies on. rrweb events carry more data, which the SDK

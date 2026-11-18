@@ -37,8 +37,9 @@ import {
   endSpanOnError,
   HTTP_METHOD_OTHER,
   isWellKnownHttpMethod,
+  scrubException,
 } from "./utils";
-import { addCommonAttributes, addUrlAttributes } from "../../attributes";
+import { addCommonAttributes, addUrlAttributes, scrubUrl } from "../../attributes";
 
 type XhrFailureKind = "error" | "timeout" | "abort";
 
@@ -54,6 +55,7 @@ type XhrState = {
   span?: InProgressSpan;
   propagatorTypes: PropagatorType[];
   capturedRequestHeaders?: Record<string, string>;
+  responseBeforeAbort?: { status: number; headers: Record<string, string> };
   completed: boolean;
   failureKind?: XhrFailureKind;
   performanceObserver?: ReturnType<typeof observeResourcePerformance>;
@@ -79,6 +81,23 @@ export function instrumentXhr() {
   wrap(proto, "open", wrapOpen);
   wrap(proto, "setRequestHeader", wrapSetRequestHeader);
   wrap(proto, "send", wrapSend);
+  wrap(proto, "abort", wrapAbort);
+}
+
+function wrapAbort(original: XMLHttpRequest["abort"]): XMLHttpRequest["abort"] {
+  return function (this: InstrumentedXhr) {
+    try {
+      const state = this[XHR_STATE];
+      if (state?.span && !state.completed && this.readyState === 4 && !state.responseBeforeAbort) {
+        // abort() at DONE clears status and headers without firing abort. Page load handlers
+        // can call it before our loadend listener, so preserve the response before native abort.
+        state.responseBeforeAbort = { status: this.status, headers: captureResponseHeaders(this) };
+      }
+    } catch (e) {
+      debug("failed to instrument XMLHttpRequest.abort", e);
+    }
+    return original.call(this);
+  };
 }
 
 function wrapOpen(original: XMLHttpRequest["open"]): XMLHttpRequest["open"] {
@@ -240,12 +259,13 @@ function endSpanOnSyncSendError(xhr: InstrumentedXhr, state: XhrState, error: un
 
     const failureKind: XhrFailureKind =
       state.failureKind ?? ((error as { name?: unknown } | null)?.name === "TimeoutError" ? "timeout" : "error");
+    const message = `XMLHttpRequest failed: ${scrubUrl(state.url)}`;
     recordException(
       span,
-      (error as Exception) ?? { name: failureKind, message: `XMLHttpRequest failed: ${state.url}` }
+      error != null ? scrubException(error as Exception, state.url) : { name: failureKind, message }
     );
     addAttribute(span.attributes, ERROR_TYPE, failureKind);
-    sendSpan(endSpan(span, { code: SPAN_STATUS_ERROR, message: `XMLHttpRequest failed: ${state.url}` }, undefined));
+    sendSpan(endSpan(span, { code: SPAN_STATUS_ERROR, message }, undefined));
   } catch (_e) {
     // Best-effort only -- never mask the page's original exception from send().
   }
@@ -382,7 +402,7 @@ function onLoadEnd(xhr: InstrumentedXhr, state: XhrState) {
 
   let status = 0;
   try {
-    status = xhr.status;
+    status = state.responseBeforeAbort?.status ?? xhr.status;
   } catch (_e) {
     // Reading .status can throw in some environments if accessed at the wrong readyState.
     status = 0;
@@ -393,23 +413,27 @@ function onLoadEnd(xhr: InstrumentedXhr, state: XhrState) {
     const failureKind = state.failureKind ?? "error";
     // The failure kind doubles as the exception name, so endSpanOnError derives
     // error.type = failureKind from it.
-    endSpanOnError(span, { name: failureKind, message: `XMLHttpRequest failed: ${state.url}` });
+    endSpanOnError(span, { name: failureKind, message: `XMLHttpRequest failed: ${state.url}` }, state.url);
     return;
   }
 
   setSpanStatus(span, status >= 200 && status < 400 ? SPAN_STATUS_UNSET : SPAN_STATUS_ERROR);
   addAttribute(span.attributes, HTTP_RESPONSE_STATUS_CODE, String(status));
-  tryCaptureResponseHeaders(xhr, span);
+  const responseHeaders = state.responseBeforeAbort?.headers ?? captureResponseHeaders(xhr);
+  for (const [name, value] of Object.entries(responseHeaders)) {
+    addAttribute(span.attributes, httpResponseHeaderKey(name), value);
+  }
 
   performanceObserver?.end();
 }
 
-function tryCaptureResponseHeaders(xhr: XMLHttpRequest, span: InProgressSpan) {
+function captureResponseHeaders(xhr: XMLHttpRequest): Record<string, string> {
+  const headers: Record<string, string> = {};
   try {
-    if (!vars.headersToCapture.length) return;
+    if (!vars.headersToCapture.length) return headers;
 
     const raw = xhr.getAllResponseHeaders();
-    if (!raw) return;
+    if (!raw) return headers;
 
     raw
       .split(/\r?\n/)
@@ -422,10 +446,11 @@ function tryCaptureResponseHeaders(xhr: XMLHttpRequest, span: InProgressSpan) {
         const value = line.substring(separatorIndex + 1).trim();
 
         if (vars.headersToCapture.some((rxp) => rxp.test(name))) {
-          addAttribute(span.attributes, httpResponseHeaderKey(name), value);
+          headers[name] = value;
         }
       });
   } catch (e) {
     debug("unable to capture http response headers", e);
   }
+  return headers;
 }

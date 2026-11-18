@@ -6,8 +6,9 @@ vi.mock("../../transport", () => ({
 }));
 
 import { sendLog } from "../../transport";
-import { transmitPageViewEvent, transmitManualPageViewEvent } from "./event";
+import { onPageView, transmitPageViewEvent, transmitManualPageViewEvent } from "./event";
 import { vars } from "../../vars";
+import { doc } from "../../utils/globals";
 
 const sendLogMock = sendLog as unknown as ReturnType<typeof vi.fn>;
 
@@ -15,6 +16,41 @@ describe("transmitPageViewEvent", () => {
   beforeEach(() => {
     sendLogMock.mockClear();
     vars.pageViewInstrumentation = { trackVirtualPageViews: true, includeParts: [] };
+    vars.ignoreUrls = [];
+  });
+
+  it("does not transmit a page view when the url matches ignoreUrls", () => {
+    vars.ignoreUrls = [/\/callback/];
+
+    transmitPageViewEvent("1700000000000000000", new URL("https://example.com/callback?code=secret"));
+    transmitPageViewEvent("1700000000000000000", new URL("https://example.com/callback"), true);
+
+    expect(sendLogMock).not.toHaveBeenCalled();
+  });
+
+  it("tells page view listeners about ignored pages, and still sends the log when a listener throws", () => {
+    vars.ignoreUrls = [/\/callback/];
+    const seen: Array<string | undefined> = [];
+    onPageView((url) => seen.push(url?.pathname));
+    onPageView(() => {
+      throw new Error("listener failed");
+    });
+
+    transmitPageViewEvent("1700000000000000000", new URL("https://example.com/callback"));
+    transmitPageViewEvent("1700000000000000000", new URL("https://example.com/landing"));
+
+    expect(seen).toEqual(["/callback", "/landing"]);
+    expect(sendLogMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("transmits a page view without url even when ignoreUrls is set", () => {
+    vars.ignoreUrls = [/.*/];
+
+    transmitPageViewEvent("1700000000000000000");
+
+    expect(sendLogMock).toHaveBeenCalledTimes(1);
+    const log = sendLogMock.mock.calls[0]![0] as LogRecord;
+    expect(log.attributes.some((a) => a.key.startsWith("page.url."))).toBe(false);
   });
 
   afterEach(() => {
@@ -54,6 +90,36 @@ describe("transmitPageViewEvent", () => {
         { key: "change_state", value: { stringValue: "replaceState" } },
       ])
     );
+  });
+
+  it("scrubs the referrer with the url attribute scrubber", () => {
+    const originalScrubber = vars.urlAttributeScrubber;
+    vars.urlAttributeScrubber = (attrs) => ({ ...attrs, "url.full": attrs["url.full"].split("?")[0]! });
+    const referrer = vi.spyOn(doc!, "referrer", "get").mockReturnValue("https://example.com/callback?code=secret");
+    try {
+      transmitPageViewEvent("1700000000000000000", new URL("https://example.com/landing"));
+    } finally {
+      vars.urlAttributeScrubber = originalScrubber;
+      referrer.mockRestore();
+    }
+
+    const log = sendLogMock.mock.calls[0]![0] as LogRecord;
+    const bodyValues = log.body?.kvlistValue?.values as KeyValue[];
+    expect(bodyValues).toContainEqual({ key: "referrer", value: { stringValue: "https://example.com/callback" } });
+  });
+
+  it("does not transmit a referrer that matches ignoreUrls", () => {
+    vars.ignoreUrls = [/\/callback/];
+    const referrer = vi.spyOn(doc!, "referrer", "get").mockReturnValue("https://example.com/callback?code=secret");
+    try {
+      transmitPageViewEvent("1700000000000000000", new URL("https://example.com/landing"));
+    } finally {
+      referrer.mockRestore();
+    }
+
+    const log = sendLogMock.mock.calls[0]![0] as LogRecord;
+    const bodyValues = log.body?.kvlistValue?.values as KeyValue[];
+    expect(bodyValues.find((v) => v.key === "referrer")).toBeUndefined();
   });
 
   it("applies generateMetadata title and attributes when provided", () => {
@@ -145,6 +211,19 @@ describe("transmitManualPageViewEvent", () => {
       key: "page.url.path",
       value: { stringValue: "/custom-path" },
     });
+  });
+
+  it("tells page view listeners about the view", () => {
+    const seen: (string | undefined)[] = [];
+    onPageView((url) => seen.push(url?.pathname));
+
+    transmitManualPageViewEvent({
+      timeUnixNano: "1700000000000000000",
+      title: "/settings",
+      url: new URL("https://example.com/settings"),
+    });
+
+    expect(seen).toEqual(["/settings"]);
   });
 
   it("passes url through to page.url.* attributes when provided", () => {

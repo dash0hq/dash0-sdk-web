@@ -5,6 +5,8 @@ import { loadPage, retry } from "../utils";
 import { expectLogMatching, expectNoBrowserErrors } from "../expectations";
 
 const EVENT_NAME = "browser.session_recording";
+// `SHOWN_RECORDING_STORAGE_KEY` in src/instrumentations/session-recording. Importing it pulls build-time globals into the spec.
+const SHOWN_RECORDING_STORAGE_KEY = "d0_rec_shown";
 
 type ReceivedLog = {
   attributes: Array<{ key: string; value: any }>;
@@ -171,7 +173,7 @@ describe("Session Recording", () => {
     expectNoBrowserErrors();
   });
 
-  it("stops while the document is hidden and starts a new run with a fresh snapshot when it is shown again", async () => {
+  it("holds back what changes while hidden and continues the same run without a new snapshot when shown again", async () => {
     const testId = generateUniqueId(16);
     await loadPage(`/e2e/spec/10-session-recording/page.html?testId=${testId}`);
 
@@ -197,10 +199,46 @@ describe("Session Recording", () => {
     await $("#toggle").click();
 
     await retry(async () => {
+      const bodies = (await getRecordingLogs(testId)).map((l) => l.body?.stringValue ?? "").join("\n");
+      expect(bodies).toContain("Changed while hidden");
+      expect(bodies).toContain("Heading after click");
+    });
+
+    // The replay still shows this document, so the held events continue its run and only the opening chunk
+    // carries a full snapshot.
+    const logs = await getRecordingLogs(testId);
+    expect(new Set(logs.map((l) => attr(l, "dash0.session_recording.id").stringValue))).toEqual(new Set([firstRunId]));
+    expect(logs.filter((l) => attr(l, "dash0.session_recording.has_snapshot").boolValue)).toHaveLength(1);
+
+    expectNoBrowserErrors();
+  });
+
+  it("starts a new run with a fresh snapshot when another tab's run was shown while hidden", async () => {
+    const testId = generateUniqueId(16);
+    await loadPage(`/e2e/spec/10-session-recording/page.html?testId=${testId}`);
+
+    await retry(async () => {
+      const logs = await getRecordingLogs(testId);
+      expect(logs.length).toBeGreaterThanOrEqual(1);
+    });
+    const firstRunId = attr((await getRecordingLogs(testId))[0]!, "dash0.session_recording.id").stringValue;
+
+    await setVisibility("hidden");
+    // What another tab of the session writes when its run is shown.
+    await browser.execute((key: string) => {
+      localStorage.setItem(key, "another-run");
+      document.getElementById("visible-heading")!.textContent = "Changed while hidden";
+    }, SHOWN_RECORDING_STORAGE_KEY);
+    await setVisibility("visible");
+    await $("#toggle").click();
+
+    await retry(async () => {
       const runIds = new Set(
         (await getRecordingLogs(testId)).map((l) => attr(l, "dash0.session_recording.id").stringValue)
       );
       expect(runIds.size).toBe(2);
+      const bodies = (await getRecordingLogs(testId)).map((l) => l.body?.stringValue ?? "").join("\n");
+      expect(bodies).toContain("Heading after click");
     });
 
     // The second run must open with its own full snapshot, which is what lets one replayer rebuild the
@@ -215,6 +253,7 @@ describe("Session Recording", () => {
         .map((e: any) => e.type)
         .slice(0, 2)
     ).toEqual([4, 2]);
+    expect(opening.body!.stringValue).toContain("Changed while hidden");
 
     expectNoBrowserErrors();
   });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { send } from "./fetch";
+import { isTransmitting, send } from "./fetch";
 import { vars } from "../vars";
 import * as utils from "../utils";
 
@@ -34,6 +34,35 @@ describe("fetch transport keepalive handling", () => {
     vi.restoreAllMocks();
   });
 
+  it("reports a transmission from the fetch call until shortly after the page's own handlers for its outcome have run", async () => {
+    const seen: Record<string, boolean> = {};
+    // A page that wrapped `fetch` before the SDK loaded, and looks at every request and its failure.
+    fetchMock.mockImplementation(async () => {
+      seen["call"] = isTransmitting();
+      try {
+        return await Promise.reject(new TypeError("Failed to fetch"));
+      } catch (e) {
+        seen["failure"] = isTransmitting();
+        throw e;
+      }
+    });
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.advanceTimersByTime(2000);
+      expect(isTransmitting()).toBe(false);
+      await send("/v1/logs", { data: "test" });
+
+      expect(seen).toEqual({ call: true, failure: true });
+      vi.advanceTimersByTime(1999);
+      expect(isTransmitting()).toBe(true);
+      vi.advanceTimersByTime(1);
+      expect(isTransmitting()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("should set keepalive=true for small single request", async () => {
     const smallBody = { data: "test" };
 
@@ -42,6 +71,18 @@ describe("fetch transport keepalive handling", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const fetchOptions = fetchMock.mock.calls[0]![1];
     expect(fetchOptions.keepalive).toBe(true);
+  });
+
+  it("should send an already serialized body as is", async () => {
+    const body = '{"resourceProfiles":[]}';
+
+    await send("/v1development/profiles", body);
+
+    const [url, fetchOptions] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe("https://api.example.com/v1development/profiles");
+    expect(fetchOptions.headers["Content-Type"]).toBe("application/json");
+    expect(fetchOptions.headers["Authorization"]).toBe("Bearer test-token");
+    expect(fetchOptions.body).toBe(body);
   });
 
   it("should set keepalive=false when body size exceeds BEACON_BODY_SIZE_LIMIT", async () => {
@@ -352,6 +393,16 @@ describe("fetch transport keepalive handling", () => {
       const init = fetchMock.mock.calls[0]![1];
       expect(init.headers["Content-Encoding"]).toBe("gzip");
       expect(init.body).toBeInstanceOf(ArrayBuffer);
+    });
+
+    it("does not gzip when opts.compress is false even though enableTransportCompression is on", async () => {
+      vars.enableTransportCompression = true;
+
+      await send("/v1/logs", { data: "x".repeat(1000) }, { compress: false });
+
+      const init = fetchMock.mock.calls[0]![1];
+      expect(init.headers["Content-Encoding"]).toBeUndefined();
+      expect(typeof init.body).toBe("string");
     });
 
     it("does not gzip without opts.compress when enableTransportCompression is off", async () => {

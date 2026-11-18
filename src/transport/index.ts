@@ -1,5 +1,5 @@
 import { newBatcher } from "./batcher";
-import { send, SendOptions } from "./fetch";
+import { isTransmitting, send, SendOptions } from "./fetch";
 import { vars } from "../vars";
 import { debug, error, createRateLimiter } from "../utils";
 import { ExportLogsServiceRequest, ExportTraceServiceRequest, LogRecord, Span } from "../types/otlp";
@@ -51,11 +51,51 @@ const isResourceTimingRateLimited = lazyRateLimiter({
   maxCallsPerTenSeconds: 1024,
 });
 
+// At the default 15 s chunk length a page sends 40 chunks per 10 min. Shorter chunks are capped here.
+const isProfileRateLimited = lazyRateLimiter({
+  maxCallsPerTenMinutes: 120,
+  maxCallsPerTenSeconds: 4,
+});
+
+/**
+ * Sends an OTLP `ExportProfilesServiceRequest` that the profiling encoder already serialized to OTLP/JSON.
+ */
+export function sendProfile(body: string, opts?: SendOptions): void {
+  if (!vars.isSessionSampled) return;
+
+  if (isProfileRateLimited()) {
+    debug("Profiling rate limit. Will not send profile.");
+    return;
+  }
+
+  send("/v1development/profiles", body, opts).catch((err) => {
+    error("Failed to transmit profile", err);
+  });
+}
+
 export function sendLog(log: LogRecord): void {
   if (!vars.isSessionSampled) return;
 
   if (isRateLimited()) {
     debug("Transport rate limit. Will not send item.", log);
+    return;
+  }
+
+  logBatcher.send(log);
+}
+
+/**
+ * Queues a captured console message. Console messages bypass the budget shared by spans and logs, so a chatty page
+ * cannot starve errors and requests of it. The console instrumentation enforces its own budget before formatting.
+ */
+export function sendConsoleLog(log: LogRecord): void {
+  if (!vars.isSessionSampled) return;
+
+  // Page code that wraps `fetch` may log on every request, also on the SDK's. Sending such a message on its own would
+  // cause the next request and the next message, forever on an otherwise idle page. It is held until the next
+  // transmission, or until the batcher's hold delay ends.
+  if (isTransmitting()) {
+    logBatcher.enqueue(log);
     return;
   }
 
@@ -132,20 +172,24 @@ function enqueueSpan(span: Span | undefined, isLimited: () => boolean, limitName
   spanBatcher.send(span);
 }
 
-function sendSpans(spans: Span[]): void {
-  send("/v1/traces", {
-    resourceSpans: [
-      {
-        resource: vars.resource,
-        scopeSpans: [
-          {
-            scope: vars.scope,
-            spans: spans,
-          },
-        ],
-      },
-    ],
-  } satisfies ExportTraceServiceRequest).catch((err) => {
+function sendSpans(spans: Span[], opts?: SendOptions): void {
+  send(
+    "/v1/traces",
+    {
+      resourceSpans: [
+        {
+          resource: vars.resource,
+          scopeSpans: [
+            {
+              scope: vars.scope,
+              spans: spans,
+            },
+          ],
+        },
+      ],
+    } satisfies ExportTraceServiceRequest,
+    opts
+  ).catch((err) => {
     error("Failed to transmit spans", err);
   });
 }
