@@ -2,6 +2,8 @@ import { debug, isPerformanceObserverAvailable, domHRTimestampToNanos, perf, win
 import { isUrlIgnored } from "../../utils/ignore-rules";
 import { addAttribute, endSpan, InProgressSpan, setSpanStatus, startSpan } from "../../utils/otel";
 import {
+  EVENT_NAME,
+  EVENT_NAMES,
   HTTP_REQUEST_METHOD,
   HTTP_RESPONSE_STATUS_CODE,
   NETWORK_PROTOCOL_NAME,
@@ -189,6 +191,9 @@ function toSpan(entry: ExtendedResourceTiming): InProgressSpan {
 
   addCommonAttributes(span.attributes);
   span.attributes.push(...urlAttributes);
+
+  // The collector stores a web span as `browser.request` unless the span names itself otherwise.
+  addAttribute(span.attributes, EVENT_NAME, EVENT_NAMES.RESOURCE);
 
   // The browser issues a GET for every resource it loads on the page's behalf. Initiator types that
   // can represent another method are excluded above rather than guessed at.

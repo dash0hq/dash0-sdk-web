@@ -26,6 +26,7 @@ function staticAssetSpan(path: string) {
     kind: SPAN_KIND_CLIENT,
     attributes: expect.arrayContaining([
       anyInitiatorType,
+      { key: "event.name", value: { stringValue: "browser.resource" } },
       { key: "http.request.method", value: { stringValue: "GET" } },
       { key: "url.path", value: { stringValue: path } },
       { key: "page.url.path", value: { stringValue: PAGE } },

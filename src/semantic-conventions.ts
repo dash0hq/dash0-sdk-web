@@ -93,6 +93,7 @@ export const EVENT_NAMES = {
   RAGE_CLICK: "browser.rage_click",
   PROFILING_UNAVAILABLE: "browser.profiling_unavailable",
   CONSOLE: "browser.console",
+  RESOURCE: "browser.resource",
 };
 export const SPAN_EVENT_NAME_EXCEPTION = "exception";
 

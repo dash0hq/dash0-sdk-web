@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KeyValue, Span } from "../../types/otlp";
 import {
+  EVENT_NAME,
   HTTP_REQUEST_METHOD,
   HTTP_RESPONSE_BODY_SIZE,
   HTTP_RESPONSE_STATUS_CODE,
@@ -155,6 +156,7 @@ describe("resource timing instrumentation", () => {
     const span = spans[0]!;
     expect(span.name).toBe("script main.a81f.js");
     expect(attr(span, URL_FULL)?.stringValue).toBe("https://example.com/assets/main.a81f.js");
+    expect(attr(span, EVENT_NAME)?.stringValue).toBe("browser.resource");
     expect(attr(span, HTTP_REQUEST_METHOD)?.stringValue).toBe("GET");
     expect(attr(span, RESOURCE_INITIATOR_TYPE)?.stringValue).toBe("script");
     expect(attr(span, NETWORK_PROTOCOL_NAME)?.stringValue).toBe("http");
