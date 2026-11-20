@@ -63,6 +63,18 @@ export const URL_PATH = "url.path";
 export const URL_QUERY = "url.query";
 export const URL_SCHEME = "url.scheme";
 
+// Static Asset (Resource Timing) Attribute Keys
+// Derived from PerformanceResourceTiming. Dash0-namespaced because the OTel semantic conventions
+// have no registry entries for browser resource timing.
+export const RESOURCE_INITIATOR_TYPE = "dash0.web.resource.initiator_type";
+export const RESOURCE_RENDER_BLOCKING_STATUS = "dash0.web.resource.render_blocking_status";
+export const RESOURCE_DELIVERY_TYPE = "dash0.web.resource.delivery_type";
+export const RESOURCE_CACHED = "dash0.web.resource.cached";
+
+// Network Attribute Keys
+export const NETWORK_PROTOCOL_NAME = "network.protocol.name";
+export const NETWORK_PROTOCOL_VERSION = "network.protocol.version";
+
 // Http Attribute Keys
 export const HTTP_REQUEST_METHOD = "http.request.method";
 export const HTTP_REQUEST_METHOD_ORIGINAL = "http.request.method_original";
@@ -81,6 +93,7 @@ export const EVENT_NAMES = {
   RAGE_CLICK: "browser.rage_click",
   PROFILING_UNAVAILABLE: "browser.profiling_unavailable",
   CONSOLE: "browser.console",
+  RESOURCE: "browser.resource",
 };
 export const SPAN_EVENT_NAME_EXCEPTION = "exception";
 

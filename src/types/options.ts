@@ -11,6 +11,7 @@ export type InstrumentationName =
   | "@dash0/xhr"
   | "@dash0/session-recording"
   | "@dash0/frustration-signals"
+  | "@dash0/resource-timing"
   | "@dash0/profiling"
   | "@dash0/console";
 
@@ -163,6 +164,7 @@ export type InitOptions = {
     | "pageViewInstrumentation"
     | "sessionRecording"
     | "frustrationSignals"
+    | "resourceTiming"
     | "profiling"
     | "enableTransportCompression"
   >

@@ -38,6 +38,7 @@ import { BrowserBuildEnv, pickFirstString } from "./browser-env";
 import { applyVcsResourceAttributes } from "./vcs";
 import { armSessionRecording } from "../instrumentations/session-recording";
 import { startRageClickInstrumentation } from "../instrumentations/frustration/rage-click";
+import { startResourceTimingInstrumentation } from "../instrumentations/resources";
 import { startProfiling } from "../instrumentations/profiling";
 import { startConsoleInstrumentation } from "../instrumentations/console";
 
@@ -46,7 +47,7 @@ declare const process: { env?: BrowserBuildEnv } | undefined;
 let hasBeenInitialised: boolean = false;
 
 // Not part of the default set: these run only when listed in `enabledInstrumentations`.
-const OPT_IN_INSTRUMENTATIONS: InstrumentationName[] = ["@dash0/profiling"];
+const OPT_IN_INSTRUMENTATIONS: InstrumentationName[] = ["@dash0/profiling", "@dash0/resource-timing"];
 
 export function init(opts: InitOptions) {
   if (hasBeenInitialised) {
@@ -98,6 +99,7 @@ export function init(opts: InitOptions) {
         "pageViewInstrumentation",
         "sessionRecording",
         "frustrationSignals",
+        "resourceTiming",
         "profiling",
         "consoleLogs",
         "enableTransportCompression",
@@ -146,6 +148,9 @@ export function init(opts: InitOptions) {
   }
   if (isInstrumentationEnabled("@dash0/frustration-signals", opts)) {
     startRageClickInstrumentation();
+  }
+  if (isInstrumentationEnabled("@dash0/resource-timing", opts)) {
+    startResourceTimingInstrumentation();
   }
   if (isInstrumentationEnabled("@dash0/profiling", opts)) {
     startProfiling();
