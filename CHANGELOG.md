@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.35.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.35.1...0.35.2) (2026-11-20)
+
+### Bug Fixes
+
+- **errors:** unhandled rejections the page prevents are no longer reported ([#152](https://github.com/dash0hq/dash0-sdk-web/issues/152)) ([d269294](https://github.com/dash0hq/dash0-sdk-web/commit/d2692943057d45f8e4f16f6901012a2b79a0a673))
+
 ## [0.35.1](https://github.com/dash0hq/dash0-sdk-web/compare/0.35.0...0.35.1) (2026-11-16)
 
 ### Performance Improvements
