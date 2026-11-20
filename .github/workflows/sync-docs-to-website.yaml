@@ -21,8 +21,11 @@ name: Synchronize Web SDK docs to dash0.com/docs
 #
 # The target repository and directory are supplied from the SYNC_DOCUMENTATION_TARGET_REPOSITORY and
 # SYNC_DOCUMENTATION_TARGET_DIRECTORY secrets, so the (non-public) target repo name and its internal layout
-# are not hardcoded here. Authentication uses the DASH0_DOCS_REPO_GITHUB_PAT secret: a fine-grained PAT scoped
-# to the target repository with Contents: Read and write and Pull requests: Read and write.
+# are not hardcoded here. Authentication uses a short-lived installation token of the GitHub App "Dash0 Docs Sync"
+# (dash0-docs-sync), which is installed only on the target repository. The token is minted per run from the
+# DOCS_SYNC_APP_CLIENT_ID organization variable and the DOCS_SYNC_APP_PRIVATE_KEY organization secret, and is
+# restricted to Contents: Read and write, Pull requests: Read and write and Members: Read (to request team
+# reviewers).
 
 # sync-docs-action pinned to v0.6.0, the first release to render per-file `tags` from transformations.yaml into the
 # generated frontmatter (from https://github.com/dash0hq/sync-docs-action/pull/12).
@@ -41,8 +44,8 @@ on:
         type: boolean
         default: false
     secrets:
-      DASH0_DOCS_REPO_GITHUB_PAT:
-        description: Fine-grained PAT with contents + pull-requests write access for the documentation repository. Only required when dry-run is false.
+      DOCS_SYNC_APP_PRIVATE_KEY:
+        description: Private key of the GitHub App that opens the pull request in the documentation repository. Only required when dry-run is false.
         required: false
       SYNC_DOCUMENTATION_TARGET_REPOSITORY:
         description: owner/name of the target documentation repository. Only required when dry-run is false.
@@ -61,6 +64,18 @@ jobs:
       - name: checkout dash0-sdk-web
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
 
+      - name: create GitHub App token for the documentation repository
+        id: app-token
+        if: ${{ !inputs.dry-run }}
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.DOCS_SYNC_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DOCS_SYNC_APP_PRIVATE_KEY }}
+          repositories: ${{ secrets.SYNC_DOCUMENTATION_TARGET_REPOSITORY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-members: read
+
       # Single invocation for both modes. On a dry run the action applies the transformations and the coverage
       # check, then stops before touching the target repository; the target-side inputs are ignored, so they
       # can be supplied unconditionally. source-root and transformations-file inherit their defaults (`.` and
@@ -71,7 +86,7 @@ jobs:
           dry-run: ${{ inputs.dry-run }}
           target-repository: ${{ secrets.SYNC_DOCUMENTATION_TARGET_REPOSITORY }}
           target-directory: ${{ secrets.SYNC_DOCUMENTATION_TARGET_DIRECTORY }}
-          target-github-token: ${{ secrets.DASH0_DOCS_REPO_GITHUB_PAT }}
+          target-github-token: ${{ steps.app-token.outputs.token }}
           pr-branch: sync-dash0-sdk-web-docs
           pr-title: "docs: synchronize Dash0 Web SDK documentation"
           pr-body: >-
