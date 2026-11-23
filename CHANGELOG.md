@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.36.0](https://github.com/dash0hq/dash0-sdk-web/compare/0.35.2...0.36.0) (2026-11-23)
+
+### Features
+
+- **resource-timing:** capture static assets as spans ([#119](https://github.com/dash0hq/dash0-sdk-web/issues/119)) ([b365db1](https://github.com/dash0hq/dash0-sdk-web/commit/b365db144d542b8efe853a5d7b72128f079cbb29))
+
 ## [0.35.2](https://github.com/dash0hq/dash0-sdk-web/compare/0.35.1...0.35.2) (2026-11-20)
 
 ### Bug Fixes
