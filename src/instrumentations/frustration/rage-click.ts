@@ -10,7 +10,7 @@ import { onLastChance } from "../../utils/on-last-chance";
 import { isUrlIgnored } from "../../utils/ignore-rules";
 import { onRecordingStateChange } from "../session-recording";
 import { vars } from "../../vars";
-import { buildCssSelector, extractText } from "./element";
+import { buildCssSelector, extractText, reportedElement } from "./element";
 
 /**
  * A run of clicks the user made in the same place in quick succession. Held open until
@@ -201,7 +201,7 @@ function sendRageClick(closed: Cluster): void {
   const body: KeyValue[] = [];
   addAttribute(body, "click_count", closed.count);
   addAttribute(body, "duration_millis", closed.lastMillis - closed.firstMillis);
-  addAttribute(body, "selector", buildCssSelector(closed.target));
+  addAttribute(body, "selector", buildCssSelector(reportedElement(closed.target)));
   addAttribute(body, "x", closed.x);
   addAttribute(body, "y", closed.y);
 
